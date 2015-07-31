@@ -2,15 +2,19 @@ package main
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	s "strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 type WSConn struct {
+	sync.Mutex
 	conn   *websocket.Conn
 	dialer websocket.Dialer
 	heads  http.Header
@@ -26,14 +30,15 @@ type Message struct {
 }
 
 var (
-	url       = "ws://destiny.gg:9998/ws"
-	authToken = []string{"authtoken=1234567890"}
-	origin    = []string{"http://destiny.gg"}
+	url = "ws://destiny.gg:9998/ws"
+	origin = []string{"http://destiny.gg"}
 )
 
 func (w *WSConn) Reconnect() {
 	if w.conn != nil {
+		w.Lock()
 		_ = w.conn.Close()
+		w.Unlock()
 	}
 
 	var err error
@@ -61,6 +66,22 @@ func (w *WSConn) Read() Message {
 	return parse(msg)
 }
 
+func (w *WSConn) Run(u string, ch chan string) {
+	var chLog = make(chan Message, 10)
+
+	go WriteFile(chLog)
+
+	log.Println("Connecting to", u)
+	w.Reconnect()
+	log.Println("Connected to", u)
+
+	for {
+		msg := w.Read()
+		chLog <- msg
+	}
+	ch <- u
+}
+
 func (w *WSConn) Write(msgType, msg string) {
 	err := w.conn.WriteMessage(1, []byte(msgType+` {"data":"`+msg+`"}`))
 	if err != nil {
@@ -69,9 +90,9 @@ func (w *WSConn) Write(msgType, msg string) {
 	}
 }
 
-func (w *WSConn) WritePrivate(u string, msg string) {
+func (w *WSConn) WritePrivate(msgType, u, msg string) {
 	w.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-	err := w.conn.WriteMessage(1, []byte(`PRIVMSG {"nick":"`+u+`", data":"`+msg+`"}`))
+	err := w.conn.WriteMessage(1, []byte(msgType+` {"nick":"`+u+`", "data":"`+msg+`"}`))
 	if err != nil {
 		logAndDelay(err)
 		w.Reconnect()
@@ -97,32 +118,74 @@ func parse(msg []byte) (m Message) {
 
 func logAndDelay(err error) {
 	log.Printf("Connection failed ERROR: %s\n", err)
-	log.Println("Reconnecting in 5 Seconds...")
-	time.Sleep(5 * time.Second)
+	log.Println("Reconnecting in 1 Seconds...")
+	time.Sleep(1 * time.Second)
+}
+
+func slurpFile(fn string) []string {
+	d, err := ioutil.ReadFile(fn)
+	if err != nil {
+		LogErr(err)
+		return []string{}
+	}
+	dl := s.Split(string(d), ",")
+	var dn []string
+	for _, v := range dl {
+		if v != "" {
+			dn = append(dn, v)
+		}
+	}
+	return dn
+}
+
+func writeFile(fn string, s []string) {
+	var d string
+
+	for _, v := range s {
+		if v != "" {
+			d += v + ","
+		}
+	}
+
+	f, err := os.Create(fn)
+	if err != nil {
+		LogErr(err)
+		return
+	}
+	defer f.Close()
+	f.WriteString(d)
+}
+
+func remove(n string, sl []string) []string {
+	mu := sync.Mutex{}
+	for i, data := range sl {
+		if s.EqualFold(n, data) {
+			mu.Lock()
+			sl = append(sl[:i], sl[i+1:]...)
+			mu.Unlock()
+			return sl
+		}
+	}
+	return sl
 }
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	var chLog = make(chan Message, 10)
-	var chHandle = make(chan Message, 2)
 
-	go WriteFile(chLog)
+	quit := make(chan string, 1)
 
-	ws := &WSConn{
-		dialer: websocket.Dialer{HandshakeTimeout: 20 * time.Second},
-		heads:  http.Header{"Origin": origin, "Cookie": authToken},
+	wsCom := &WSConn{
+		dialer: websocket.Dialer{HandshakeTimeout: 10 * time.Second},
+		heads:  http.Header{"Origin": origin},
 	}
-	log.Println("Connecting to", url)
-	ws.Reconnect()
-	log.Println("Connected to", url)
 
-	go HandleMessage(ws, chHandle)
+	go wsCom.Run("Destinygg", quit)
 
 	for {
-		msg := ws.Read()
-		// log.Println(msg)
-
-		chLog <- msg
-		chHandle <- msg
+		ch := <-quit
+		if ch != "" {
+			log.Println("Restarting", ch, "...")
+			go wsCom.Run(ch, quit)
+		}
 	}
 }
