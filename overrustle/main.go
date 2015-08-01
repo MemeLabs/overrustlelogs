@@ -23,7 +23,8 @@ func init() {
 }
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
+	// runtime.GOMAXPROCS(runtime.NumCPU())
+	runtime.GOMAXPROCS(4)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	logs := NewChatLogs()
@@ -35,8 +36,11 @@ func main() {
 
 	tc := NewTwitchChat(func(ch string, m chan *Message) {
 		log.Printf("started logging %s", ch)
-		NewTwitchLogger(logs, ch).Log(m)
-		log.Printf("stopped logging %s", ch)
+		tl := NewTwitchLogger(logs, ch)
+		go func() {
+			tl.Log(m)
+			log.Printf("stopped logging %s", ch)
+		}()
 	})
 	go tc.Run()
 

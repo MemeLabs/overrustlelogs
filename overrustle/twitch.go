@@ -77,8 +77,8 @@ func (c *TwitchChat) Connect() {
 		c.reconnect()
 	}
 
-	c.send("PASS oauth:")
-	c.send("NICK bla")
+	c.send("PASS " + config.Twitch.OAuth)
+	c.send("NICK " + config.Twitch.Nick)
 
 	for _, ch := range c.channels {
 		c.Join(ch, true)
@@ -89,12 +89,12 @@ func (c *TwitchChat) reconnect() {
 	if c.conn != nil {
 		c.Lock()
 		c.conn.Close()
-		c.Unlock()
 
 		for ch, mc := range c.messages {
 			close(mc)
 			delete(c.messages, ch)
 		}
+		c.Unlock()
 	}
 
 	time.Sleep(SocketReconnectDelay)
@@ -105,7 +105,7 @@ func (c *TwitchChat) reconnect() {
 func (c *TwitchChat) Run() {
 	c.Connect()
 
-	messagePattern := regexp.MustCompile(`:\s*(.+)!.+tmi\.twitch\.tv PRIVMSG #([a-z0-9_-]+) :(.+)`)
+	messagePattern := regexp.MustCompile(`:(.+)\!.+tmi\.twitch\.tv PRIVMSG #([a-z0-9_-]+) :(.+)`)
 
 	for {
 		err := c.conn.SetReadDeadline(time.Now().Add(20 * time.Second))
@@ -123,10 +123,15 @@ func (c *TwitchChat) Run() {
 			continue
 		}
 
+		if strings.Index(string(msg), "PING") == 0 {
+			c.send(strings.Replace(string(msg), "PING", "PONG", -1))
+			continue
+		}
+
 		l := messagePattern.FindAllStringSubmatch(string(msg), -1)
 		for _, v := range l {
 			c.RLock()
-			mc, ok := c.messages[v[2]]
+			mc, ok := c.messages[strings.ToLower(v[2])]
 			c.RUnlock()
 			if !ok {
 				continue
@@ -192,6 +197,7 @@ func (c *TwitchChat) send(m string) {
 
 // Join channel
 func (c *TwitchChat) Join(ch string, init bool) error {
+	ch = strings.ToLower(ch)
 	c.Lock()
 	_, ok := c.messages[ch]
 	if !ok {
@@ -201,7 +207,7 @@ func (c *TwitchChat) Join(ch string, init bool) error {
 	if ok {
 		return ErrTwitchAlreadyInChannel
 	}
-	c.send("JOIN #" + strings.ToLower(ch))
+	c.send("JOIN #" + ch)
 	c.Lock()
 	if messages, ok := c.messages[ch]; ok {
 		c.joinHandler(ch, messages)
@@ -215,6 +221,7 @@ func (c *TwitchChat) Join(ch string, init bool) error {
 
 // Leave channel
 func (c *TwitchChat) Leave(ch string) error {
+	ch = strings.ToLower(ch)
 	c.Lock()
 	_, ok := c.messages[ch]
 	c.Unlock()
@@ -264,7 +271,7 @@ type TwitchLogger struct {
 func NewTwitchLogger(logs *ChatLogs, ch string) *TwitchLogger {
 	return &TwitchLogger{
 		logs:    logs,
-		channel: ch,
+		channel: strings.Title(ch),
 	}
 }
 

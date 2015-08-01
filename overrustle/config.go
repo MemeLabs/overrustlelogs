@@ -19,6 +19,8 @@ type Config struct {
 	Twitch struct {
 		SocketURL       string
 		OriginURL       string
+		OAuth           string
+		Nick            string
 		Path            string
 		Admins          []string
 		ChannelListPath string
