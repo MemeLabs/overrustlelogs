@@ -13,6 +13,8 @@ import (
 const (
 	SocketHandshakeTimeout = 10 * time.Second
 	SocketReconnectDelay   = 20 * time.Second
+	SocketWriteDebounce    = 500 * time.Millisecond
+	SocketReadTimeout      = 20 * time.Second
 	MessageBufferSize      = 100
 )
 
@@ -23,8 +25,7 @@ func init() {
 }
 
 func main() {
-	// runtime.GOMAXPROCS(runtime.NumCPU())
-	runtime.GOMAXPROCS(4)
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	logs := NewChatLogs()
@@ -36,11 +37,8 @@ func main() {
 
 	tc := NewTwitchChat(func(ch string, m chan *Message) {
 		log.Printf("started logging %s", ch)
-		tl := NewTwitchLogger(logs, ch)
-		go func() {
-			tl.Log(m)
-			log.Printf("stopped logging %s", ch)
-		}()
+		NewTwitchLogger(logs, ch).Log(m)
+		log.Printf("stopped logging %s", ch)
 	})
 	go tc.Run()
 

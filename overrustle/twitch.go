@@ -30,7 +30,6 @@ type TwitchChat struct {
 	headers     http.Header
 	messages    map[string]chan *Message
 	channels    []string
-	writeQueue  []string
 	writeLock   sync.Mutex
 	joinHandler TwitchJoinHandler
 	admins      map[string]bool
@@ -46,7 +45,6 @@ func NewTwitchChat(j TwitchJoinHandler) *TwitchChat {
 		headers:     http.Header{"Origin": []string{config.Twitch.OriginURL}},
 		messages:    make(map[string]chan *Message, 0),
 		channels:    make([]string, 0),
-		writeQueue:  make([]string, 0),
 		joinHandler: j,
 		admins:      make(map[string]bool, len(config.Twitch.Admins)),
 	}
@@ -108,7 +106,7 @@ func (c *TwitchChat) Run() {
 	messagePattern := regexp.MustCompile(`:(.+)\!.+tmi\.twitch\.tv PRIVMSG #([a-z0-9_-]+) :(.+)`)
 
 	for {
-		err := c.conn.SetReadDeadline(time.Now().Add(20 * time.Second))
+		err := c.conn.SetReadDeadline(time.Now().Add(SocketReadTimeout))
 		if err != nil {
 			c.reconnect()
 			continue
@@ -186,7 +184,7 @@ func (c *TwitchChat) send(m string) {
 	err := c.conn.WriteMessage(1, []byte(m+"\r\n"))
 	c.RUnlock()
 	if err == nil {
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(SocketWriteDebounce)
 	}
 	c.writeLock.Unlock()
 	if err != nil {
@@ -210,7 +208,7 @@ func (c *TwitchChat) Join(ch string, init bool) error {
 	c.send("JOIN #" + ch)
 	c.Lock()
 	if messages, ok := c.messages[ch]; ok {
-		c.joinHandler(ch, messages)
+		go c.joinHandler(ch, messages)
 	}
 	c.Unlock()
 	if init {

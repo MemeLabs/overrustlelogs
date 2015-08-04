@@ -1,11 +1,13 @@
 #/bin/bash
 
 base="/var/www/public/_public"
-month=`date -u '+%B %Y' -d 'last month'`
+# month=`date -u '+%B %Y' -d 'last month'`
+month=`date -u '+%B %Y'`
 
 IFS="$(printf '\n\t')"
 
 for chan in `ls $base`; do
+  echo $chan
   if [ -e "$base/$chan/$month" ]; then
     for file in `ls $base/$chan/$month/*.txt`; do
       echo "compressing $file"

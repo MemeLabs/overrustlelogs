@@ -36,7 +36,9 @@ func NewDestinyChat() *DestinyChat {
 // Connect open ws connection
 func (c *DestinyChat) Connect() {
 	var err error
+	c.Lock()
 	c.conn, _, err = c.dialer.Dial(config.DestinyGG.SocketURL, c.headers)
+	c.Unlock()
 	if err != nil {
 		log.Printf("error connecting to destiny ws %s", err)
 		c.reconnect()
@@ -59,7 +61,7 @@ func (c *DestinyChat) Run() {
 	c.Connect()
 
 	for {
-		err := c.conn.SetReadDeadline(time.Now().Add(20 * time.Second))
+		err := c.conn.SetReadDeadline(time.Now().Add(SocketReadTimeout))
 		if err != nil {
 			c.reconnect()
 			continue
