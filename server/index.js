@@ -16,12 +16,12 @@ app.get('/test/:name', function(req, res) {
       res.status(500).send(err);
     }
     else {
+      res.status(200);
       enqueueFile();
     }
 
     function enqueueFile() {
       if (files.length) {
-        res.status(200);
         processFile(files.shift(), enqueueFile);
       }
       else {
