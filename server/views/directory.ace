@@ -1,0 +1,6 @@
+= content body
+  ul
+    {{range .Paths}}
+      li
+        a class={{.ClassName}} href={{.Path}} {{.Name}}
+    {{end}}

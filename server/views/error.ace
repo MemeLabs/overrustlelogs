@@ -1,0 +1,3 @@
+= content body
+  h2 Error
+  p {{.Message}}

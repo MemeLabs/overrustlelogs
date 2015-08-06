@@ -50,7 +50,7 @@ function Filter(name) {
   stream.Transform.call(this);
 
   this._buffer = '';
-  this._name = name;
+  this._name = name + ':';
   this._nameLength = this._name.length;
 }
 
