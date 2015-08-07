@@ -4,30 +4,38 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"strings"
+	"regexp"
+	"sort"
 
 	"github.com/cloudflare/golz4"
 	"github.com/gorilla/mux"
+	"github.com/xlab/handysort"
 	"github.com/yosssi/ace"
 )
 
 // temp ish.. move to config
 const (
 	// BaseDir    = "/var/overrustle/logs"
-	BaseDir    = "/var/www/public/_public"
-	MaxLogSize = 10 * 1024 * 1024
-	ViewPath   = "/var/overrustle/views"
+	BaseDir             = "/var/www/public/_public"
+	MaxLogSize          = 10 * 1024 * 1024
+	ViewPath            = "/var/overrustle/views"
+	MaxUserNameLength   = 25
+	LogLinePrefixLength = 26
 )
 
 // errors
 var (
 	ErrNotFound = errors.New("file not found")
+)
+
+// log file extension pattern
+var (
+	LogExtension = regexp.MustCompile("\\.txt(\\.lz4)?$")
 )
 
 func main() {
@@ -38,21 +46,173 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", DayHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs", UsersHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{user:[a-zA-Z0-9_-]+}.txt", UserHandle).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", DestinyHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", BroadcasterHandle).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscriptions.txt", SubHandle).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", SubHandle).Methods("GET")
 	http.ListenAndServe(":8080", r)
 }
 
-// ErrorTemplate ...
-func ErrorTemplate() string {
-	return ""
+// BaseHandle returns channel index
+func BaseHandle(w http.ResponseWriter, r *http.Request) {
+	paths, err := readDirIndex(BaseDir)
+	if err != nil {
+		serveError(w, err)
+		return
+	}
+	serveDirIndex(w, "/", paths)
 }
 
-// DirectoryIndex ...
-func DirectoryIndex(res http.ResponseWriter, base string, paths []string) {
+// ChannelHandle returns channel index
+func ChannelHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	paths, err := readDirIndex(BaseDir + "/" + vars["channel"])
+	if err != nil {
+		serveError(w, err)
+		return
+	}
+	serveDirIndex(w, "/"+vars["channel"]+"/", paths)
+}
+
+// MonthHandle returns channel index
+func MonthHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	paths, err := readLogDir(BaseDir + "/" + vars["channel"] + "/" + vars["month"])
+	if err != nil {
+		serveError(w, err)
+		return
+	}
+	paths = append(paths, make([]string, 2)...)
+	copy(paths[2:], paths)
+	paths[0] = "broadcaster.txt"
+	paths[1] = "subscribers.txt"
+	for i, path := range paths {
+		paths[i] = LogExtension.ReplaceAllString(path, ".txt")
+	}
+	serveDirIndex(w, "/"+vars["channel"]+"/"+vars["month"]+"/", paths)
+}
+
+// DayHandle returns channel index
+func DayHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	data, err := readLogFile(BaseDir + "/" + vars["channel"] + "/" + vars["month"] + "/" + vars["date"])
+	if err != nil {
+		serveError(w, err)
+		return
+	}
+	w.Header().Set("Content-type", "text/plain")
+	w.Write(data)
+}
+
+// UsersHandle returns channel index
+func UsersHandle(w http.ResponseWriter, r *http.Request) {
+
+}
+
+// UserHandle returns channel index
+func UserHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	serveUserLog(w, BaseDir+"/"+vars["channel"]+"/"+vars["month"], vars["user"])
+}
+
+// BroadcasterHandle returns channel index
+func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	serveUserLog(w, BaseDir+"/"+vars["channel"]+"/"+vars["month"], vars["channel"][:len(vars["channel"])-8])
+}
+
+// DestinyHandle returns channel index
+func DestinyHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	serveUserLog(w, BaseDir+"/Destinygg chatlog/"+vars["month"], "Destiny")
+}
+
+// SubHandle returns channel index
+func SubHandle(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func readDirIndex(path string) ([]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	names, err := f.Readdirnames(0)
+	if err != nil {
+		return nil, err
+	}
+	sort.Sort(handysort.Strings(names))
+	return names, nil
+}
+
+func readLogDir(path string) ([]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	files, err := f.Readdir(0)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, file := range files {
+		if LogExtension.MatchString(file.Name()) {
+			names = append(names, file.Name())
+		}
+	}
+	sort.Sort(handysort.Strings(names))
+	return names, nil
+}
+
+func readLogFile(path string) ([]byte, error) {
+	var buf []byte
+	path = LogExtension.ReplaceAllString(path, "")
+	f, err := os.Open(path + ".txt.lz4")
+	if os.IsNotExist(err) {
+		f, err := os.Open(path + ".txt")
+		if os.IsNotExist(err) {
+			return nil, ErrNotFound
+		}
+		buf, err = ioutil.ReadAll(f)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		if err != nil {
+			return nil, ErrNotFound
+		}
+		buf = make([]byte, MaxLogSize)
+		data, err := ioutil.ReadAll(f)
+		if err != nil {
+			return nil, err
+		}
+		if err := lz4.Uncompress(data, buf); err != nil {
+			return nil, err
+		}
+	}
+	return buf, nil
+}
+
+// serveError ...
+func serveError(w http.ResponseWriter, err error) {
+	_, ok := w.Header()["Content-Type"]
+
+	if !ok {
+		w.Header().Set("Content-type", "text/plain")
+	}
+	if err == ErrNotFound {
+		http.Error(w, err.Error(), http.StatusNotFound)
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	} else {
+		http.Error(w, "Unknown Error", http.StatusInternalServerError)
+	}
+}
+
+// serveDirIndex ...
+func serveDirIndex(w http.ResponseWriter, base string, paths []string) {
 	tpl, err := ace.Load(ViewPath+"/layout", ViewPath+"/directory", nil)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	data := map[string]interface{}{
@@ -66,178 +226,43 @@ func DirectoryIndex(res http.ResponseWriter, base string, paths []string) {
 			"Name":      path,
 		})
 	}
-	if err := tpl.Execute(res, data); err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+	if err := tpl.Execute(w, data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
-// BaseHandle returns channel index
-func BaseHandle(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-type", "text/html")
-
-	f, err := os.Open(BaseDir)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+func serveUserLog(w http.ResponseWriter, path string, user string) {
+	if len(user) > MaxUserNameLength {
+		serveError(w, ErrNotFound)
 	}
-
-	dirs, err := f.Readdirnames(0)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	DirectoryIndex(res, "/", dirs)
-}
-
-// ChannelHandle returns channel index
-func ChannelHandle(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-type", "text/html")
-
-	vars := mux.Vars(req)
-
-	f, err := os.Open(BaseDir + "/" + vars["channel"])
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	dirs, err := f.Readdirnames(0)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	DirectoryIndex(res, "/"+vars["channel"]+"/", dirs)
-}
-
-// MonthHandle returns channel index
-func MonthHandle(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-type", "text/html")
-
-	vars := mux.Vars(req)
-
-	f, err := os.Open(BaseDir + "/" + vars["channel"] + "/" + vars["month"])
-	if err != nil {
-		http.Error(res, "[]", http.StatusNotFound)
-		return
-	}
-
-	files, err := f.Readdir(0)
-	if err != nil {
-		http.Error(res, "[]", http.StatusInternalServerError)
-		return
-	}
-
-	var paths []string
-	for _, file := range files {
-		paths = append(paths, file.Name())
-	}
-
-	DirectoryIndex(res, "/"+vars["channel"]+"/"+vars["month"]+"/", paths)
-}
-
-// DayHandle returns channel index
-func DayHandle(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-type", "text/plain")
-
-	vars := mux.Vars(req)
-
-	log.Println(BaseDir + "/" + vars["channel"] + "/" + vars["month"] + "/" + vars["date"] + ".txt")
-	data, err := (&ChatLog{BaseDir + "/" + vars["channel"] + "/" + vars["month"] + "/" + vars["date"] + ".txt"}).Read()
-	if err == ErrNotFound {
-		http.Error(res, err.Error(), http.StatusNotFound)
-	} else if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
-
-	res.Write(data)
-}
-
-// UsersHandle returns channel index
-func UsersHandle(res http.ResponseWriter, req *http.Request) {
-
-}
-
-// UserHandle returns channel index
-func UserHandle(res http.ResponseWriter, req *http.Request) {
-
-}
-
-// BroadcasterHandle returns channel index
-func BroadcasterHandle(res http.ResponseWriter, req *http.Request) {
-
-}
-
-// SubHandle returns channel index
-func SubHandle(res http.ResponseWriter, req *http.Request) {
-
-}
-
-// ChatLog file handler
-type ChatLog struct {
-	path string
-}
-
-func (c *ChatLog) Read() ([]byte, error) {
-	var buf []byte
-
-	f, err := os.Open(c.path + ".lz4")
-	if os.IsNotExist(err) {
-		f, err := os.Open(c.path)
-		if os.IsNotExist(err) {
-			return nil, ErrNotFound
+	user += ":"
+	filter := func(line []byte) bool {
+		for i := 0; i < len(user); i++ {
+			if i+LogLinePrefixLength > len(line) || line[i+LogLinePrefixLength] != user[i] {
+				return false
+			}
 		}
+		return true
+	}
+	serveFilteredLogs(w, path, filter)
+}
 
-		buf, err = ioutil.ReadAll(f)
+func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) bool) {
+	logs, err := readLogDir(path)
+	if err != nil {
+		serveError(w, err)
+		return
+	}
+	w.Header().Set("Content-type", "text/plain")
+	for _, name := range logs {
+		data, err := readLogFile(path + "/" + name)
 		if err != nil {
-			return nil, err
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-	} else {
-		if err != nil {
-			return nil, ErrNotFound
-		}
+		t := bytes.NewReader(data)
+		r := bufio.NewReaderSize(t, MaxLogSize)
 
-		buf = make([]byte, MaxLogSize)
-		data, err := ioutil.ReadAll(f)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := lz4.Uncompress(data, buf); err != nil {
-			return nil, err
-		}
-	}
-
-	return buf, nil
-}
-
-func temp() {
-	user := []byte("lirik:")
-	baseDir := "/var/overrustle/logs/Lirik chatlog/July 2015"
-
-	files, err := ioutil.ReadDir(baseDir)
-	if err != nil {
-		log.Panicf("error reading logs dir %s", err)
-	}
-
-	buf := make([]byte, 10*1024*1024)
-	for _, info := range files {
-		f, err := os.Open(baseDir + "/" + info.Name())
-		if err != nil {
-			log.Fatalf("error creating file reader %s", err)
-		}
-
-		data, _ := ioutil.ReadAll(f)
-
-		buf = buf[:]
-		lz4.Uncompress(data, buf)
-
-		t := bytes.NewReader(buf)
-		r := bufio.NewReaderSize(t, 10*1024*1024)
-
-	ReadLine:
 		for {
 			line, err := r.ReadSlice('\n')
 			if err == io.EOF {
@@ -245,39 +270,9 @@ func temp() {
 			} else if err != nil {
 				log.Fatalf("error reading bytes %s", err)
 			}
-
-			for i := 0; i < len(user); i++ {
-				if i+26 > len(line) || line[i+26] != user[i] {
-					continue ReadLine
-				}
+			if filter(line) {
+				w.Write(line)
 			}
-
-			fmt.Print(string(line))
-		}
-	}
-}
-
-func batchCompress() {
-	baseDir := "/var/overrustle/logs/Lirik chatlog/July 2015"
-
-	files, err := ioutil.ReadDir(baseDir)
-	if err != nil {
-		log.Panicf("error reading logs dir %s", err)
-	}
-
-	buf := make([]byte, 10*1024*1024)
-	for _, info := range files {
-		f, err := os.Open(baseDir + "/" + info.Name())
-		if err != nil {
-			log.Fatalf("error creating file reader %s", err)
-		}
-
-		data, _ := ioutil.ReadAll(f)
-		size, _ := lz4.CompressHCLevel(data, buf, 16)
-
-		err = ioutil.WriteFile(BaseDir+"/"+strings.Replace(info.Name(), ".txt", ".txt.lz4", -1), buf[:size], 0644)
-		if err != nil {
-			log.Println("error writing file %s", err)
 		}
 	}
 }
