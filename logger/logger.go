@@ -1,11 +1,7 @@
-package main
+package logger
 
 import (
-	"flag"
 	"log"
-	"os"
-	"os/signal"
-	"runtime"
 	"time"
 )
 
@@ -18,16 +14,8 @@ const (
 	MessageBufferSize      = 100
 )
 
-func init() {
-	configPath := flag.String("config", "", "config path")
-	flag.Parse()
-	SetupConfig(*configPath)
-}
-
-func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
+// Start logger
+func Start() {
 	logs := NewChatLogs()
 
 	dc := NewDestinyChat()
@@ -42,10 +30,5 @@ func main() {
 	})
 	go tc.Run()
 
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	select {
-	case <-sigint:
-		log.Println("i love you guys, be careful")
-	}
+	select {}
 }

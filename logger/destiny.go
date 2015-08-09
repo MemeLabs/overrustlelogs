@@ -1,16 +1,16 @@
-package main
+package logger
 
 import (
 	"bytes"
 	"encoding/json"
 	"log"
 	"net/http"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/slugalisk/overrustlelogs/common"
 )
 
 // DestinyChat destiny.gg chat client
@@ -26,7 +26,7 @@ type DestinyChat struct {
 func NewDestinyChat() *DestinyChat {
 	c := &DestinyChat{
 		dialer:   websocket.Dialer{HandshakeTimeout: SocketHandshakeTimeout},
-		headers:  http.Header{"Origin": []string{config.DestinyGG.OriginURL}},
+		headers:  http.Header{"Origin": []string{common.GetConfig().DestinyGG.OriginURL}},
 		messages: make(chan *Message, MessageBufferSize),
 	}
 
@@ -37,7 +37,7 @@ func NewDestinyChat() *DestinyChat {
 func (c *DestinyChat) Connect() {
 	var err error
 	c.Lock()
-	c.conn, _, err = c.dialer.Dial(config.DestinyGG.SocketURL, c.headers)
+	c.conn, _, err = c.dialer.Dial(common.GetConfig().DestinyGG.SocketURL, c.headers)
 	c.Unlock()
 	if err != nil {
 		log.Printf("error connecting to destiny ws %s", err)
@@ -108,20 +108,13 @@ func (c *DestinyChat) Messages() <-chan *Message {
 
 // DestinyLogger logger
 type DestinyLogger struct {
-	logs         *ChatLogs
-	premiumUsers map[string]*regexp.Regexp
+	logs *ChatLogs
 }
 
 // NewDestinyLogger instantiates destiny chat logger
 func NewDestinyLogger(logs *ChatLogs) *DestinyLogger {
-	premiumUsers := make(map[string]*regexp.Regexp, len(config.DestinyGG.Premium.Users))
-	for _, name := range config.DestinyGG.Premium.Users {
-		premiumUsers[name] = regexp.MustCompile("(?i)" + name)
-	}
-
 	return &DestinyLogger{
-		logs:         logs,
-		premiumUsers: premiumUsers,
+		logs: logs,
 	}
 }
 
@@ -130,37 +123,30 @@ func (d *DestinyLogger) Log(mc <-chan *Message) {
 	for {
 		m := <-mc
 
-		for name, pattern := range d.premiumUsers {
-			if pattern.MatchString(m.Data) {
-				d.writeLine(m.Time, "premium/"+name+".txt", m.Nick+": "+m.Data)
-			}
-		}
-
 		switch m.Command {
 		case "BAN":
-			d.writeLine(m.Time, "bans.txt", m.Data+" banned by "+m.Nick)
+			d.writeLine(m.Time, "Ban", m.Data+" banned by "+m.Nick)
 		case "UNBAN":
-			d.writeLine(m.Time, "bans.txt", m.Data+" unbanned by "+m.Nick)
+			d.writeLine(m.Time, "Ban", m.Data+" unbanned by "+m.Nick)
 		case "MUTE":
-			d.writeLine(m.Time, "bans.txt", m.Data+" muted by "+m.Nick)
+			d.writeLine(m.Time, "Ban", m.Data+" muted by "+m.Nick)
 		case "UNMUTE":
-			d.writeLine(m.Time, "bans.txt", m.Data+" unmuted by "+m.Nick)
+			d.writeLine(m.Time, "Ban", m.Data+" unmuted by "+m.Nick)
 		case "BROADCAST":
 			if strings.Contains(m.Data, "subscriber!") || strings.Contains(m.Data, "subscribed on Twitch!") {
-				d.writeLine(m.Time, "subs.txt", m.Data)
+				d.writeLine(m.Time, "Subscriber", m.Data)
 			}
 		case "MSG":
-			d.writeLine(m.Time, m.Time.Format("2006-01-02")+".txt", m.Nick+": "+m.Data)
-			d.writeLine(m.Time, "userlogs/"+m.NickPath()+".txt", m.Nick+": "+m.Data)
+			d.writeLine(m.Time, m.Nick, m.Data)
 		}
 	}
 }
 
-func (d *DestinyLogger) writeLine(timestamp time.Time, path string, line string) {
-	l, err := d.logs.Get(config.DestinyGG.Path + "/" + timestamp.Format("January 2006") + "/" + path)
+func (d *DestinyLogger) writeLine(timestamp time.Time, nick string, message string) {
+	l, err := d.logs.Get(common.GetConfig().DestinyGG.Path + "/" + timestamp.Format("January 2006") + "/" + timestamp.Format("2006-01-02") + ".txt")
 	if err != nil {
 		log.Printf("error opening log %s", err)
 		return
 	}
-	l.Write(timestamp, line)
+	l.Write(timestamp, nick, message)
 }

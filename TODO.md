@@ -1,6 +1,3 @@
-* twitch subscriber logs
-* twitch broadcaster logs
-* nginx config
 * autoindex http server with file renaming
 
 we never actually auth to the destiny.gg chat... there was no auth code and this was never used

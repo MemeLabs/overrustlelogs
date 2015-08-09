@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"bufio"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/cloudflare/golz4"
 	"github.com/gorilla/mux"
+	"github.com/slugalisk/overrustlelogs/common"
 	"github.com/xlab/handysort"
 	"github.com/yosssi/ace"
 )
@@ -24,7 +25,6 @@ const (
 	BaseDir             = "/var/www/public/_public"
 	MaxLogSize          = 10 * 1024 * 1024
 	ViewPath            = "/var/overrustle/views"
-	MaxUserNameLength   = 25
 	LogLinePrefixLength = 26
 )
 
@@ -35,24 +35,30 @@ var (
 
 // log file extension pattern
 var (
-	LogExtension = regexp.MustCompile("\\.txt(\\.lz4)?$")
+	LogExtension   = regexp.MustCompile("\\.txt(\\.lz4)?$")
+	NicksExtension = regexp.MustCompile("\\.nicks\\.lz4$")
 )
 
-func main() {
+// Start server
+func Start() {
 	r := mux.NewRouter()
+
 	r.HandleFunc("/", BaseHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}", ChannelHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}", MonthHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", DayHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs", UsersHandle).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{user:[a-zA-Z0-9_-]+}.txt", UserHandle).Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", DestinyHandle).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{user:[a-zA-Z0-9_-]{1,25}}.txt", UserHandle).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", DestinyBroadcasterHandle).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", DestinySubscriberHandle).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans.txt", DestinyBanHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", BroadcasterHandle).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", SubHandle).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", SubscriberHandle).Methods("GET")
+
 	http.ListenAndServe(":8080", r)
 }
 
-// BaseHandle returns channel index
+// BaseHandle channel index
 func BaseHandle(w http.ResponseWriter, r *http.Request) {
 	paths, err := readDirIndex(BaseDir)
 	if err != nil {
@@ -62,7 +68,7 @@ func BaseHandle(w http.ResponseWriter, r *http.Request) {
 	serveDirIndex(w, "/", paths)
 }
 
-// ChannelHandle returns channel index
+// ChannelHandle channel index
 func ChannelHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	paths, err := readDirIndex(BaseDir + "/" + vars["channel"])
@@ -73,7 +79,7 @@ func ChannelHandle(w http.ResponseWriter, r *http.Request) {
 	serveDirIndex(w, "/"+vars["channel"]+"/", paths)
 }
 
-// MonthHandle returns channel index
+// MonthHandle channel index
 func MonthHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	paths, err := readLogDir(BaseDir + "/" + vars["channel"] + "/" + vars["month"])
@@ -81,17 +87,20 @@ func MonthHandle(w http.ResponseWriter, r *http.Request) {
 		serveError(w, err)
 		return
 	}
-	paths = append(paths, make([]string, 2)...)
-	copy(paths[2:], paths)
-	paths[0] = "broadcaster.txt"
-	paths[1] = "subscribers.txt"
+	metaPaths := []string{"userlogs", "broadcaster.txt", "subscribers.txt"}
+	if vars["channel"] == "Destinygg chatlog" {
+		metaPaths = append(metaPaths, "bans.txt")
+	}
+	paths = append(paths, metaPaths...)
+	copy(paths[len(metaPaths):], paths)
+	copy(paths, metaPaths)
 	for i, path := range paths {
 		paths[i] = LogExtension.ReplaceAllString(path, ".txt")
 	}
 	serveDirIndex(w, "/"+vars["channel"]+"/"+vars["month"]+"/", paths)
 }
 
-// DayHandle returns channel index
+// DayHandle channel index
 func DayHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	data, err := readLogFile(BaseDir + "/" + vars["channel"] + "/" + vars["month"] + "/" + vars["date"])
@@ -103,32 +112,66 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-// UsersHandle returns channel index
+// UsersHandle channel index
 func UsersHandle(w http.ResponseWriter, r *http.Request) {
-
+	vars := mux.Vars(r)
+	dir := BaseDir + "/" + vars["channel"] + "/" + vars["month"]
+	f, err := os.Open(dir)
+	if err != nil {
+		serveError(w, ErrNotFound)
+	}
+	files, err := f.Readdir(0)
+	if err != nil {
+		serveError(w, err)
+	}
+	nicks := common.NickList{}
+	for _, file := range files {
+		if NicksExtension.MatchString(file.Name()) {
+			nicks.ReadFrom(dir + "/" + file.Name())
+		}
+	}
+	names := make([]string, 0, len(nicks))
+	for nick := range nicks {
+		names = append(names, nick+".txt")
+	}
+	sort.Sort(handysort.Strings(names))
+	serveDirIndex(w, dir, names)
 }
 
-// UserHandle returns channel index
+// UserHandle channel index
 func UserHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	serveUserLog(w, BaseDir+"/"+vars["channel"]+"/"+vars["month"], vars["user"])
 }
 
-// BroadcasterHandle returns channel index
+// BroadcasterHandle channel index
 func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	serveUserLog(w, BaseDir+"/"+vars["channel"]+"/"+vars["month"], vars["channel"][:len(vars["channel"])-8])
 }
 
-// DestinyHandle returns channel index
-func DestinyHandle(w http.ResponseWriter, r *http.Request) {
+// SubscriberHandle channel index
+func SubscriberHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	serveUserLog(w, BaseDir+"/Destinygg chatlog/"+vars["month"], "twitchnotify")
+}
+
+// DestinyBroadcasterHandle destiny logs
+func DestinyBroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	serveUserLog(w, BaseDir+"/Destinygg chatlog/"+vars["month"], "Destiny")
 }
 
-// SubHandle returns channel index
-func SubHandle(w http.ResponseWriter, r *http.Request) {
+// DestinySubscriberHandle destiny subscriber logs
+func DestinySubscriberHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	serveUserLog(w, BaseDir+"/Destinygg chatlog/"+vars["month"], "Subscriber")
+}
 
+// DestinyBanHandle channel ban list
+func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	serveUserLog(w, BaseDir+"/Destinygg chatlog/"+vars["month"], "Ban")
 }
 
 func readDirIndex(path string) ([]string, error) {
@@ -233,9 +276,6 @@ func serveDirIndex(w http.ResponseWriter, base string, paths []string) {
 }
 
 func serveUserLog(w http.ResponseWriter, path string, user string) {
-	if len(user) > MaxUserNameLength {
-		serveError(w, ErrNotFound)
-	}
 	user += ":"
 	filter := func(line []byte) bool {
 		for i := 0; i < len(user); i++ {
@@ -265,10 +305,11 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 
 		for {
 			line, err := r.ReadSlice('\n')
-			if err == io.EOF {
+			if err != nil {
+				if err != io.EOF {
+					log.Printf("error reading bytes %s", err)
+				}
 				break
-			} else if err != nil {
-				log.Fatalf("error reading bytes %s", err)
 			}
 			if filter(line) {
 				w.Write(line)

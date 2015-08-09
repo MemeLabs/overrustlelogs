@@ -1,4 +1,4 @@
-package main
+package logger
 
 import (
 	"bytes"
@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/slugalisk/overrustlelogs/common"
 )
 
 // errors
@@ -42,18 +43,18 @@ type TwitchJoinHandler func(string, chan *Message)
 func NewTwitchChat(j TwitchJoinHandler) *TwitchChat {
 	c := &TwitchChat{
 		dialer:      websocket.Dialer{HandshakeTimeout: SocketHandshakeTimeout},
-		headers:     http.Header{"Origin": []string{config.Twitch.OriginURL}},
+		headers:     http.Header{"Origin": []string{common.GetConfig().Twitch.OriginURL}},
 		messages:    make(map[string]chan *Message, 0),
 		channels:    make([]string, 0),
 		joinHandler: j,
-		admins:      make(map[string]bool, len(config.Twitch.Admins)),
+		admins:      make(map[string]bool, len(common.GetConfig().Twitch.Admins)),
 	}
 
-	for _, u := range config.Twitch.Admins {
+	for _, u := range common.GetConfig().Twitch.Admins {
 		c.admins[u] = true
 	}
 
-	d, err := ioutil.ReadFile(config.Twitch.ChannelListPath)
+	d, err := ioutil.ReadFile(common.GetConfig().Twitch.ChannelListPath)
 	if err != nil {
 		log.Fatalf("unable to read channels %s", err)
 	}
@@ -68,15 +69,15 @@ func NewTwitchChat(j TwitchJoinHandler) *TwitchChat {
 func (c *TwitchChat) Connect() {
 	var err error
 	c.Lock()
-	c.conn, _, err = c.dialer.Dial(config.Twitch.SocketURL, c.headers)
+	c.conn, _, err = c.dialer.Dial(common.GetConfig().Twitch.SocketURL, c.headers)
 	c.Unlock()
 	if err != nil {
 		log.Printf("error connecting to twitch ws %s", err)
 		c.reconnect()
 	}
 
-	c.send("PASS " + config.Twitch.OAuth)
-	c.send("NICK " + config.Twitch.Nick)
+	c.send("PASS " + common.GetConfig().Twitch.OAuth)
+	c.send("NICK " + common.GetConfig().Twitch.Nick)
 
 	for _, ch := range c.channels {
 		c.Join(ch, true)
@@ -240,7 +241,7 @@ func (c *TwitchChat) saveChannels() error {
 	for ch := range c.messages {
 		c.channels = append(c.channels, ch)
 	}
-	f, err := os.Create(config.Twitch.ChannelListPath)
+	f, err := os.Create(common.GetConfig().Twitch.ChannelListPath)
 	if err != nil {
 		log.Printf("error saving channel list %s", err)
 		return err
@@ -282,17 +283,16 @@ func (t *TwitchLogger) Log(mc <-chan *Message) {
 		}
 
 		if m.Command == "MSG" {
-			t.writeLine(m.Time, m.Time.Format("2006-01-02")+".txt", m.Nick+": "+m.Data)
-			t.writeLine(m.Time, "userlogs/"+m.NickPath()+".txt", m.Nick+": "+m.Data)
+			t.writeLine(m.Time, m.Nick, m.Data)
 		}
 	}
 }
 
-func (t *TwitchLogger) writeLine(timestamp time.Time, path string, line string) {
-	l, err := t.logs.Get(config.Twitch.Path + "/" + t.channel + " chatlog/" + timestamp.Format("January 2006") + "/" + path)
+func (t *TwitchLogger) writeLine(timestamp time.Time, nick string, message string) {
+	l, err := t.logs.Get(common.GetConfig().Twitch.Path + "/" + t.channel + " chatlog/" + timestamp.Format("January 2006") + "/" + timestamp.Format("2006-01-02") + ".txt")
 	if err != nil {
 		log.Printf("error opening log %s", err)
 		return
 	}
-	l.Write(timestamp, line)
+	l.Write(timestamp, nick, message)
 }

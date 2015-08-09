@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"encoding/json"
@@ -8,6 +8,23 @@ import (
 
 // Config settings
 type Config struct {
+	DestinyGG struct {
+		SocketURL string
+		OriginURL string
+		Path      string
+		Premium   struct {
+			Users []string
+		}
+	}
+	Twitch struct {
+		SocketURL       string
+		OriginURL       string
+		OAuth           string
+		Nick            string
+		Path            string
+		Admins          []string
+		ChannelListPath string
+	}
 	MaxOpenLogs int
 }
 
@@ -26,5 +43,10 @@ func SetupConfig(path string) *Config {
 		log.Fatalf("error parsing config %s", err)
 	}
 
+	return config
+}
+
+// GetConfig returns config
+func GetConfig() *Config {
 	return config
 }
