@@ -1,11 +1,14 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 	"os/signal"
 	"runtime"
 	"time"
+
+	"github.com/slugalisk/overrustlelogs/common"
 )
 
 // immutable config
@@ -16,6 +19,12 @@ const (
 	SocketReadTimeout      = 20 * time.Second
 	MessageBufferSize      = 100
 )
+
+func init() {
+	configPath := flag.String("config", "", "config path")
+	flag.Parse()
+	common.SetupConfig(*configPath)
+}
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())

@@ -2,7 +2,7 @@
 
 export source="github.com/slugalisk/overrustlelogs"
 
-go get -u $source
+git pull
 
 go install $source/logger
 go install $source/server
