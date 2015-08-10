@@ -13,7 +13,7 @@ cp $GOPATH/bin/logger /usr/bin/orl-logger
 cp $GOPATH/bin/server /usr/bin/orl-server
 
 mkdir -p /var/overrustlelogs
-ln -s $GOPATH/src/$src/server/views /var/overrustlelogs/views
+cp -r $GOPATH/src/$src/server/views /var/overrustlelogs/views
 cp -r $GOPATH/src/$src/package/* /
 chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
 
