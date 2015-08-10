@@ -1,11 +1,11 @@
 #!/bin/bash
 
 export src="github.com/slugalisk/overrustlelogs"
+source /etc/profile
 
 mkdir -p $GOPATH/src/github.com/slugalisk
 ln -s $(readlink -e $(dirname $0)/..) $GOPATH/src/$src
 
-source /etc/profile
 go install $src/logger
 go install $src/server
 

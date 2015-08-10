@@ -136,10 +136,12 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 	f, err := os.Open(BaseDir + "/" + vars["channel"] + "/" + vars["month"])
 	if err != nil {
 		serveError(w, ErrNotFound)
+		return
 	}
 	files, err := f.Readdir(0)
 	if err != nil {
 		serveError(w, err)
+		return
 	}
 	nicks := common.NickList{}
 	for _, file := range files {
