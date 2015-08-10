@@ -1,7 +1,10 @@
-package logger
+package main
 
 import (
 	"log"
+	"os"
+	"os/signal"
+	"runtime"
 	"time"
 )
 
@@ -14,8 +17,10 @@ const (
 	MessageBufferSize      = 100
 )
 
-// Start logger
-func Start() {
+func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	logs := NewChatLogs()
 
 	dc := NewDestinyChat()
@@ -30,5 +35,10 @@ func Start() {
 	})
 	go tc.Run()
 
-	select {}
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt)
+	select {
+	case <-sigint:
+		log.Println("i love you guys, be careful")
+	}
 }

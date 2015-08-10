@@ -1,15 +1,18 @@
-package server
+package main
 
 import (
 	"bufio"
 	"bytes"
 	"errors"
+	"flag"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"regexp"
+	"runtime"
 	"sort"
 
 	"github.com/cloudflare/golz4"
@@ -21,8 +24,7 @@ import (
 
 // temp ish.. move to config
 const (
-	// BaseDir    = "/var/overrustle/logs"
-	BaseDir             = "/var/www/public/_public"
+	BaseDir             = "/var/overrustle/logs"
 	MaxLogSize          = 10 * 1024 * 1024
 	ViewPath            = "/var/overrustle/views"
 	LogLinePrefixLength = 26
@@ -39,8 +41,17 @@ var (
 	NicksExtension = regexp.MustCompile("\\.nicks\\.lz4$")
 )
 
+func init() {
+	configPath := flag.String("config", "", "config path")
+	flag.Parse()
+	common.SetupConfig(*configPath)
+}
+
 // Start server
-func Start() {
+func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	r := mux.NewRouter()
 
 	r.HandleFunc("/", BaseHandle).Methods("GET")
@@ -55,7 +66,14 @@ func Start() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", BroadcasterHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", SubscriberHandle).Methods("GET")
 
-	http.ListenAndServe(":8080", r)
+	go http.ListenAndServe(":8080", r)
+
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt)
+	select {
+	case <-sigint:
+		log.Println("i love you guys, be careful")
+	}
 }
 
 // BaseHandle channel index
@@ -115,8 +133,7 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 // UsersHandle channel index
 func UsersHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	dir := BaseDir + "/" + vars["channel"] + "/" + vars["month"]
-	f, err := os.Open(dir)
+	f, err := os.Open(BaseDir + "/" + vars["channel"] + "/" + vars["month"])
 	if err != nil {
 		serveError(w, ErrNotFound)
 	}
@@ -127,7 +144,7 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 	nicks := common.NickList{}
 	for _, file := range files {
 		if NicksExtension.MatchString(file.Name()) {
-			nicks.ReadFrom(dir + "/" + file.Name())
+			nicks.ReadFrom(BaseDir + "/" + vars["channel"] + "/" + vars["month"] + "/" + file.Name())
 		}
 	}
 	names := make([]string, 0, len(nicks))
@@ -135,7 +152,7 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 		names = append(names, nick+".txt")
 	}
 	sort.Sort(handysort.Strings(names))
-	serveDirIndex(w, dir, names)
+	serveDirIndex(w, "/"+vars["channel"]+"/"+vars["month"]+"/userlogs/", names)
 }
 
 // UserHandle channel index
