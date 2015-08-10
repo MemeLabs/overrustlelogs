@@ -10,7 +10,7 @@ if [ -z `which go` ]; then
   wget https://storage.googleapis.com/golang/go1.4.2.src.tar.gz
   tar xzf go1.4.2.src.tar.gz
   cd go/src
-  bash ./all.bash
+  bash ./make.bash
   cd /tmp
   mv go /usr/local/
 
@@ -28,10 +28,10 @@ if [ -z `which go` ]; then
 fi
 
 go get "github.com/cloudflare/golz4"
-go get "github.com/hashicorp/golang-lru"
 go get "github.com/gorilla/websocket"
 go get "github.com/gorilla/mux"
+go get "github.com/hashicorp/golang-lru"
 go get "github.com/xlab/handysort"
 go get "github.com/yosssi/ace"
 
-useradd overrustle
+useradd overrustlelogs

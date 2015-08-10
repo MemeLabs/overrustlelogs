@@ -4,14 +4,15 @@ export source="github.com/slugalisk/overrustlelogs"
 
 git pull
 
+source /etc/profile
 go install $source/logger
 go install $source/server
 
-stop orlogger
-stop orserver
+stop orl-logger
+stop orl-server
 
-cp $GOPATH/bin/logger /usr/bin/orlogger
-cp $GOPATH/bin/server /usr/bin/orserver
+cp $GOPATH/bin/logger /usr/bin/orl-logger
+cp $GOPATH/bin/server /usr/bin/orl-server
 
-start orlogger
-start orserver
+start orl-logger
+start orl-server

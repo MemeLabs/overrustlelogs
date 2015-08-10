@@ -1,21 +1,22 @@
 #!/bin/bash
 
-export source="github.com/slugalisk/overrustlelogs"
+export src="github.com/slugalisk/overrustlelogs"
 
 mkdir -p $GOPATH/src/github.com/slugalisk
-ln -s `dirname $0`/.. $GOPATH/src/$source
+ln -s $(readlink -e $(dirname $0)/..) $GOPATH/src/$src
 
-go install $source/logger
-go install $source/server
+source /etc/profile
+go install $src/logger
+go install $src/server
 
-cp $GOPATH/bin/logger /usr/bin/orlogger
-cp $GOPATH/bin/server /usr/bin/orserver
+cp $GOPATH/bin/logger /usr/bin/orl-logger
+cp $GOPATH/bin/server /usr/bin/orl-server
 
-mkdir -p /var/overrustle
-ln -s $GOPATH/src/$source/server/views /var/overrustle/views
-cp -r $GOPATH/src/$source/package/* /
-chown -R overrustle:overrustle /var/overrustle
+mkdir -p /var/overrustlelogs
+ln -s $GOPATH/src/$src/server/views /var/overrustlelogs/views
+cp -r $GOPATH/src/$src/package/* /
+chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
 
-ecoh "next steps:"
-echo "1.) add twitch creds to /etc/overrustle/overrustle.conf"
+echo "next steps:"
+echo "1.) add twitch creds to /etc/overrustlelogs/overrustlelogs.conf"
 echo "2.) run $ start logger && start server"
