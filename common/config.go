@@ -11,7 +11,6 @@ type Config struct {
 	DestinyGG struct {
 		SocketURL string
 		OriginURL string
-		Path      string
 		Premium   struct {
 			Users []string
 		}
@@ -21,10 +20,14 @@ type Config struct {
 		OriginURL       string
 		OAuth           string
 		Nick            string
-		Path            string
 		Admins          []string
 		ChannelListPath string
 	}
+	Server struct {
+		ViewPath string
+		Address  string
+	}
+	LogPath     string
 	MaxOpenLogs int
 }
 

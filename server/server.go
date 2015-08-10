@@ -24,9 +24,7 @@ import (
 
 // temp ish.. move to config
 const (
-	BaseDir             = "/var/overrustle/logs"
 	MaxLogSize          = 10 * 1024 * 1024
-	ViewPath            = "/var/overrustle/views"
 	LogLinePrefixLength = 26
 )
 
@@ -66,7 +64,7 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", BroadcasterHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", SubscriberHandle).Methods("GET")
 
-	go http.ListenAndServe(":8080", r)
+	go http.ListenAndServe(common.GetConfig().Server.Address, r)
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
@@ -78,7 +76,7 @@ func main() {
 
 // BaseHandle channel index
 func BaseHandle(w http.ResponseWriter, r *http.Request) {
-	paths, err := readDirIndex(BaseDir)
+	paths, err := readDirIndex(common.GetConfig().LogPath)
 	if err != nil {
 		serveError(w, err)
 		return
@@ -89,7 +87,7 @@ func BaseHandle(w http.ResponseWriter, r *http.Request) {
 // ChannelHandle channel index
 func ChannelHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	paths, err := readDirIndex(BaseDir + "/" + vars["channel"])
+	paths, err := readDirIndex(common.GetConfig().LogPath + "/" + vars["channel"])
 	if err != nil {
 		serveError(w, err)
 		return
@@ -100,7 +98,7 @@ func ChannelHandle(w http.ResponseWriter, r *http.Request) {
 // MonthHandle channel index
 func MonthHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	paths, err := readLogDir(BaseDir + "/" + vars["channel"] + "/" + vars["month"])
+	paths, err := readLogDir(common.GetConfig().LogPath + "/" + vars["channel"] + "/" + vars["month"])
 	if err != nil {
 		serveError(w, err)
 		return
@@ -121,7 +119,7 @@ func MonthHandle(w http.ResponseWriter, r *http.Request) {
 // DayHandle channel index
 func DayHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	data, err := readLogFile(BaseDir + "/" + vars["channel"] + "/" + vars["month"] + "/" + vars["date"])
+	data, err := readLogFile(common.GetConfig().LogPath + "/" + vars["channel"] + "/" + vars["month"] + "/" + vars["date"])
 	if err != nil {
 		serveError(w, err)
 		return
@@ -133,7 +131,7 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 // UsersHandle channel index
 func UsersHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	f, err := os.Open(BaseDir + "/" + vars["channel"] + "/" + vars["month"])
+	f, err := os.Open(common.GetConfig().LogPath + "/" + vars["channel"] + "/" + vars["month"])
 	if err != nil {
 		serveError(w, ErrNotFound)
 		return
@@ -146,7 +144,7 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 	nicks := common.NickList{}
 	for _, file := range files {
 		if NicksExtension.MatchString(file.Name()) {
-			nicks.ReadFrom(BaseDir + "/" + vars["channel"] + "/" + vars["month"] + "/" + file.Name())
+			nicks.ReadFrom(common.GetConfig().LogPath + "/" + vars["channel"] + "/" + vars["month"] + "/" + file.Name())
 		}
 	}
 	names := make([]string, 0, len(nicks))
@@ -160,37 +158,37 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 // UserHandle channel index
 func UserHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveUserLog(w, BaseDir+"/"+vars["channel"]+"/"+vars["month"], vars["user"])
+	serveUserLog(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], vars["user"])
 }
 
 // BroadcasterHandle channel index
 func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveUserLog(w, BaseDir+"/"+vars["channel"]+"/"+vars["month"], vars["channel"][:len(vars["channel"])-8])
+	serveUserLog(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], vars["channel"][:len(vars["channel"])-8])
 }
 
 // SubscriberHandle channel index
 func SubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveUserLog(w, BaseDir+"/Destinygg chatlog/"+vars["month"], "twitchnotify")
+	serveUserLog(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], "twitchnotify")
 }
 
 // DestinyBroadcasterHandle destiny logs
 func DestinyBroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveUserLog(w, BaseDir+"/Destinygg chatlog/"+vars["month"], "Destiny")
+	serveUserLog(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], "Destiny")
 }
 
 // DestinySubscriberHandle destiny subscriber logs
 func DestinySubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveUserLog(w, BaseDir+"/Destinygg chatlog/"+vars["month"], "Subscriber")
+	serveUserLog(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], "Subscriber")
 }
 
 // DestinyBanHandle channel ban list
 func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveUserLog(w, BaseDir+"/Destinygg chatlog/"+vars["month"], "Ban")
+	serveUserLog(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], "Ban")
 }
 
 func readDirIndex(path string) ([]string, error) {
@@ -272,7 +270,7 @@ func serveError(w http.ResponseWriter, err error) {
 
 // serveDirIndex ...
 func serveDirIndex(w http.ResponseWriter, base string, paths []string) {
-	tpl, err := ace.Load(ViewPath+"/layout", ViewPath+"/directory", nil)
+	tpl, err := ace.Load(common.GetConfig().Server.ViewPath+"/layout", common.GetConfig().Server.ViewPath+"/directory", nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

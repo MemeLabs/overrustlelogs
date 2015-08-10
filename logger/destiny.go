@@ -143,7 +143,7 @@ func (d *DestinyLogger) Log(mc <-chan *Message) {
 }
 
 func (d *DestinyLogger) writeLine(timestamp time.Time, nick string, message string) {
-	l, err := d.logs.Get(common.GetConfig().DestinyGG.Path + "/" + timestamp.Format("January 2006") + "/" + timestamp.Format("2006-01-02") + ".txt")
+	l, err := d.logs.Get(common.GetConfig().LogPath + "/Destinygg chatlog/" + timestamp.Format("January 2006") + "/" + timestamp.Format("2006-01-02") + ".txt")
 	if err != nil {
 		log.Printf("error opening log %s", err)
 		return
