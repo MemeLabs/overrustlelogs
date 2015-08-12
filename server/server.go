@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"flag"
 	"io"
@@ -14,8 +15,10 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
+	"strings"
+	"time"
 
-	"github.com/cloudflare/golz4"
 	"github.com/gorilla/mux"
 	"github.com/slugalisk/overrustlelogs/common"
 	"github.com/xlab/handysort"
@@ -24,7 +27,6 @@ import (
 
 // temp ish.. move to config
 const (
-	MaxLogSize          = 10 * 1024 * 1024
 	LogLinePrefixLength = 26
 )
 
@@ -63,6 +65,7 @@ func main() {
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans.txt", DestinyBanHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", BroadcasterHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", SubscriberHandle).Methods("GET")
+	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+ chatlog}/{nick:[a-zA-Z0-9_-]+}.json", StalkHandle).Queries("limit", "{limit:[0-9]+}").Methods("GET")
 
 	go http.ListenAndServe(common.GetConfig().Server.Address, r)
 
@@ -191,6 +194,106 @@ func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
 	serveUserLog(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], "Ban")
 }
 
+// StalkHandle return n most recent lines of chat for user
+func StalkHandle(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "text/plain")
+
+	type Error struct {
+		Error string `json:"error"`
+	}
+
+	vars := mux.Vars(r)
+	nick := strings.ToLower(vars["nick"])
+	prefix := nick + ":"
+	date := time.Now()
+	limit, err := strconv.ParseInt(vars["limit"], 10, 32)
+	if err != nil {
+		d, _ := json.Marshal(Error{err.Error()})
+		http.Error(w, string(d), http.StatusInternalServerError)
+		return
+	}
+	buf := make([]string, limit)
+	index := limit
+	f, err := os.Open(common.GetConfig().LogPath + "/" + vars["channel"])
+	if err != nil {
+		d, _ := json.Marshal(Error{err.Error()})
+		http.Error(w, string(d), http.StatusInternalServerError)
+		return
+	}
+	names, err := f.Readdirnames(0)
+	if err != nil {
+		d, _ := json.Marshal(Error{err.Error()})
+		http.Error(w, string(d), http.StatusInternalServerError)
+		return
+	}
+	months := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		months[name] = struct{}{}
+	}
+
+ScanLogs:
+	for {
+		if _, ok := months[date.Format("January 2006")]; !ok {
+			log.Println("missing", date.Format("January 2006"))
+			break ScanLogs
+		}
+		nicks := common.NickList{}
+		nicks.ReadFrom(common.GetConfig().LogPath+"/"+vars["channel"]+date.Format("/January 2006/2006-01-02")+".nicks", strings.ToLower)
+		if _, ok := nicks[nick]; ok {
+			data, err := readLogFile(common.GetConfig().LogPath + "/" + vars["channel"] + date.Format("/January 2006/2006-01-02"))
+			if err != nil {
+				d, _ := json.Marshal(Error{err.Error()})
+				http.Error(w, string(d), http.StatusInternalServerError)
+				return
+			}
+			lines := [][]byte{}
+			t := bytes.NewReader(data)
+			r := bufio.NewReaderSize(t, len(data))
+		ReadLine:
+			for {
+				line, err := r.ReadSlice('\n')
+				if err != nil {
+					if err != io.EOF {
+						log.Printf("error reading bytes %s", err)
+					}
+					break
+				}
+				for i := 0; i < len(prefix); i++ {
+					if i+LogLinePrefixLength > len(line) || line[i+LogLinePrefixLength] != prefix[i] {
+						continue ReadLine
+					}
+				}
+				lines = append(lines, line)
+			}
+			for i := len(lines) - 1; i >= 0; i-- {
+				index--
+				buf[index] = string(lines[i])
+				if index == 0 {
+					break ScanLogs
+				}
+			}
+		}
+		date = date.Add(-24 * time.Hour)
+	}
+
+	if index == limit {
+		d, _ := json.Marshal(Error{"User not found"})
+		http.Error(w, string(d), http.StatusInternalServerError)
+		return
+	}
+
+	d, _ := json.Marshal(struct {
+		Channel string   `json:"channel"`
+		Nick    string   `json:"nick"`
+		Lines   []string `json:"lines"`
+	}{
+		vars["channel"],
+		vars["nick"],
+		buf[index:],
+	})
+	w.Write(d)
+}
+
 func readDirIndex(path string) ([]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -226,7 +329,7 @@ func readLogDir(path string) ([]string, error) {
 func readLogFile(path string) ([]byte, error) {
 	var buf []byte
 	path = LogExtension.ReplaceAllString(path, "")
-	f, err := os.Open(path + ".txt.lz4")
+	buf, err := common.ReadCompressedFile(path + ".txt")
 	if os.IsNotExist(err) {
 		f, err := os.Open(path + ".txt")
 		if os.IsNotExist(err) {
@@ -236,18 +339,8 @@ func readLogFile(path string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		if err != nil {
-			return nil, ErrNotFound
-		}
-		buf = make([]byte, MaxLogSize)
-		data, err := ioutil.ReadAll(f)
-		if err != nil {
-			return nil, err
-		}
-		if err := lz4.Uncompress(data, buf); err != nil {
-			return nil, err
-		}
+	} else if err != nil {
+		return nil, err
 	}
 	return buf, nil
 }
@@ -316,9 +409,10 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 		data, err := readLogFile(path + "/" + name)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		t := bytes.NewReader(data)
-		r := bufio.NewReaderSize(t, MaxLogSize)
+		r := bufio.NewReaderSize(t, len(data))
 
 		for {
 			line, err := r.ReadSlice('\n')

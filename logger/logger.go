@@ -48,6 +48,7 @@ func main() {
 	signal.Notify(sigint, os.Interrupt)
 	select {
 	case <-sigint:
+		logs.Close()
 		log.Println("i love you guys, be careful")
 	}
 }

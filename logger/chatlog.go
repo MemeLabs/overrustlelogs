@@ -32,6 +32,7 @@ func NewChatLog(path string) (*ChatLog, error) {
 		}
 	}
 
+	common.UncompressFile(path)
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
@@ -61,6 +62,7 @@ func (l *ChatLog) Close() {
 	l.WriteNicks()
 	l.Lock()
 	l.f.Close()
+	common.CompressFile(l.f.Name())
 	l.Unlock()
 }
 
@@ -70,6 +72,13 @@ func (l *ChatLog) Write(timestamp time.Time, nick string, message string) {
 	l.f.WriteString(timestamp.Format("[2006-01-02 15:04:05 MST] ") + nick + ": " + message + "\n")
 	l.modified = time.Now()
 	l.Unlock()
+}
+
+// Modified returns last modified time
+func (l *ChatLog) Modified() time.Time {
+	l.Lock()
+	defer l.Unlock()
+	return l.modified
 }
 
 func nickPath(path string) string {
@@ -90,19 +99,28 @@ func NewChatLogs() *ChatLogs {
 		log.Fatalf("error creating log cache %s", err)
 	}
 	l.logs = cache
+	go l.housekeeping()
+	return l
+}
 
-	go func() {
-		for {
-			time.Sleep(1 * time.Minute)
-			for _, k := range cache.Keys() {
-				if v, ok := cache.Peek(k); ok {
-					v.(*ChatLog).WriteNicks()
+func (l *ChatLogs) housekeeping() {
+	const interval = 10 * time.Minute
+	tick := time.NewTicker(interval)
+	for {
+		now := <-tick.C
+		for _, k := range l.logs.Keys() {
+			if v, ok := l.logs.Peek(k); ok {
+				c := v.(*ChatLog)
+				idle := c.Modified().Sub(now)
+				if idle > time.Hour {
+					l.logs.Remove(k)
+					c.Close()
+				} else if idle < interval {
+					c.WriteNicks()
 				}
 			}
 		}
-	}()
-
-	return l
+	}
 }
 
 // HandleEvict close evicted logs
@@ -115,13 +133,20 @@ func (l *ChatLogs) Get(path string) (*ChatLog, error) {
 	if chatLog, ok := l.logs.Get(path); ok {
 		return chatLog.(*ChatLog), nil
 	}
-
 	chatLog, err := NewChatLog(path)
 	if err != nil {
 		return nil, err
 	}
-
 	l.logs.Add(path, chatLog)
-
 	return chatLog, nil
+}
+
+// Close close all open chat logs
+func (l *ChatLogs) Close() {
+	for _, k := range l.logs.Keys() {
+		if v, ok := l.logs.Get(k); ok {
+			l.logs.Remove(k)
+			v.(*ChatLog).Close()
+		}
+	}
 }

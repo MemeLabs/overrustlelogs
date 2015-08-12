@@ -2,10 +2,8 @@ package common
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
-
-	"github.com/cloudflare/golz4"
+	"strings"
 )
 
 var empty struct{}
@@ -25,41 +23,20 @@ func (n NickList) WriteTo(path string) error {
 		buf.WriteString(nick)
 		buf.WriteByte(0)
 	}
-	data := make([]byte, lz4.CompressBound(buf.Bytes()))
-	size, err := lz4.CompressHC(buf.Bytes(), data)
+	f, err := WriteCompressedFile(path+".writing", buf.Bytes())
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(path+".writing", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	if _, err := f.Write(data[:size]); err != nil {
-		f.Close()
-		return err
-	}
-	f.Close()
-	if err := os.Rename(path+".writing", path+".lz4"); err != nil {
+	if err := os.Rename(f.Name(), strings.Replace(f.Name(), ".writing", "", -1)); err != nil {
 		return err
 	}
 	return nil
 }
 
 // ReadFrom adds nicks from the disk
-func (n NickList) ReadFrom(path string) error {
-	if path[len(path)-4:] != ".lz4" {
-		path += ".lz4"
-	}
-	f, err := os.Open(path)
+func (n NickList) ReadFrom(path string, transform ...func(string) string) error {
+	buf, err := ReadCompressedFile(path)
 	if err != nil {
-		return err
-	}
-	data, err := ioutil.ReadAll(f)
-	if err != nil {
-		return err
-	}
-	buf := make([]byte, 10*1024*1024)
-	if err := lz4.Uncompress(data, buf); err != nil {
 		return err
 	}
 	offset := 0
@@ -68,7 +45,11 @@ func (n NickList) ReadFrom(path string) error {
 			if i == offset {
 				break
 			}
-			n[string(buf[offset:i])] = empty
+			nick := string(buf[offset:i])
+			for i := 0; i < len(transform); i++ {
+				nick = transform[i](nick)
+			}
+			n[nick] = empty
 			offset = i + 1
 		}
 	}

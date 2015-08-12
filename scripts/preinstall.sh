@@ -1,9 +1,9 @@
 #!/bin/bash
 
-apt-get update
-apt-get install build-essential --assume-yes
-
 if [ -z `which go` ]; then
+  apt-get update
+  apt-get install build-essential --assume-yes
+
   pushd . > /dev/null
   cd /tmp
 
@@ -17,10 +17,7 @@ if [ -z `which go` ]; then
   echo "export GOPATH=\$HOME/go" >> /etc/profile
   echo "export GOROOT=/usr/local/go" >> /etc/profile
   echo "export PATH=\$PATH:\$GOPATH/bin:\$GOROOT/bin" >> /etc/profile
-
-  export GOPATH=$HOME/go
-  export GOROOT=/usr/local/go
-  export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+  source /etc/profile
 
   mkdir -p $GOPATH
 
