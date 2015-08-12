@@ -13,7 +13,7 @@ func WriteCompressedFile(path string, data []byte) (*os.File, error) {
 	if path[len(path)-4:] != ".lz4" {
 		path += ".lz4"
 	}
-	c := make([]byte, lz4.CompressBound(data))
+	c := make([]byte, lz4.CompressBound(data)+4)
 	size, err := lz4.CompressHC(data, c[4:])
 	c[0] = byte(len(data) >> 24)
 	c[1] = byte(len(data) >> 16)
@@ -49,9 +49,9 @@ func ReadCompressedFile(path string) ([]byte, error) {
 		return nil, err
 	}
 	size := uint32(0)
-	size |= uint32(c[0] << 24)
-	size |= uint32(c[1] << 16)
-	size |= uint32(c[2] << 8)
+	size |= uint32(c[0]) << 24
+	size |= uint32(c[1]) << 16
+	size |= uint32(c[2]) << 8
 	size |= uint32(c[3])
 	data := make([]byte, size)
 	if err := lz4.Uncompress(c[4:], data); err != nil {

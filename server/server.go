@@ -196,7 +196,7 @@ func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
 
 // StalkHandle return n most recent lines of chat for user
 func StalkHandle(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-type", "text/plain")
+	w.Header().Set("Content-type", "application/json")
 
 	type Error struct {
 		Error string `json:"error"`
@@ -204,7 +204,7 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	nick := strings.ToLower(vars["nick"])
-	prefix := nick + ":"
+	prefix := vars["nick"] + ":"
 	date := time.Now()
 	limit, err := strconv.ParseInt(vars["limit"], 10, 32)
 	if err != nil {
@@ -258,12 +258,10 @@ ScanLogs:
 					}
 					break
 				}
-				for i := 0; i < len(prefix); i++ {
-					if i+LogLinePrefixLength > len(line) || line[i+LogLinePrefixLength] != prefix[i] {
-						continue ReadLine
-					}
+				if LogLinePrefixLength+len(prefix) > len(line) || !bytes.EqualFold([]byte(prefix), line[LogLinePrefixLength:LogLinePrefixLength+len(prefix)]) {
+					continue ReadLine
 				}
-				lines = append(lines, line)
+				lines = append(lines, line[0:len(line)-1])
 			}
 			for i := len(lines) - 1; i >= 0; i-- {
 				index--
@@ -283,14 +281,8 @@ ScanLogs:
 	}
 
 	d, _ := json.Marshal(struct {
-		Channel string   `json:"channel"`
-		Nick    string   `json:"nick"`
-		Lines   []string `json:"lines"`
-	}{
-		vars["channel"],
-		vars["nick"],
-		buf[index:],
-	})
+		Lines []string `json:"lines"`
+	}{buf[index:]})
 	w.Write(d)
 }
 
