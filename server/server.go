@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -70,10 +71,11 @@ func main() {
 	go http.ListenAndServe(common.GetConfig().Server.Address, r)
 
 	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
+	signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
 	select {
 	case <-sigint:
 		log.Println("i love you guys, be careful")
+		os.Exit(1)
 	}
 }
 
@@ -211,6 +213,9 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 		d, _ := json.Marshal(Error{err.Error()})
 		http.Error(w, string(d), http.StatusInternalServerError)
 		return
+	}
+	if limit > common.GetConfig().Server.MaxStalkLines {
+		limit = common.GetConfig().Server.MaxStalkLines
 	}
 	buf := make([]string, limit)
 	index := limit

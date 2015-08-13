@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/slugalisk/overrustlelogs/common"
@@ -45,10 +46,11 @@ func main() {
 	go tc.Run()
 
 	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
+	signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
 	select {
 	case <-sigint:
 		logs.Close()
 		log.Println("i love you guys, be careful")
+		os.Exit(1)
 	}
 }

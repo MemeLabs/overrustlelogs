@@ -24,8 +24,9 @@ type Config struct {
 		ChannelListPath string
 	}
 	Server struct {
-		ViewPath string
-		Address  string
+		ViewPath      string
+		Address       string
+		MaxStalkLines int
 	}
 	LogPath     string
 	MaxOpenLogs int
