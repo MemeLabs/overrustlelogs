@@ -252,8 +252,7 @@ ScanLogs:
 				return
 			}
 			lines := [][]byte{}
-			t := bytes.NewReader(data)
-			r := bufio.NewReaderSize(t, len(data))
+			r := bufio.NewReaderSize(bytes.NewReader(data), len(data))
 		ReadLine:
 			for {
 				line, err := r.ReadSlice('\n')
@@ -408,9 +407,7 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		t := bytes.NewReader(data)
-		r := bufio.NewReaderSize(t, len(data))
-
+		r := bufio.NewReaderSize(bytes.NewReader(data), len(data))
 		for {
 			line, err := r.ReadSlice('\n')
 			if err != nil {

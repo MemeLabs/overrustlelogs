@@ -116,8 +116,7 @@ func (c *nicks) exec() error {
 	} else if err != nil {
 		return err
 	}
-	t := bytes.NewReader(data)
-	r := bufio.NewReaderSize(t, len(data))
+	r := bufio.NewReaderSize(bytes.NewReader(data), len(data))
 	nick := regexp.MustCompile("^\\[[^\\]]+\\]\\s*([a-zA-Z0-9\\_\\-]+):")
 	nicks := common.NickList{}
 	for {
