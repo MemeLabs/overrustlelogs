@@ -32,7 +32,7 @@ func NewChatLog(path string) (*ChatLog, error) {
 		}
 	}
 
-	if err := common.UncompressFile(path); !os.IsNotExist(err) && err != nil {
+	if _, err := common.UncompressFile(path); !os.IsNotExist(err) && err != nil {
 		log.Println("error reading log %s %s", path, err)
 	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
@@ -64,7 +64,7 @@ func (l *ChatLog) Close() {
 	l.WriteNicks()
 	l.Lock()
 	l.f.Close()
-	if err := common.CompressFile(l.f.Name()); err != nil {
+	if _, err := common.CompressFile(l.f.Name()); err != nil {
 		log.Println("error compressing log %s %s", l.f.Name(), err)
 	}
 	l.Unlock()
