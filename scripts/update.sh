@@ -1,13 +1,13 @@
 #!/bin/bash
 
-export source="github.com/slugalisk/overrustlelogs"
+export src="github.com/slugalisk/overrustlelogs"
 
 git pull
 
 source /etc/profile
-go install $source/logger
-go install $source/server
-go install $source/tool
+go install $src/logger
+go install $src/server
+go install $src/tool
 
 stop orl-logger
 stop orl-server

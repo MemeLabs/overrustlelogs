@@ -13,27 +13,18 @@ import (
 	"github.com/slugalisk/overrustlelogs/common"
 )
 
-type command interface {
-	init() error
-	exec() error
+var commands = map[string]command{
+	"compress":   compress,
+	"uncompress": uncompress,
+	"nicks":      nicks,
 }
 
-var (
-	commands = map[string]command{
-		"compress":   &compress{},
-		"uncompress": &uncompress{},
-		"nicks":      &nicks{},
-	}
-	c command
-)
-
-func init() {
-	if len(os.Args) == 0 {
+func main() {
+	if len(os.Args) < 2 {
 		os.Exit(2)
 	}
-	var ok bool
-	if c, ok = commands[os.Args[1]]; ok {
-		if err := c.init(); err != nil {
+	if c, ok := commands[os.Args[1]]; ok {
+		if err := c(); err != nil {
 			fmt.Println(err)
 			os.Exit(2)
 		}
@@ -41,71 +32,42 @@ func init() {
 		fmt.Println("invalid command")
 		os.Exit(2)
 	}
-}
-
-func main() {
-	if err := c.exec(); err != nil {
-		fmt.Println(err)
-		os.Exit(2)
-	}
 	os.Exit(1)
 }
 
-type compress struct {
-	path string
-}
+type command func() error
 
-func (c *compress) init() error {
+func compress() error {
 	if len(os.Args) < 3 {
 		return errors.New("not enough args")
 	}
-	c.path = os.Args[2]
-	return nil
-}
-
-func (c *compress) exec() error {
-	if _, err := common.CompressFile(c.path); err != nil {
+	path := os.Args[2]
+	if _, err := common.CompressFile(path); err != nil {
 		return err
 	}
 	return nil
 }
 
-type uncompress struct {
-	path string
-}
-
-func (c *uncompress) init() error {
+func uncompress() error {
 	if len(os.Args) < 3 {
 		return errors.New("not enough args")
 	}
-	c.path = os.Args[2]
-	return nil
-}
-
-func (c *uncompress) exec() error {
-	if _, err := common.UncompressFile(c.path); err != nil {
+	path := os.Args[2]
+	if _, err := common.UncompressFile(path); err != nil {
 		return err
 	}
 	return nil
 }
 
-type nicks struct {
-	path string
-}
-
-func (c *nicks) init() error {
+func nicks() error {
 	if len(os.Args) < 3 {
 		return errors.New("not enough args")
 	}
-	c.path = os.Args[2]
-	return nil
-}
-
-func (c *nicks) exec() error {
+	path := os.Args[2]
 	var data []byte
-	data, err := common.ReadCompressedFile(c.path)
+	data, err := common.ReadCompressedFile(path)
 	if os.IsNotExist(err) {
-		f, err := os.Open(c.path)
+		f, err := os.Open(path)
 		if err != nil {
 			return err
 		}
@@ -132,7 +94,7 @@ func (c *nicks) exec() error {
 			nicks.Add(string(match[1]))
 		}
 	}
-	if err := nicks.WriteTo(regexp.MustCompile("\\.txt(\\.lz4)?$").ReplaceAllString(c.path, ".nicks")); err != nil {
+	if err := nicks.WriteTo(regexp.MustCompile("\\.txt(\\.lz4)?$").ReplaceAllString(path, ".nicks")); err != nil {
 		return err
 	}
 	return nil
