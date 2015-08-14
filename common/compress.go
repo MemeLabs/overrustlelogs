@@ -10,9 +10,6 @@ import (
 
 // WriteCompressedFile write compressed file
 func WriteCompressedFile(path string, data []byte) (*os.File, error) {
-	if path[len(path)-4:] != ".lz4" {
-		path += ".lz4"
-	}
 	c := make([]byte, lz4.CompressBound(data)+4)
 	size, err := lz4.CompressHC(data, c[4:])
 	c[0] = byte(len(data) >> 24)
@@ -23,7 +20,7 @@ func WriteCompressedFile(path string, data []byte) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(lz4Path(path), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -36,10 +33,7 @@ func WriteCompressedFile(path string, data []byte) (*os.File, error) {
 
 // ReadCompressedFile read compressed file
 func ReadCompressedFile(path string) ([]byte, error) {
-	if path[len(path)-4:] != ".lz4" {
-		path += ".lz4"
-	}
-	f, err := os.Open(path)
+	f, err := os.Open(lz4Path(path))
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +69,9 @@ func CompressFile(path string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	os.Remove(path)
+	if err := os.Remove(path); err != nil {
+		return nil, err
+	}
 	return d, nil
 }
 
@@ -93,6 +89,15 @@ func UncompressFile(path string) (*os.File, error) {
 	if _, err := f.Write(d); err != nil {
 		return nil, err
 	}
-	os.Remove(path)
+	if err := os.Remove(lz4Path(path)); err != nil {
+		return nil, err
+	}
 	return f, nil
+}
+
+func lz4Path(path string) string {
+	if path[len(path)-4:] != ".lz4" {
+		path += ".lz4"
+	}
+	return path
 }
