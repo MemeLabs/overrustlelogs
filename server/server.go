@@ -208,7 +208,7 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 	nick := strings.ToLower(vars["nick"])
 	prefix := vars["nick"] + ":"
 	date := time.Now()
-	limit, err := strconv.ParseInt(vars["limit"], 10, 32)
+	limit, err := int(strconv.ParseInt(vars["limit"], 10, 32))
 	if err != nil {
 		d, _ := json.Marshal(Error{err.Error()})
 		http.Error(w, string(d), http.StatusInternalServerError)
@@ -216,6 +216,8 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 	}
 	if limit > common.GetConfig().Server.MaxStalkLines {
 		limit = common.GetConfig().Server.MaxStalkLines
+	} else if limit < 1 {
+		limit = 1
 	}
 	buf := make([]string, limit)
 	index := limit
