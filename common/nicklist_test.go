@@ -30,7 +30,7 @@ func TestRead(t *testing.T) {
 	}
 
 	r := NickList{}
-	if err := r.ReadFrom("/tmp/nicks"); err != nil {
+	if err := ReadNickList(r, "/tmp/nicks"); err != nil {
 		log.Printf("error reading nick list %s", err)
 		t.Fail()
 		return

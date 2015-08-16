@@ -108,7 +108,6 @@ func NewBot(c *common.DestinyChat) *Bot {
 			}
 		}
 	}
-
 	return b
 }
 
@@ -152,10 +151,7 @@ func (b *Bot) Stop() {
 	for nick := range b.ignore {
 		ignore = append(ignore, nick)
 	}
-	data, err := json.Marshal(ignore)
-	if err != nil {
-		log.Fatalf("unable to write ignore list %s", err)
-	}
+	data, _ := json.Marshal(ignore)
 	if err := ioutil.WriteFile(common.GetConfig().Bot.IgnoreListPath, data, 0644); err != nil {
 		log.Fatalf("unable to write ignore list %s", err)
 	}

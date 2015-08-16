@@ -52,7 +52,6 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	r := mux.NewRouter()
-
 	r.HandleFunc("/", BaseHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}", ChannelHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}", MonthHandle).Methods("GET")
@@ -67,7 +66,6 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", BroadcasterHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", SubscriberHandle).Methods("GET")
 	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+ chatlog}/{nick:[a-zA-Z0-9_-]+}.json", StalkHandle).Queries("limit", "{limit:[0-9]+}").Methods("GET")
-
 	go http.ListenAndServe(common.GetConfig().Server.Address, r)
 
 	sigint := make(chan os.Signal, 1)
@@ -222,14 +220,12 @@ func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
 
 // StalkHandle return n most recent lines of chat for user
 func StalkHandle(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-type", "application/json")
-
 	type Error struct {
 		Error string `json:"error"`
 	}
 
+	w.Header().Set("Content-type", "application/json")
 	vars := mux.Vars(r)
-
 	limit, err := strconv.ParseUint(vars["limit"], 10, 32)
 	if err != nil {
 		d, _ := json.Marshal(Error{err.Error()})
@@ -295,7 +291,6 @@ ScanLogs:
 		http.Error(w, string(d), http.StatusInternalServerError)
 		return
 	}
-
 	d, _ := json.Marshal(struct {
 		Lines []string `json:"lines"`
 	}{buf[index:]})
@@ -367,9 +362,7 @@ func nickFilter(nick string) func([]byte) bool {
 
 // serveError ...
 func serveError(w http.ResponseWriter, err error) {
-	_, ok := w.Header()["Content-Type"]
-
-	if !ok {
+	if _, ok := w.Header()["Content-Type"]; !ok {
 		w.Header().Set("Content-type", "text/plain")
 	}
 	if err == ErrNotFound {
