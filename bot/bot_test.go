@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +19,26 @@ func init() {
 func TestIsAdmin(t *testing.T) {
 	if !b.isAdmin("Destiny") {
 		log.Println("user not ignored")
+		t.Fail()
+	}
+}
+
+func TestLogs(t *testing.T) {
+	m := &common.Message{
+		Command: "MSG",
+		Nick:    "Destiny",
+		Data:    "!log destiny",
+		Time:    time.Now(),
+	}
+
+	rs, err := b.runCommand(b.public, m)
+	log.Println(rs)
+	if err != nil {
+		log.Println("error running logs")
+		t.Fail()
+	}
+	if !strings.Contains(rs, "logs.") {
+		log.Printf("invalid log response \"%s\"", rs)
 		t.Fail()
 	}
 }
@@ -82,7 +103,7 @@ func TestNuke(t *testing.T) {
 	}
 
 	_, err = b.runCommand(b.public, m)
-	if err == nil {
+	if err != ErrNukeTimeout {
 		log.Println("failed to set nuke timeout")
 		t.Fail()
 	}
@@ -110,8 +131,7 @@ func TestAegis(t *testing.T) {
 	}
 
 	_, err = b.runCommand(b.public, m)
-	if err != nil {
-		log.Println(err)
+	if err == ErrNukeTimeout {
 		log.Println("failed to unset nuke timeout")
 		t.Fail()
 	}

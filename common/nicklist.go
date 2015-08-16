@@ -141,3 +141,8 @@ func (n *NickSearchResult) Month() string {
 func (n *NickSearchResult) Day() string {
 	return n.date.Format("2006-01-02")
 }
+
+// Date time object
+func (n *NickSearchResult) Date() time.Time {
+	return n.date
+}

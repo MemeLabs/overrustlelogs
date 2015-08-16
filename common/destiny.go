@@ -131,13 +131,13 @@ func (c *DestinyChat) send(command string, msg interface{}) error {
 }
 
 // Write send message
-func (c *DestinyChat) Write(command, data string) {
-	c.send(command, struct{ data string }{data})
+func (c *DestinyChat) Write(command, data string) error {
+	return c.send(command, struct{ data string }{data})
 }
 
 // WritePrivate send private message
-func (c *DestinyChat) WritePrivate(command, nick, data string) {
-	c.send(command, struct {
+func (c *DestinyChat) WritePrivate(command, nick, data string) error {
+	return c.send(command, struct {
 		nick string
 		data string
 	}{nick, data})

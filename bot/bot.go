@@ -64,6 +64,7 @@ type Bot struct {
 	stop       chan bool
 	start      time.Time
 	timeoutEOL time.Time
+	lastLine   string
 	public     map[string]command
 	private    map[string]command
 	admins     map[string]struct{}
@@ -118,13 +119,20 @@ func (b *Bot) Run() {
 		case m := <-b.c.Messages():
 			if m.Command == "MSG" {
 				if rs, err := b.runCommand(b.public, m); err == nil && rs != "" {
-					b.c.Write("MSG", rs)
+					if rs != b.lastLine {
+						b.lastLine = rs
+						if err := b.c.Write("MSG", rs); err != nil {
+							log.Println(err)
+						}
+					}
 				} else if err != nil {
 					log.Println(err)
 				}
 			} else if m.Command == "PRIVMSG" {
 				if rs, err := b.runCommand(b.private, m); err == nil && rs != "" {
-					b.c.WritePrivate("MSG", m.Nick, rs)
+					if err := b.c.WritePrivate("MSG", m.Nick, rs); err != nil {
+						log.Println(err)
+					}
 				} else if err != nil {
 					log.Println(err)
 				}
@@ -232,7 +240,7 @@ func (b *Bot) handleLog(path string, r *bufio.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return common.GetConfig().LogHost + "/" + path + "/" + rs.Month() + "/userlogs/" + rs.Nick() + ".txt", nil
+	return rs.Month() + " logs. " + common.GetConfig().LogHost + "/" + path + "/" + rs.Month() + "/userlogs/" + rs.Nick() + ".txt", nil
 }
 
 func (b *Bot) handleNuke(m *common.Message, r *bufio.Reader) (string, error) {
