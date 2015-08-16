@@ -199,7 +199,7 @@ func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 // SubscriberHandle channel index
 func SubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("twitchnotify"))
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter("twitchnotify"))
 }
 
 // DestinyBroadcasterHandle destiny logs
