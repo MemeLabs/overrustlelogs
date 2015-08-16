@@ -130,7 +130,7 @@ func (b *Bot) Run() {
 				}
 			} else if m.Command == "PRIVMSG" {
 				if rs, err := b.runCommand(b.private, m); err == nil && rs != "" {
-					if err := b.c.WritePrivate("MSG", m.Nick, rs); err != nil {
+					if err := b.c.WritePrivate("PRIVMSG", m.Nick, rs); err != nil {
 						log.Println(err)
 					}
 				} else if err != nil {
