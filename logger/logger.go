@@ -7,18 +7,8 @@ import (
 	"os/signal"
 	"runtime"
 	"syscall"
-	"time"
 
 	"github.com/slugalisk/overrustlelogs/common"
-)
-
-// immutable config
-const (
-	SocketHandshakeTimeout = 10 * time.Second
-	SocketReconnectDelay   = 20 * time.Second
-	SocketWriteDebounce    = 500 * time.Millisecond
-	SocketReadTimeout      = 20 * time.Second
-	MessageBufferSize      = 100
 )
 
 func init() {
@@ -33,12 +23,12 @@ func main() {
 
 	logs := NewChatLogs()
 
-	dc := NewDestinyChat()
+	dc := common.NewDestinyChat()
 	dl := NewDestinyLogger(logs)
 	go dl.Log(dc.Messages())
 	go dc.Run()
 
-	tc := NewTwitchChat(func(ch string, m chan *Message) {
+	tc := common.NewTwitchChat(func(ch string, m chan *common.Message) {
 		log.Printf("started logging %s", ch)
 		NewTwitchLogger(logs, ch).Log(m)
 		log.Printf("stopped logging %s", ch)

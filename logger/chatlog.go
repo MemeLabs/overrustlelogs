@@ -41,7 +41,7 @@ func NewChatLog(path string) (*ChatLog, error) {
 	}
 
 	nicks := common.NickList{}
-	nicks.ReadFrom(nickPath(path))
+	common.ReadNickList(nicks, nickPath(path))
 
 	return &ChatLog{
 		f:        f,
@@ -73,7 +73,7 @@ func (l *ChatLog) Close() {
 func (l *ChatLog) Write(timestamp time.Time, nick string, message string) {
 	l.Lock()
 	l.nicks.Add(nick)
-	l.f.WriteString(timestamp.Format("[2006-01-02 15:04:05 MST] ") + nick + ": " + message + "\n")
+	l.f.WriteString(timestamp.Format("[2006-01-02 15:04:05 UTC] ") + nick + ": " + message + "\n")
 	l.modified = time.Now()
 	l.Unlock()
 }

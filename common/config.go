@@ -11,6 +11,7 @@ type Config struct {
 	DestinyGG struct {
 		SocketURL string
 		OriginURL string
+		Cookie    string
 		Premium   struct {
 			Users []string
 		}
@@ -28,6 +29,11 @@ type Config struct {
 		Address       string
 		MaxStalkLines int
 	}
+	Bot struct {
+		IgnoreListPath string
+		Admins         []string
+	}
+	LogHost     string
 	LogPath     string
 	MaxOpenLogs int
 }

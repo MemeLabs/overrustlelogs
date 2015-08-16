@@ -16,9 +16,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
-	"strings"
 	"syscall"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/slugalisk/overrustlelogs/common"
@@ -60,7 +58,9 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}", MonthHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", DayHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs", UsersHandle).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{user:[a-zA-Z0-9_-]{1,25}}.txt", UserHandle).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{nick:[a-zA-Z0-9_-]{1,25}}.txt", UserHandle).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}", PremiumHandle).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}/{month:[a-zA-Z]+ [0-9]{4}}.txt", PremiumUserHandle).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", DestinyBroadcasterHandle).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", DestinySubscriberHandle).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans.txt", DestinyBanHandle).Methods("GET")
@@ -149,7 +149,7 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 	nicks := common.NickList{}
 	for _, file := range files {
 		if NicksExtension.MatchString(file.Name()) {
-			nicks.ReadFrom(common.GetConfig().LogPath + "/" + vars["channel"] + "/" + vars["month"] + "/" + file.Name())
+			common.ReadNickList(nicks, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"]+"/"+file.Name())
 		}
 	}
 	names := make([]string, 0, len(nicks))
@@ -160,40 +160,64 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 	serveDirIndex(w, "/"+vars["channel"]+"/"+vars["month"]+"/userlogs/", names)
 }
 
-// UserHandle channel index
+// UserHandle user log
 func UserHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveUserLog(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], vars["user"])
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter(vars["nick"]))
+}
+
+// PremiumHandle premium user log index
+func PremiumHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	paths, err := readDirIndex(common.GetConfig().LogPath + "/" + vars["channel"])
+	if err != nil {
+		serveError(w, err)
+		return
+	}
+	for i := range paths {
+		paths[i] += ".txt"
+	}
+	serveDirIndex(w, "/"+vars["channel"]+"/premium/"+vars["nick"]+"/", paths)
+}
+
+// PremiumUserHandle user logs + replies
+func PremiumUserHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	nick := bytes.ToLower([]byte(vars["nick"]))
+	filter := func(line []byte) bool {
+		return bytes.Contains(bytes.ToLower(line), nick)
+	}
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], filter)
 }
 
 // BroadcasterHandle channel index
 func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveUserLog(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], vars["channel"][:len(vars["channel"])-8])
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter(vars["channel"][:len(vars["channel"])-8]))
 }
 
 // SubscriberHandle channel index
 func SubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveUserLog(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], "twitchnotify")
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("twitchnotify"))
 }
 
 // DestinyBroadcasterHandle destiny logs
 func DestinyBroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveUserLog(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], "Destiny")
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("Destiny"))
 }
 
 // DestinySubscriberHandle destiny subscriber logs
 func DestinySubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveUserLog(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], "Subscriber")
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("Subscriber"))
 }
 
 // DestinyBanHandle channel ban list
 func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveUserLog(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], "Ban")
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("Ban"))
 }
 
 // StalkHandle return n most recent lines of chat for user
@@ -205,13 +229,11 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	nick := strings.ToLower(vars["nick"])
-	prefix := vars["nick"] + ":"
-	date := time.Now()
+
 	limit, err := strconv.ParseUint(vars["limit"], 10, 32)
 	if err != nil {
 		d, _ := json.Marshal(Error{err.Error()})
-		http.Error(w, string(d), http.StatusInternalServerError)
+		http.Error(w, string(d), http.StatusBadRequest)
 		return
 	}
 	if limit > uint64(common.GetConfig().Server.MaxStalkLines) {
@@ -221,63 +243,50 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 	}
 	buf := make([]string, limit)
 	index := limit
-	f, err := os.Open(common.GetConfig().LogPath + "/" + vars["channel"])
+	search, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+vars["channel"], vars["nick"])
 	if err != nil {
 		d, _ := json.Marshal(Error{err.Error()})
-		http.Error(w, string(d), http.StatusInternalServerError)
+		http.Error(w, string(d), http.StatusNotFound)
 		return
-	}
-	names, err := f.Readdirnames(0)
-	if err != nil {
-		d, _ := json.Marshal(Error{err.Error()})
-		http.Error(w, string(d), http.StatusInternalServerError)
-		return
-	}
-	months := make(map[string]struct{}, len(names))
-	for _, name := range names {
-		months[name] = struct{}{}
 	}
 
 ScanLogs:
 	for {
-		if _, ok := months[date.Format("January 2006")]; !ok {
-			log.Println("missing", date.Format("January 2006"))
-			break ScanLogs
+		rs, err := search.Next()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			d, _ := json.Marshal(Error{err.Error()})
+			http.Error(w, string(d), http.StatusInternalServerError)
 		}
-		nicks := common.NickList{}
-		nicks.ReadFrom(common.GetConfig().LogPath+"/"+vars["channel"]+date.Format("/January 2006/2006-01-02")+".nicks", strings.ToLower)
-		if _, ok := nicks[nick]; ok {
-			data, err := readLogFile(common.GetConfig().LogPath + "/" + vars["channel"] + date.Format("/January 2006/2006-01-02"))
+		data, err := readLogFile(common.GetConfig().LogPath + "/" + vars["channel"] + "/" + rs.Month() + "/" + rs.Day())
+		if err != nil {
+			d, _ := json.Marshal(Error{err.Error()})
+			http.Error(w, string(d), http.StatusInternalServerError)
+			return
+		}
+		lines := [][]byte{}
+		r := bufio.NewReaderSize(bytes.NewReader(data), len(data))
+		filter := nickFilter(rs.Nick())
+		for {
+			line, err := r.ReadSlice('\n')
 			if err != nil {
-				d, _ := json.Marshal(Error{err.Error()})
-				http.Error(w, string(d), http.StatusInternalServerError)
-				return
+				if err != io.EOF {
+					log.Printf("error reading bytes %s", err)
+				}
+				break
 			}
-			lines := [][]byte{}
-			r := bufio.NewReaderSize(bytes.NewReader(data), len(data))
-		ReadLine:
-			for {
-				line, err := r.ReadSlice('\n')
-				if err != nil {
-					if err != io.EOF {
-						log.Printf("error reading bytes %s", err)
-					}
-					break
-				}
-				if LogLinePrefixLength+len(prefix) > len(line) || !bytes.EqualFold([]byte(prefix), line[LogLinePrefixLength:LogLinePrefixLength+len(prefix)]) {
-					continue ReadLine
-				}
+			if filter(line) {
 				lines = append(lines, line[0:len(line)-1])
 			}
-			for i := len(lines) - 1; i >= 0; i-- {
-				index--
-				buf[index] = string(lines[i])
-				if index == 0 {
-					break ScanLogs
-				}
+		}
+		for i := len(lines) - 1; i >= 0; i-- {
+			index--
+			buf[index] = string(lines[i])
+			if index == 0 {
+				break ScanLogs
 			}
 		}
-		date = date.Add(-24 * time.Hour)
 	}
 
 	if index == limit {
@@ -343,6 +352,18 @@ func readLogFile(path string) ([]byte, error) {
 	return buf, nil
 }
 
+func nickFilter(nick string) func([]byte) bool {
+	nick += ":"
+	return func(line []byte) bool {
+		for i := 0; i < len(nick); i++ {
+			if i+LogLinePrefixLength > len(line) || line[i+LogLinePrefixLength] != nick[i] {
+				return false
+			}
+		}
+		return true
+	}
+}
+
 // serveError ...
 func serveError(w http.ResponseWriter, err error) {
 	_, ok := w.Header()["Content-Type"]
@@ -381,19 +402,6 @@ func serveDirIndex(w http.ResponseWriter, base string, paths []string) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-func serveUserLog(w http.ResponseWriter, path string, user string) {
-	user += ":"
-	filter := func(line []byte) bool {
-		for i := 0; i < len(user); i++ {
-			if i+LogLinePrefixLength > len(line) || line[i+LogLinePrefixLength] != user[i] {
-				return false
-			}
-		}
-		return true
-	}
-	serveFilteredLogs(w, path, filter)
 }
 
 func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) bool) {
