@@ -258,6 +258,7 @@ ScanLogs:
 		} else if err != nil {
 			d, _ := json.Marshal(Error{err.Error()})
 			http.Error(w, string(d), http.StatusInternalServerError)
+			return
 		}
 		data, err := readLogFile(common.GetConfig().LogPath + "/" + vars["channel"] + "/" + rs.Month() + "/" + rs.Day())
 		if err != nil {
