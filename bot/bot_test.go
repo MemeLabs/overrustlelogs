@@ -31,13 +31,10 @@ func TestLogs(t *testing.T) {
 		Time:    time.Now(),
 	}
 
-	rs, err := b.runCommand(b.public, m)
-	log.Println(rs)
-	if err != nil {
+	if rs, err := b.runCommand(b.public, m); err != nil {
 		log.Println("error running logs")
 		t.Fail()
-	}
-	if !strings.Contains(rs, "logs.") {
+	} else if !strings.Contains(rs, "logs") {
 		log.Printf("invalid log response \"%s\"", rs)
 		t.Fail()
 	}
@@ -51,8 +48,7 @@ func TestIgnore(t *testing.T) {
 		Time:    time.Now(),
 	}
 
-	_, err := b.runCommand(b.private, m)
-	if err != nil {
+	if _, err := b.runCommand(b.private, m); err != nil {
 		log.Println("error running ignore")
 		t.Fail()
 	}
@@ -70,8 +66,7 @@ func TestUnignore(t *testing.T) {
 		Time:    time.Now(),
 	}
 
-	_, err := b.runCommand(b.private, m)
-	if err != nil {
+	if _, err := b.runCommand(b.private, m); err != nil {
 		log.Println("error running unignore")
 		t.Fail()
 	}
@@ -89,8 +84,7 @@ func TestNuke(t *testing.T) {
 		Time:    time.Now(),
 	}
 
-	_, err := b.runCommand(b.public, m)
-	if err != nil {
+	if _, err := b.runCommand(b.public, m); err != nil {
 		log.Println("error running nuke")
 		t.Fail()
 	}
@@ -102,8 +96,8 @@ func TestNuke(t *testing.T) {
 		Time:    time.Now(),
 	}
 
-	_, err = b.runCommand(b.public, m)
-	if err != ErrNukeTimeout {
+	rs, _ := b.runCommand(b.public, m)
+	if b.isNuked(rs) {
 		log.Println("failed to set nuke timeout")
 		t.Fail()
 	}
@@ -117,8 +111,7 @@ func TestAegis(t *testing.T) {
 		Time:    time.Now(),
 	}
 
-	_, err := b.runCommand(b.public, m)
-	if err != nil {
+	if _, err := b.runCommand(b.public, m); err != nil {
 		log.Println("error running nuke")
 		t.Fail()
 	}
@@ -130,8 +123,8 @@ func TestAegis(t *testing.T) {
 		Time:    time.Now(),
 	}
 
-	_, err = b.runCommand(b.public, m)
-	if err == ErrNukeTimeout {
+	rs, _ := b.runCommand(b.public, m)
+	if b.isNuked(rs) {
 		log.Println("failed to unset nuke timeout")
 		t.Fail()
 	}

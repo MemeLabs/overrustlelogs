@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -21,8 +23,9 @@ import (
 
 // log paths
 const (
-	destinyPath = "Destinygg chatlog"
-	twitchPath  = "Destiny chatlog"
+	destinyPath         = "Destinygg chatlog"
+	twitchPath          = "Destiny chatlog"
+	defaultNukeDuration = 10 * time.Minute
 )
 
 // errors
@@ -60,15 +63,16 @@ type command func(m *common.Message, r *bufio.Reader) (string, error)
 
 // Bot commands
 type Bot struct {
-	c          *common.DestinyChat
-	stop       chan bool
-	start      time.Time
-	timeoutEOL time.Time
-	lastLine   string
-	public     map[string]command
-	private    map[string]command
-	admins     map[string]struct{}
-	ignore     map[string]struct{}
+	c        *common.DestinyChat
+	stop     chan bool
+	start    time.Time
+	nukeEOL  time.Time
+	nukeText []byte
+	lastLine string
+	public   map[string]command
+	private  map[string]command
+	admins   map[string]struct{}
+	ignore   map[string]struct{}
 }
 
 func NewBot(c *common.DestinyChat) *Bot {
@@ -84,7 +88,7 @@ func NewBot(c *common.DestinyChat) *Bot {
 	b.public = map[string]command{
 		"log":    b.handleDestinyLog,
 		"tlog":   b.handleTwitchLog,
-		"nuke":   b.handleNuke,
+		"nuke":   b.handleSimpleNuke,
 		"aegis":  b.handleAegis,
 		"uptime": b.handleUptime,
 		"bans":   b.handleBans,
@@ -96,17 +100,15 @@ func NewBot(c *common.DestinyChat) *Bot {
 		"unignore": b.handleUnignore,
 	}
 	b.ignore = make(map[string]struct{})
-	d, err := ioutil.ReadFile(common.GetConfig().Bot.IgnoreListPath)
-	if err != nil {
-		log.Fatalf("unable to read ignore list %s", err)
+	if d, err := ioutil.ReadFile(common.GetConfig().Bot.IgnoreListPath); err == nil {
+		ignore := []string{}
+		if err := json.Unmarshal(d, &ignore); err == nil {
+			for _, nick := range ignore {
+				b.ignore[nick] = struct{}{}
+			}
+		}
 	}
-	ignore := []string{}
-	if err := json.Unmarshal(d, &ignore); err != nil {
-		log.Fatalf("unable to read ignore list %s", err)
-	}
-	for _, nick := range ignore {
-		b.ignore[nick] = struct{}{}
-	}
+
 	return b
 }
 
@@ -119,7 +121,9 @@ func (b *Bot) Run() {
 		case m := <-b.c.Messages():
 			if m.Command == "MSG" {
 				if rs, err := b.runCommand(b.public, m); err == nil && rs != "" {
-					if rs != b.lastLine {
+					if b.isNuked(rs) {
+						b.addIgnore(m.Nick)
+					} else if rs != b.lastLine {
 						b.lastLine = rs
 						if err := b.c.Write("MSG", rs); err != nil {
 							log.Println(err)
@@ -158,7 +162,7 @@ func (b *Bot) Stop() {
 }
 
 func (b *Bot) runCommand(commands map[string]command, m *common.Message) (string, error) {
-	if string(m.Data[0]) == "!" {
+	if m.Data[0] == '!' {
 		if b.isIgnored(m.Nick) {
 			return "", ErrIgnored
 		}
@@ -172,6 +176,8 @@ func (b *Bot) runCommand(commands map[string]command, m *common.Message) (string
 		}
 		if cmd, ok := commands[c]; ok {
 			return cmd(m, r)
+		} else if strings.EqualFold(c[0:4], "nuke") {
+			return b.handleCustomNuke(m, c[4:], r)
 		}
 	}
 	return "", nil
@@ -187,10 +193,19 @@ func (b *Bot) isIgnored(nick string) bool {
 	return ok
 }
 
+func (b *Bot) isNuked(text string) bool {
+	return b.nukeEOL.After(time.Now()) && bytes.Contains(bytes.ToLower([]byte(text)), b.nukeText)
+}
+
+func (b *Bot) addIgnore(nick string) {
+	b.ignore[strings.ToLower(nick)] = struct{}{}
+}
+
+func (b *Bot) removeIgnore(nick string) {
+	delete(b.ignore, strings.ToLower(string(nick)))
+}
+
 func (b *Bot) handlePremiumLog(m *common.Message, r *bufio.Reader) (string, error) {
-	if !time.Now().After(b.timeoutEOL) {
-		return "", ErrNukeTimeout
-	}
 	return common.GetConfig().LogHost + "/" + destinyPath + "/premium/" + m.Nick + "/" + time.Now().Format("January 2006") + ".txt", nil
 }
 
@@ -200,7 +215,7 @@ func (b *Bot) handleIgnore(m *common.Message, r *bufio.Reader) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		b.ignore[strings.ToLower(string(nick))] = struct{}{}
+		b.addIgnore(string(nick))
 	}
 	return "", nil
 }
@@ -211,7 +226,7 @@ func (b *Bot) handleUnignore(m *common.Message, r *bufio.Reader) (string, error)
 		if err != nil {
 			return "", err
 		}
-		delete(b.ignore, strings.ToLower(string(nick)))
+		b.removeIgnore(string(nick))
 	}
 	return "", nil
 }
@@ -225,9 +240,6 @@ func (b *Bot) handleTwitchLog(m *common.Message, r *bufio.Reader) (string, error
 }
 
 func (b *Bot) handleLog(path string, r *bufio.Reader) (string, error) {
-	if !time.Now().After(b.timeoutEOL) {
-		return "", ErrNukeTimeout
-	}
 	nick, err := ioutil.ReadAll(r)
 	if err != nil {
 		return "", err
@@ -238,27 +250,37 @@ func (b *Bot) handleLog(path string, r *bufio.Reader) (string, error) {
 	}
 	rs, err := s.Next()
 	if err != nil {
-		return "", err
+		return fmt.Sprintf("No logs found for %s.", nick), nil
 	}
 	return rs.Month() + " logs. " + common.GetConfig().LogHost + "/" + path + "/" + rs.Month() + "/userlogs/" + rs.Nick() + ".txt", nil
 }
 
-func (b *Bot) handleNuke(m *common.Message, r *bufio.Reader) (string, error) {
+func (b *Bot) handleSimpleNuke(m *common.Message, r *bufio.Reader) (string, error) {
+	return b.handleNuke(m, defaultNukeDuration, r)
+}
+
+func (b *Bot) handleCustomNuke(m *common.Message, d string, r *bufio.Reader) (string, error) {
+	if s, err := strconv.ParseUint(d, 10, 64); err == nil {
+		return b.handleNuke(m, time.Duration(s)*time.Second, r)
+	}
+	return "", nil
+}
+
+func (b *Bot) handleNuke(m *common.Message, d time.Duration, r *bufio.Reader) (string, error) {
 	if b.isAdmin(m.Nick) {
-		word, err := ioutil.ReadAll(r)
+		text, err := ioutil.ReadAll(r)
 		if err != nil {
 			return "", err
 		}
-		if bytes.Contains([]byte("overrustle"), bytes.ToLower(word)) {
-			b.timeoutEOL = time.Now().Add(30 * time.Minute)
-		}
+		b.nukeEOL = time.Now().Add(d)
+		b.nukeText = bytes.ToLower(text)
 	}
 	return "", nil
 }
 
 func (b *Bot) handleAegis(m *common.Message, r *bufio.Reader) (string, error) {
 	if b.isAdmin(m.Nick) {
-		b.timeoutEOL = time.Now()
+		b.nukeEOL = time.Now()
 	}
 	return "", nil
 }
