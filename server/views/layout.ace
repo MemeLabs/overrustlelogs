@@ -50,7 +50,7 @@ html lang=en
               a target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=Q3SAFTXUR4UHG"
                 span Donate
 
-      = yield body
+    = yield body
 
     script type="text/rocketscript" data-rocketsrc="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"
     script type="text/rocketscript" data-rocketsrc="//cdnjs.cloudflare.com/ajax/libs/stupidtable/0.0.1/stupidtable.min.js"
