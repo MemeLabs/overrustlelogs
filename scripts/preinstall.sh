@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [ -z `which nginx` ]; then
+  apt-get install nginx --assume-yes
+fi
+
 if [ -z `which go` ]; then
   apt-get update
   apt-get install build-essential --assume-yes

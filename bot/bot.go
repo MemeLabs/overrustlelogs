@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -33,6 +33,8 @@ var (
 	ErrIgnored     = errors.New("user ignored")
 	ErrNukeTimeout = errors.New("overrustle nuked")
 )
+
+var validNick = regexp.MustCompile("^[a-zA-Z_]+$")
 
 func init() {
 	configPath := flag.String("config", "", "config path")
@@ -104,7 +106,7 @@ func NewBot(c *common.DestinyChat) *Bot {
 		ignore := []string{}
 		if err := json.Unmarshal(d, &ignore); err == nil {
 			for _, nick := range ignore {
-				b.ignore[nick] = struct{}{}
+				b.addIgnore(nick)
 			}
 		}
 	}
@@ -179,6 +181,10 @@ func (b *Bot) runCommand(commands map[string]command, m *common.Message) (string
 	return "", nil
 }
 
+func (b *Bot) isNuked(text string) bool {
+	return b.nukeEOL.After(time.Now()) && bytes.Contains(bytes.ToLower([]byte(text)), b.nukeText)
+}
+
 func (b *Bot) isAdmin(nick string) bool {
 	_, ok := b.admins[nick]
 	return ok
@@ -187,10 +193,6 @@ func (b *Bot) isAdmin(nick string) bool {
 func (b *Bot) isIgnored(nick string) bool {
 	_, ok := b.ignore[strings.ToLower(nick)]
 	return ok
-}
-
-func (b *Bot) isNuked(text string) bool {
-	return b.nukeEOL.After(time.Now()) && bytes.Contains(bytes.ToLower([]byte(text)), b.nukeText)
 }
 
 func (b *Bot) addIgnore(nick string) {
@@ -202,14 +204,14 @@ func (b *Bot) removeIgnore(nick string) {
 }
 
 func (b *Bot) handlePremiumLog(m *common.Message, r *bufio.Reader) (string, error) {
-	return common.GetConfig().LogHost + "/" + destinyPath + "/premium/" + m.Nick + "/" + time.Now().Format("January 2006") + ".txt", nil
+	return common.GetConfig().LogHost + "/" + destinyPath + "/premium/" + m.Nick + "/" + time.Now().UTC().Format("January 2006") + ".txt", nil
 }
 
 func (b *Bot) handleIgnore(m *common.Message, r *bufio.Reader) (string, error) {
 	if b.isAdmin(m.Nick) {
 		nick, err := ioutil.ReadAll(r)
-		if err != nil {
-			return "", err
+		if err != nil || !validNick.Match(nick) {
+			return "Invalid nick", err
 		}
 		b.addIgnore(string(nick))
 	}
@@ -219,8 +221,8 @@ func (b *Bot) handleIgnore(m *common.Message, r *bufio.Reader) (string, error) {
 func (b *Bot) handleUnignore(m *common.Message, r *bufio.Reader) (string, error) {
 	if b.isAdmin(m.Nick) {
 		nick, err := ioutil.ReadAll(r)
-		if err != nil {
-			return "", err
+		if err != nil || !validNick.Match(nick) {
+			return "Invalid nick", err
 		}
 		b.removeIgnore(string(nick))
 	}
@@ -237,7 +239,7 @@ func (b *Bot) handleTwitchLog(m *common.Message, r *bufio.Reader) (string, error
 
 func (b *Bot) handleLog(path string, r *bufio.Reader) (string, error) {
 	nick, err := ioutil.ReadAll(r)
-	if err != nil {
+	if err != nil || !validNick.Match(nick) {
 		return "", err
 	}
 	s, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+path, string(nick))
@@ -246,7 +248,7 @@ func (b *Bot) handleLog(path string, r *bufio.Reader) (string, error) {
 	}
 	rs, err := s.Next()
 	if err != nil {
-		return fmt.Sprintf("No logs found for %s.", nick), nil
+		return "No logs found for that user.", nil
 	}
 	return rs.Month() + " logs. " + common.GetConfig().LogHost + "/" + path + "/" + rs.Month() + "/userlogs/" + rs.Nick() + ".txt", nil
 }
@@ -282,11 +284,11 @@ func (b *Bot) handleAegis(m *common.Message, r *bufio.Reader) (string, error) {
 }
 
 func (b *Bot) handleBans(m *common.Message, r *bufio.Reader) (string, error) {
-	return common.GetConfig().LogHost + "/" + destinyPath + "/" + time.Now().Format("January 2006") + "/bans.txt", nil
+	return common.GetConfig().LogHost + "/" + destinyPath + "/" + time.Now().UTC().Format("January 2006") + "/bans.txt", nil
 }
 
 func (b *Bot) handleSubs(m *common.Message, r *bufio.Reader) (string, error) {
-	return common.GetConfig().LogHost + "/" + destinyPath + "/" + time.Now().Format("January 2006") + "/subscribers.txt", nil
+	return common.GetConfig().LogHost + "/" + destinyPath + "/" + time.Now().UTC().Format("January 2006") + "/subscribers.txt", nil
 }
 
 func (b *Bot) handleUptime(m *common.Message, r *bufio.Reader) (string, error) {

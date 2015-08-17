@@ -2,6 +2,59 @@
 html lang=en
   head
     meta charset=utf-8
-    title {{.Title}}
-  body
-    = yield body
+    meta http-equiv="X-UA-Compatible" content="IE=edge"
+    meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"
+    title OverRustle Logs
+    = javascript
+      try{if (!window.CloudFlare) {var CloudFlare=[{verbose:0,p:0,byc:0,owlid:"cf",bag2:1,mirage2:0,oracle:0,paths:{cloudflare:"/cdn-cgi/nexp/dok3v=1613a3a185/"},atok:"55f506b8c93b95856ec102f6bc31d73f",petok:"a650985587798aa4bc5eab5def2cb9d2995395ee-1439760644-1800",betok:"d6c88983775de4cbedbfe8293d633be46021eeb2-1439760644-120",zone:"overrustlelogs.net",rocket:"a",apps:{"ga_key":{"ua":"UA-46946005-1","ga_bs":"2"}}}];document.write('script type="text/javascript" src="//ajax.cloudflare.com/cdn-cgi/nexp/dok3v=e9627cd26a/cloudflare.min.js"'+'\/script');}}catch(e){};
+    link rel="stylesheet" href="/assets/css/test.css"
+    link rel="stylesheet" href="/assets/css/listr.min.css"
+    link rel="stylesheet" href="/assets/css/jasny-bootstrap.min.css"
+    = javascript
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-46946005-1']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+      (function(b){(function(a){"__CF"in b&&"DJS"in b.__CF?b.__CF.DJS.push(a):"addEventListener"in b?b.addEventListener("load",a,!1):b.attachEvent("onload",a)})(function(){"FB"in b&&"Event"in FB&&"subscribe"in FB.Event&&(FB.Event.subscribe("edge.create",function(a){_gaq.push(["_trackSocial","facebook","like",a])}),FB.Event.subscribe("edge.remove",function(a){_gaq.push(["_trackSocial","facebook","unlike",a])}),FB.Event.subscribe("message.send",function(a){_gaq.push(["_trackSocial","facebook","send",a])}));"twttr"in b&&"events"in twttr&&"bind"in twttr.events&&twttr.events.bind("tweet",function(a){if(a){var b;if(a.target&&a.target.nodeName=="IFRAME")a:{if(a=a.target.src){a=a.split("#")[0].match(/[^?=&]+=([^&]*)?/g);b=0;for(var c;c=a[b];++b)if(c.indexOf("url")===0){b=unescape(c.split("=")[1]);break a}}b=void 0}_gaq.push(["_trackSocial","twitter","tweet",b])}})})})(window);
+  body dir="ltr"
+    nav class="navbar navbar-inverse navbar-fixed-top"
+      div class="container"
+        div class="navbar-header"
+          a class="navbar-brand" href="/" OverRustle Logs
+
+        div id="navbar" class="collapse navbar-collapse"
+          ul class="nav navbar-nav navbar-left"
+            li
+              ol class="breadcrumb" dir="ltr"
+                li
+                  a href="/"
+                    span class="glyphicon glyphicon-home"
+                {{range .Breadcrumbs}}
+                  li
+                    a href={{.Path}} {{.Name}}
+                {{end}}
+
+          ul class="nav navbar-nav navbar-right"
+            li
+              a href="http://www.twitch.tv/overrustlelogs" target="_blank" Request
+            li
+              a href="/changelog" Changelog
+            li
+              a href="/contact" Contact
+            li class="donate"
+              a target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=Q3SAFTXUR4UHG"
+                span Donate
+
+    div class="container"
+      = yield body
+
+    script type="text/rocketscript" data-rocketsrc="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"
+    script type="text/rocketscript" data-rocketsrc="//cdnjs.cloudflare.com/ajax/libs/stupidtable/0.0.1/stupidtable.min.js"
+    script type="text/rocketscript" data-rocketsrc="/assets/js/listr.min.js"
+    script type="text/rocketscript" data-rocketsrc="/assets/js/jasny-bootstrap.min.js"

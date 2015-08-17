@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -84,7 +85,7 @@ func BaseHandle(w http.ResponseWriter, r *http.Request) {
 		serveError(w, err)
 		return
 	}
-	serveDirIndex(w, "/", paths)
+	serveDirIndex(w, []string{}, paths)
 }
 
 // ChannelHandle channel index
@@ -95,7 +96,7 @@ func ChannelHandle(w http.ResponseWriter, r *http.Request) {
 		serveError(w, err)
 		return
 	}
-	serveDirIndex(w, "/"+vars["channel"]+"/", paths)
+	serveDirIndex(w, []string{vars["channel"]}, paths)
 }
 
 // MonthHandle channel index
@@ -116,7 +117,7 @@ func MonthHandle(w http.ResponseWriter, r *http.Request) {
 	for i, path := range paths {
 		paths[i] = LogExtension.ReplaceAllString(path, ".txt")
 	}
-	serveDirIndex(w, "/"+vars["channel"]+"/"+vars["month"]+"/", paths)
+	serveDirIndex(w, []string{vars["channel"], vars["month"]}, paths)
 }
 
 // DayHandle channel index
@@ -155,7 +156,7 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 		names = append(names, nick+".txt")
 	}
 	sort.Sort(handysort.Strings(names))
-	serveDirIndex(w, "/"+vars["channel"]+"/"+vars["month"]+"/userlogs/", names)
+	serveDirIndex(w, []string{vars["channel"], vars["month"], "userlogs"}, names)
 }
 
 // UserHandle user log
@@ -175,7 +176,7 @@ func PremiumHandle(w http.ResponseWriter, r *http.Request) {
 	for i := range paths {
 		paths[i] += ".txt"
 	}
-	serveDirIndex(w, "/"+vars["channel"]+"/premium/"+vars["nick"]+"/", paths)
+	serveDirIndex(w, []string{vars["channel"], "premium", vars["nick"]}, paths)
 }
 
 // PremiumUserHandle user logs + replies
@@ -375,23 +376,37 @@ func serveError(w http.ResponseWriter, err error) {
 }
 
 // serveDirIndex ...
-func serveDirIndex(w http.ResponseWriter, base string, paths []string) {
+func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
 	tpl, err := ace.Load(common.GetConfig().Server.ViewPath+"/layout", common.GetConfig().Server.ViewPath+"/directory", nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	data := map[string]interface{}{
-		"Title": base,
-		"Paths": []map[string]string{},
+		"Breadcrumbs": []map[string]string{},
+		"Paths":       []map[string]string{},
 	}
-	for _, path := range paths {
-		data["Paths"] = append(data["Paths"].([]map[string]string), map[string]string{
-			"ClassName": "directory",
-			"Path":      base + path,
-			"Name":      path,
+	if len(paths) == 1 {
+		data["PathCount"] = "1 folder"
+	} else {
+		data["PathCount"] = fmt.Sprintf("%d folders", len(paths))
+	}
+	basePath := ""
+	for _, path := range base {
+		basePath += "/" + path
+		data["Breadcrumbs"] = append(data["Breadcrumbs"].([]map[string]string), map[string]string{
+			"Path": basePath,
+			"Name": path,
 		})
 	}
+	basePath += "/"
+	for _, path := range paths {
+		data["Paths"] = append(data["Paths"].([]map[string]string), map[string]string{
+			"Path": basePath + path,
+			"Name": path,
+		})
+	}
+	w.Header().Set("Content-type", "text/html")
 	if err := tpl.Execute(w, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

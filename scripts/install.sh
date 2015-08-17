@@ -17,10 +17,14 @@ cp $GOPATH/bin/server /usr/bin/orl-bot
 cp $GOPATH/bin/tool /usr/bin/orl-tool
 
 mkdir -p /var/overrustlelogs
-cp -r $GOPATH/src/$src/server/views /var/overrustlelogs/views
+ln -s $PWD/server/views /var/overrustlelogs/views
+ln -s $PWD/server/assets /var/overrustlelogs/assets
 cp -r $GOPATH/src/$src/package/* /
 chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
 
+mkdir -p /var/nginx/cache
+chown -R www-data:www-data /var/nginx
+
 echo "next steps:"
-echo "1.) add twitch creds to /etc/overrustlelogs/overrustlelogs.conf"
+echo "1.) add creds to /etc/overrustlelogs/overrustlelogs.conf"
 echo "2.) run $ start logger && start server"
