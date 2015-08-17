@@ -34,8 +34,6 @@ html lang=en
             li
               ol class="breadcrumb" dir="ltr"
                 li
-                  a href="/"
-                    span class="glyphicon glyphicon-home"
                 {{range .Breadcrumbs}}
                   li
                     a href={{.Path}} {{.Name}}
