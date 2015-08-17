@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"sort"
@@ -386,11 +386,6 @@ func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
 		"Breadcrumbs": []map[string]string{},
 		"Paths":       []map[string]string{},
 	}
-	if len(paths) == 1 {
-		data["PathCount"] = "1 folder"
-	} else {
-		data["PathCount"] = fmt.Sprintf("%d folders", len(paths))
-	}
 	basePath := ""
 	for _, path := range base {
 		basePath += "/" + path
@@ -401,9 +396,14 @@ func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
 	}
 	basePath += "/"
 	for _, path := range paths {
+		icon := "file"
+		if filepath.Ext(path) == "" {
+			icon = "dir-closed"
+		}
 		data["Paths"] = append(data["Paths"].([]map[string]string), map[string]string{
 			"Path": basePath + path,
 			"Name": path,
+			"Icon": icon,
 		})
 	}
 	w.Header().Set("Content-type", "text/html")

@@ -34,7 +34,7 @@ var (
 	ErrNukeTimeout = errors.New("overrustle nuked")
 )
 
-var validNick = regexp.MustCompile("^[a-zA-Z_]+$")
+var validNick = regexp.MustCompile("^[a-zA-Z0-9_]+$")
 
 func init() {
 	configPath := flag.String("config", "", "config path")

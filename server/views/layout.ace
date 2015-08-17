@@ -6,7 +6,8 @@ html lang=en
     meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"
     title OverRustle Logs
     = javascript
-      try{if (!window.CloudFlare) {var CloudFlare=[{verbose:0,p:0,byc:0,owlid:"cf",bag2:1,mirage2:0,oracle:0,paths:{cloudflare:"/cdn-cgi/nexp/dok3v=1613a3a185/"},atok:"55f506b8c93b95856ec102f6bc31d73f",petok:"a650985587798aa4bc5eab5def2cb9d2995395ee-1439760644-1800",betok:"d6c88983775de4cbedbfe8293d633be46021eeb2-1439760644-120",zone:"overrustlelogs.net",rocket:"a",apps:{"ga_key":{"ua":"UA-46946005-1","ga_bs":"2"}}}];document.write('script type="text/javascript" src="//ajax.cloudflare.com/cdn-cgi/nexp/dok3v=e9627cd26a/cloudflare.min.js"'+'\/script');}}catch(e){};
+      try{if (!window.CloudFlare) {var CloudFlare=[{verbose:0,p:0,byc:0,owlid:"cf",bag2:1,mirage2:0,oracle:0,paths:{cloudflare:"/cdn-cgi/nexp/dok3v=1613a3a185/"},atok:"55f506b8c93b95856ec102f6bc31d73f",petok:"cba3878429ac864995af99d4c3de9c5053d91350-1439773029-1800",betok:"090fb43b0743cfa5ae19b5f1871084b269ee8fb6-1439773029-120",zone:"overrustlelogs.net",rocket:"a",apps:{"ga_key":{"ua":"UA-46946005-1","ga_bs":"2"}}}];document.write('<script type="text/javascript" src="//ajax.cloudflare.com/cdn-cgi/nexp/dok3v=e9627cd26a/cloudflare.min.js"><'+'\/script>');}}catch(e){};
+    link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico"
     link rel="stylesheet" href="/assets/css/test.css"
     link rel="stylesheet" href="/assets/css/listr.min.css"
     link rel="stylesheet" href="/assets/css/jasny-bootstrap.min.css"

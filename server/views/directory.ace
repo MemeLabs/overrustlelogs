@@ -4,25 +4,12 @@
       thead
         tr
            th class="col-lg-8 text-left" data-sort="string" Name
-           / th class="col-lg-2 text-right" data-sort="int" Size
-           / th class="col-lg-2 text-right" data-sort="int" Modified
-
-      tfoot
-        tr
-          td colspan="3"
-            small class="pull-left text-muted" dir="ltr" {{.PathCount}}
 
       tbody data-link="row" class="rowlink"
         {{range .Paths}}
           tr
-            td class="text-left" data-sort-value="afrigginnoob chatlog"
-              span class="glyphicon glyphicon-folder-close"
-                &nbsp;
+            td class="text-left" data-sort-value="{{.Name}}"
+              span class="glyphicon glyphicon-{{.Icon}}" &nbsp;
                 a href="{{.Path}}"
                   strong {{.Name}}
-            / td class="text-right" data-sort-value="0" &mdash;
-            / td class="text-right" data-sort-value="1438869074" title="2015-08-06 13:51:14" 1 week ago
         {{end}}
-
-
-
