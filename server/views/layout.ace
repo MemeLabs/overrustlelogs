@@ -33,7 +33,6 @@ html lang=en
           ul class="nav navbar-nav navbar-left"
             li
               ol class="breadcrumb" dir="ltr"
-                li
                 {{range .Breadcrumbs}}
                   li
                     a href={{.Path}} {{.Name}}
