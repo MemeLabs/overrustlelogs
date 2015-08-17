@@ -14,6 +14,10 @@ stop orl-logger
 stop orl-server
 stop orl-bot
 
+cp -r $GOPATH/src/$src/server/views /var/overrustlelogs/views
+cp -r $GOPATH/src/$src/server/assets /var/overrustlelogs/public/assets
+chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/views
+chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/public/assets
 cp $GOPATH/bin/logger /usr/bin/orl-logger
 cp $GOPATH/bin/server /usr/bin/orl-server
 cp $GOPATH/bin/bot /usr/bin/orl-bot

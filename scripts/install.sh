@@ -16,9 +16,11 @@ cp $GOPATH/bin/server /usr/bin/orl-server
 cp $GOPATH/bin/server /usr/bin/orl-bot
 cp $GOPATH/bin/tool /usr/bin/orl-tool
 
-mkdir -p /var/overrustlelogs
-ln -s $PWD/server/views /var/overrustlelogs/views
-ln -s $PWD/server/assets /var/overrustlelogs/assets
+mkdir -p /var/overrustlelogs/public
+cp -r $GOPATH/src/$src/server/views /var/overrustlelogs/views
+cp -r $GOPATH/src/$src/server/assets /var/overrustlelogs/public/assets
+chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/views
+chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/public/assets
 cp -r $GOPATH/src/$src/package/* /
 chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
 
