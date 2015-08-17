@@ -14,7 +14,7 @@ import (
 
 // DestinyChat destiny.gg chat client
 type DestinyChat struct {
-	sync.Mutex
+	sync.RWMutex
 	conn     *websocket.Conn
 	dialer   websocket.Dialer
 	headers  http.Header
@@ -69,9 +69,9 @@ func (c *DestinyChat) Run() {
 			continue
 		}
 
-		c.Lock()
+		c.RLock()
 		_, msg, err := c.conn.ReadMessage()
-		c.Unlock()
+		c.RUnlock()
 		if err != nil {
 			log.Printf("error reading message %s", err)
 			c.reconnect()
@@ -108,37 +108,34 @@ func (c *DestinyChat) Messages() <-chan *Message {
 	return c.messages
 }
 
-func (c *DestinyChat) send(command string, msg interface{}) error {
+func (c *DestinyChat) send(command string, msg map[string]string) error {
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}
-
 	buf := bytes.NewBuffer([]byte{})
 	buf.WriteString(command)
 	buf.WriteString(" ")
 	buf.Write(data)
-
 	c.Lock()
 	defer c.Unlock()
-	if err := c.conn.WriteMessage(1, buf.Bytes()); err != nil {
-		log.Println("error sending message %s", err)
+	if err := c.conn.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
+		log.Printf("error sending message %s", err)
 		c.reconnect()
 		return err
 	}
-
 	return nil
 }
 
 // Write send message
 func (c *DestinyChat) Write(command, data string) error {
-	return c.send(command, struct{ data string }{data})
+	return c.send(command, map[string]string{"data": data})
 }
 
 // WritePrivate send private message
 func (c *DestinyChat) WritePrivate(command, nick, data string) error {
-	return c.send(command, struct {
-		nick string
-		data string
-	}{nick, data})
+	return c.send(command, map[string]string{
+		"nick": nick,
+		"data": data,
+	})
 }

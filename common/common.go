@@ -1,6 +1,9 @@
 package common
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 // immutable config
 const (
@@ -10,3 +13,6 @@ const (
 	SocketReadTimeout      = 20 * time.Second
 	MessageBufferSize      = 100
 )
+
+// errors
+var ErrNotConnected = errors.New("not connected")

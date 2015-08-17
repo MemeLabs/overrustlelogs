@@ -181,7 +181,7 @@ func (c *TwitchChat) runCommand(source string, m *Message) {
 func (c *TwitchChat) send(m string) {
 	c.writeLock.Lock()
 	c.RLock()
-	err := c.conn.WriteMessage(1, []byte(m+"\r\n"))
+	err := c.conn.WriteMessage(websocket.TextMessage, []byte(m+"\r\n"))
 	c.RUnlock()
 	if err == nil {
 		time.Sleep(SocketWriteDebounce)

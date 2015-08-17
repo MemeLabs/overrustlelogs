@@ -17,6 +17,7 @@ var commands = map[string]command{
 	"compress":   compress,
 	"uncompress": uncompress,
 	"nicks":      nicks,
+	"migrate":    migrate,
 }
 
 func main() {
@@ -98,6 +99,12 @@ func nicks() error {
 		return err
 	}
 	return nil
+}
+
+func migrate() error {
+	if len(os.Args) < 3 {
+		return errors.New("not enough args")
+	}
 }
 
 // func batchCompress() {

@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"os/signal"
 	"regexp"
@@ -45,7 +46,6 @@ func init() {
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
 	c := common.NewDestinyChat()
 	b := NewBot(c)
 	go b.Run()
@@ -174,7 +174,7 @@ func (b *Bot) runCommand(commands map[string]command, m *common.Message) (string
 		}
 		if cmd, ok := commands[c]; ok {
 			return cmd(m, r)
-		} else if strings.EqualFold(c[0:4], "nuke") {
+		} else if len(c) >= 4 && strings.EqualFold(c[0:4], "nuke") {
 			return b.handleCustomNuke(m, c[4:], r)
 		}
 	}
@@ -203,8 +203,17 @@ func (b *Bot) removeIgnore(nick string) {
 	delete(b.ignore, strings.ToLower(string(nick)))
 }
 
+func (b *Bot) toURL(path string) string {
+	var u, err = url.Parse(common.GetConfig().LogHost)
+	if err != nil {
+		log.Fatalf("error parsing configured log host %s", err)
+	}
+	u.Path = path
+	return u.String()
+}
+
 func (b *Bot) handlePremiumLog(m *common.Message, r *bufio.Reader) (string, error) {
-	return common.GetConfig().LogHost + "/" + destinyPath + "/premium/" + m.Nick + "/" + time.Now().UTC().Format("January 2006") + ".txt", nil
+	return b.toURL("/" + destinyPath + "/premium/" + m.Nick + "/" + time.Now().UTC().Format("January 2006") + ".txt"), nil
 }
 
 func (b *Bot) handleIgnore(m *common.Message, r *bufio.Reader) (string, error) {
@@ -250,7 +259,7 @@ func (b *Bot) handleLog(path string, r *bufio.Reader) (string, error) {
 	if err != nil {
 		return "No logs found for that user.", nil
 	}
-	return rs.Month() + " logs. " + common.GetConfig().LogHost + "/" + path + "/" + rs.Month() + "/userlogs/" + rs.Nick() + ".txt", nil
+	return rs.Month() + " logs. " + b.toURL("/"+path+"/"+rs.Month()+"/userlogs/"+rs.Nick()+".txt"), nil
 }
 
 func (b *Bot) handleSimpleNuke(m *common.Message, r *bufio.Reader) (string, error) {
@@ -284,11 +293,11 @@ func (b *Bot) handleAegis(m *common.Message, r *bufio.Reader) (string, error) {
 }
 
 func (b *Bot) handleBans(m *common.Message, r *bufio.Reader) (string, error) {
-	return common.GetConfig().LogHost + "/" + destinyPath + "/" + time.Now().UTC().Format("January 2006") + "/bans.txt", nil
+	return b.toURL("/" + destinyPath + "/" + time.Now().UTC().Format("January 2006") + "/bans.txt"), nil
 }
 
 func (b *Bot) handleSubs(m *common.Message, r *bufio.Reader) (string, error) {
-	return common.GetConfig().LogHost + "/" + destinyPath + "/" + time.Now().UTC().Format("January 2006") + "/subscribers.txt", nil
+	return b.toURL("/" + destinyPath + "/" + time.Now().UTC().Format("January 2006") + "/subscribers.txt"), nil
 }
 
 func (b *Bot) handleUptime(m *common.Message, r *bufio.Reader) (string, error) {
