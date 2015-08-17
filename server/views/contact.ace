@@ -1,0 +1,18 @@
+= content body
+  div class="info"
+    h3 E-mail
+    p
+      a href="mailto:dbc@overrustlelogs.net" dbc@overrustlelogs.net
+    p
+      a href="mailto:tensei@overrustlelogs.net" tensei@overrustlelogs.net
+    h3
+      a href="http://www.destiny.gg/bigscreen" target="_blank" Destiny.gg Chat
+      p dbC_ and Tenseyi
+    h3
+      a href="http://www.twitch.tv/" target="_blank" Twitch.tv
+    p
+      a href="http://www.twitch.tv/tenseyi" target="_blank" twitch.tv/tenseyi
+    p
+      a href="http://www.twitch.tv/dbc__" target="_blank" twitch.tv/dbc__
+    h4
+      a href="https://github.com/slugalisk/overrustlelogs" target="_blank" Fork this project on GitHub

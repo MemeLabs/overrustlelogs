@@ -10,6 +10,6 @@
           tr
             td class="text-left" data-sort-value="{{.Name}}"
               span class="glyphicon glyphicon-{{.Icon}}" &nbsp;
-                a href="{{.Path}}"
-                  strong {{.Name}}
+              a href="{{.Path}}"
+                strong {{.Name}}
         {{end}}

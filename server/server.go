@@ -54,6 +54,7 @@ func main() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", BaseHandle).Methods("GET")
+	r.HandleFunc("/contact", ContactHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}", ChannelHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}", MonthHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", DayHandle).Methods("GET")
@@ -86,6 +87,20 @@ func BaseHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	serveDirIndex(w, []string{}, paths)
+}
+
+// ContactHandle contact page
+func ContactHandle(w http.ResponseWriter, r *http.Request) {
+	tpl, err := ace.Load(common.GetConfig().Server.ViewPath+"/layout", common.GetConfig().Server.ViewPath+"/contact", nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-type", "text/html")
+	if err := tpl.Execute(w, nil); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 // ChannelHandle channel index
