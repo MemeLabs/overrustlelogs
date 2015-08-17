@@ -398,7 +398,7 @@ func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
 	for _, path := range paths {
 		icon := "file"
 		if filepath.Ext(path) == "" {
-			icon = "dir-closed"
+			icon = "folder-close"
 		}
 		data["Paths"] = append(data["Paths"].([]map[string]string), map[string]string{
 			"Path": basePath + path,
