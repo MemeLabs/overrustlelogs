@@ -16,24 +16,26 @@ import (
 var commands = map[string]command{
 	"compress":   compress,
 	"uncompress": uncompress,
+	"read":       read,
+	"readnicks":  readNicks,
 	"nicks":      nicks,
 	"migrate":    migrate,
 }
 
 func main() {
 	if len(os.Args) < 2 {
-		os.Exit(2)
+		os.Exit(1)
 	}
 	if c, ok := commands[os.Args[1]]; ok {
 		if err := c(); err != nil {
 			fmt.Println(err)
-			os.Exit(2)
+			os.Exit(1)
 		}
 	} else {
 		fmt.Println("invalid command")
-		os.Exit(2)
+		os.Exit(1)
 	}
-	os.Exit(1)
+	os.Exit(0)
 }
 
 type command func() error
@@ -101,33 +103,38 @@ func nicks() error {
 	return nil
 }
 
-func migrate() error {
+func read() error {
 	if len(os.Args) < 3 {
 		return errors.New("not enough args")
 	}
+	path := os.Args[2]
+	if regexp.MustCompile("\\.txt\\.lz4$").MatchString(path) {
+		buf, err := common.ReadCompressedFile(path)
+		if err != nil {
+			return err
+		}
+		os.Stdout.Write(buf)
+	} else {
+		return errors.New("invalid file")
+	}
+	return nil
 }
 
-// func batchCompress() {
-// 	baseDir := "/var/overrustle/logs/Lirik chatlog/July 2015"
-
-// 	files, err := ioutil.ReadDir(baseDir)
-// 	if err != nil {
-// 		log.Panicf("error reading logs dir %s", err)
-// 	}
-
-// 	buf := make([]byte, 10*1024*1024)
-// 	for _, info := range files {
-// 		f, err := os.Open(baseDir + "/" + info.Name())
-// 		if err != nil {
-// 			log.Fatalf("error creating file reader %s", err)
-// 		}
-
-// 		data, _ := ioutil.ReadAll(f)
-// 		size, _ := lz4.CompressHCLevel(data, buf, 16)
-
-// 		err = ioutil.WriteFile(BaseDir+"/"+strings.Replace(info.Name(), ".txt", ".txt.lz4", -1), buf[:size], 0644)
-// 		if err != nil {
-//			log.Println("error writing file %s", err)
-// 		}
-// 	}
-// }
+func readNicks() error {
+	if len(os.Args) < 3 {
+		return errors.New("not enough args")
+	}
+	path := os.Args[2]
+	if regexp.MustCompile("\\.nicks\\.lz4$").MatchString(path) {
+		nicks := common.NickList{}
+		if err := common.ReadNickList(nicks, path); err != nil {
+			return err
+		}
+		for nick := range nicks {
+			fmt.Println(nick)
+		}
+	} else {
+		return errors.New("invalid file")
+	}
+	return nil
+}

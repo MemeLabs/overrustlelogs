@@ -24,8 +24,7 @@ type ChatLog struct {
 // NewChatLog instantiates chat logs...
 func NewChatLog(path string) (*ChatLog, error) {
 	dir := filepath.Dir(path)
-	_, err := os.Stat(dir)
-	if err != nil {
+	if _, err := os.Stat(dir); err != nil {
 		err := os.MkdirAll(dir, 0755)
 		if err != nil {
 			return nil, err
@@ -115,7 +114,7 @@ func (l *ChatLogs) housekeeping() {
 		for _, k := range l.logs.Keys() {
 			if v, ok := l.logs.Peek(k); ok {
 				c := v.(*ChatLog)
-				idle := c.Modified().Sub(now)
+				idle := now.Sub(c.Modified())
 				if idle > time.Hour {
 					l.logs.Remove(k)
 					c.Close()
