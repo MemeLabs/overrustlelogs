@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -69,6 +70,7 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", BroadcasterHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", SubscriberHandle).Methods("GET")
 	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+ chatlog}/{nick:[a-zA-Z0-9_-]+}.json", StalkHandle).Queries("limit", "{limit:[0-9]+}").Methods("GET")
+	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
 	go http.ListenAndServe(common.GetConfig().Server.Address, r)
 
 	sigint := make(chan os.Signal, 1)
@@ -78,6 +80,11 @@ func main() {
 		log.Println("i love you guys, be careful")
 		os.Exit(1)
 	}
+}
+
+// NotFoundHandle channel index
+func NotFoundHandle(w http.ResponseWriter, r *http.Request) {
+	serveError(w, ErrNotFound)
 }
 
 // BaseHandle channel index
@@ -322,9 +329,29 @@ ScanLogs:
 		http.Error(w, string(d), http.StatusInternalServerError)
 		return
 	}
-	d, _ := json.Marshal(struct {
-		Lines []string `json:"lines"`
-	}{buf[index:]})
+	type Line struct {
+		Timestamp int64  `json:"timestamp"`
+		Text      string `json:"text"`
+	}
+	data := struct {
+		Nick  string `json:"nick"`
+		Lines []Line `json:"lines"`
+	}{
+		Lines: []Line{},
+	}
+	for i := int(index); i < len(buf); i++ {
+		t, err := time.Parse("2006-01-02 15:04:05 MST", buf[i][1:24])
+		if err != nil {
+			continue
+		}
+		ci := strings.Index(buf[i][LogLinePrefixLength:], ":")
+		data.Nick = buf[i][LogLinePrefixLength : LogLinePrefixLength+ci]
+		data.Lines = append(data.Lines, Line{
+			Timestamp: t.Unix(),
+			Text:      buf[i][ci+LogLinePrefixLength+2:],
+		})
+	}
+	d, _ := json.Marshal(data)
 	w.Write(d)
 }
 
@@ -415,16 +442,27 @@ func nickFilter(nick string) func([]byte) bool {
 }
 
 // serveError ...
-func serveError(w http.ResponseWriter, err error) {
-	if _, ok := w.Header()["Content-Type"]; !ok {
-		w.Header().Set("Content-type", "text/plain")
-	}
-	if err == ErrNotFound {
-		http.Error(w, err.Error(), http.StatusNotFound)
-	} else if err != nil {
+func serveError(w http.ResponseWriter, e error) {
+	tpl, err := ace.Load(common.GetConfig().Server.ViewPath+"/layout", common.GetConfig().Server.ViewPath+"/error", nil)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	data := map[string]interface{}{}
+	if e == ErrNotFound {
+		w.WriteHeader(http.StatusNotFound)
+		data["Message"] = e.Error()
+	} else if e != nil {
+		// w.WriteHeader(http.StatusInternalServerError)
+		data["Message"] = e.Error()
 	} else {
-		http.Error(w, "Unknown Error", http.StatusInternalServerError)
+		// w.WriteHeader(http.StatusInternalServerError)
+		data["Message"] = "Unknown Error"
+	}
+	w.Header().Set("Content-type", "text/html")
+	if err := tpl.Execute(w, data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
