@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/slugalisk/overrustlelogs/common"
@@ -111,6 +112,7 @@ func ChannelHandle(w http.ResponseWriter, r *http.Request) {
 		serveError(w, err)
 		return
 	}
+	sort.Sort(dirsByMonth(paths))
 	serveDirIndex(w, []string{vars["channel"]}, paths)
 }
 
@@ -207,7 +209,20 @@ func PremiumUserHandle(w http.ResponseWriter, r *http.Request) {
 // BroadcasterHandle channel index
 func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter(vars["channel"][:len(vars["channel"])-8]))
+	nick := vars["channel"][:len(vars["channel"])-8]
+	search, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+vars["channel"], nick)
+	if err != nil {
+		serveError(w, ErrNotFound)
+		return
+	}
+	rs, err := search.Next()
+	if err == io.EOF {
+		serveError(w, ErrNotFound)
+		return
+	} else if err != nil {
+		serveError(w, err)
+	}
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter(rs.Nick()))
 }
 
 // SubscriberHandle channel index
@@ -311,6 +326,29 @@ ScanLogs:
 		Lines []string `json:"lines"`
 	}{buf[index:]})
 	w.Write(d)
+}
+
+type dirsByMonth []string
+
+func (l dirsByMonth) Len() int {
+	return len(l)
+}
+
+func (l dirsByMonth) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
+}
+
+func (l dirsByMonth) Less(i, j int) bool {
+	format := "January 2006"
+	a, err := time.Parse(format, l[i])
+	if err != nil {
+		return true
+	}
+	b, err := time.Parse(format, l[j])
+	if err != nil {
+		return false
+	}
+	return b.After(a)
 }
 
 func readDirIndex(path string) ([]string, error) {
