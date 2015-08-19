@@ -27,6 +27,7 @@ const (
 	destinyPath         = "Destinygg chatlog"
 	twitchPath          = "Destiny chatlog"
 	defaultNukeDuration = 10 * time.Minute
+	cooldownDuration    = 10 * time.Second
 )
 
 // errors
@@ -65,27 +66,25 @@ type command func(m *common.Message, r *bufio.Reader) (string, error)
 
 // Bot commands
 type Bot struct {
-	c         *common.DestinyChat
-	stop      chan bool
-	start     time.Time
-	nukeEOL   time.Time
-	nukeText  []byte
-	lastLine  string
-	lastWrite time.Time
-	cooldown  int
-	public    map[string]command
-	private   map[string]command
-	admins    map[string]struct{}
-	ignore    map[string]struct{}
+	c           *common.DestinyChat
+	stop        chan bool
+	start       time.Time
+	nukeEOL     time.Time
+	nukeText    []byte
+	lastLine    string
+	cooldownEOL time.Time
+	public      map[string]command
+	private     map[string]command
+	admins      map[string]struct{}
+	ignore      map[string]struct{}
 }
 
 func NewBot(c *common.DestinyChat) *Bot {
 	b := &Bot{
-		c:        c,
-		stop:     make(chan bool),
-		start:    time.Now(),
-		admins:   make(map[string]struct{}, len(common.GetConfig().Bot.Admins)),
-		cooldown: 10,
+		c:      c,
+		stop:   make(chan bool),
+		start:  time.Now(),
+		admins: make(map[string]struct{}, len(common.GetConfig().Bot.Admins)),
 	}
 	for _, admin := range common.GetConfig().Bot.Admins {
 		b.admins[admin] = struct{}{}
@@ -129,19 +128,11 @@ func (b *Bot) Run() {
 				if rs, err := b.runCommand(b.public, m); err == nil && rs != "" {
 					if b.isNuked(rs) {
 						b.addIgnore(m.Nick)
-					} else if rs != b.lastLine {
-						if time.Now().After(b.lastWrite) {
-							b.lastLine = rs
-							b.lastWrite = time.Now().Add(b.cooldown * time.Second)
-							if err := b.c.Write("MSG", rs); err != nil {
-								log.Println(err)
-							}
-						} else if b.isAdmin(m.Nick) {
-							b.lastLine = rs
-							b.lastWrite = time.Now().Add(b.cooldown * time.Second)
-							if err := b.c.Write("MSG", rs); err != nil {
-								log.Println(err)
-							}
+					} else if rs != b.lastLine && (b.isAdmin(m.Nick) || time.Now().After(b.cooldownEOL)) {
+						b.lastLine = rs
+						b.cooldownEOL = time.Now().Add(cooldownDuration)
+						if err := b.c.Write("MSG", rs); err != nil {
+							log.Println(err)
 						}
 					}
 				} else if err != nil {
