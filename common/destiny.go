@@ -117,8 +117,8 @@ func (c *DestinyChat) send(command string, msg map[string]string) error {
 	buf.WriteString(command)
 	buf.WriteString(" ")
 	buf.Write(data)
-	c.Lock()
-	defer c.Unlock()
+	c.RLock()
+	defer c.RUnlock()
 	if err := c.conn.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
 		log.Printf("error sending message %s", err)
 		c.reconnect()
