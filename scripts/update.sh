@@ -6,24 +6,6 @@ git pull
 
 source /etc/profile
 
-if [[ $1 == "bot" ]]; then
-	echo "updating the orl-bot...\n"
-	updateBot
-elif [[ $1 == "server" ]]; then
-	echo "updating the orl-server...\n"
-	updateServer
-elif [[ $1 == "logger" ]]; then
-	echo "updating the orl-logger"
-	updateLogger
-else
-	echo "updating everything...\n"
-	updateBot
-	updateLogger
-	updateServer
-	echo "updating complete"
-fi
-
-
 updateBot(){
 	go install $src/bot
 
@@ -62,3 +44,20 @@ updateLogger(){
 	start orl-logger
 	echo "updated the orl-logger"
 }
+
+if [[ $1 == "bot" ]]; then
+	echo "updating the orl-bot..."
+	updateBot
+elif [[ $1 == "server" ]]; then
+	echo "updating the orl-server..."
+	updateServer
+elif [[ $1 == "logger" ]]; then
+	echo "updating the orl-logger"
+	updateLogger
+else
+	echo "updating everything..."
+	updateBot
+	updateLogger
+	updateServer
+	echo "updating complete"
+fi
