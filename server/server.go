@@ -78,7 +78,7 @@ func main() {
 	select {
 	case <-sigint:
 		log.Println("i love you guys, be careful")
-		os.Exit(1)
+		os.Exit(0)
 	}
 }
 

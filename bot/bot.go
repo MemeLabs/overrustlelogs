@@ -57,7 +57,7 @@ func main() {
 	case <-sigint:
 		b.Stop()
 		log.Println("i love you guys, be careful")
-		os.Exit(1)
+		os.Exit(0)
 	}
 }
 
@@ -88,8 +88,10 @@ func NewBot(c *common.DestinyChat) *Bot {
 		b.admins[admin] = struct{}{}
 	}
 	b.public = map[string]command{
-		"log":    b.handleDestinyLog,
-		"tlog":   b.handleTwitchLog,
+		"logs":   b.handleDestinyLogs,
+		"log":    b.handleDestinyLogs,
+		"tlogs":  b.handleTwitchLogs,
+		"tlog":   b.handleTwitchLogs,
 		"nuke":   b.handleSimpleNuke,
 		"aegis":  b.handleAegis,
 		"uptime": b.handleUptime,
@@ -238,11 +240,11 @@ func (b *Bot) handleUnignore(m *common.Message, r *bufio.Reader) (string, error)
 	return "", nil
 }
 
-func (b *Bot) handleDestinyLog(m *common.Message, r *bufio.Reader) (string, error) {
+func (b *Bot) handleDestinyLogs(m *common.Message, r *bufio.Reader) (string, error) {
 	return b.handleLog(destinyPath, r)
 }
 
-func (b *Bot) handleTwitchLog(m *common.Message, r *bufio.Reader) (string, error) {
+func (b *Bot) handleTwitchLogs(m *common.Message, r *bufio.Reader) (string, error) {
 	return b.handleLog(twitchPath, r)
 }
 

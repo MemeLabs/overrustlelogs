@@ -24,11 +24,7 @@ func ReadNickList(n NickStore, path string) error {
 	offset := 0
 	for i, v := range buf {
 		if v == 0 {
-			if i == offset {
-				break
-			}
-			nick := string(buf[offset:i])
-			n.Add(nick)
+			n.Add(string(buf[offset:i]))
 			offset = i + 1
 		}
 	}

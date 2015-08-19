@@ -75,7 +75,7 @@ func CompressFile(path string) (*os.File, error) {
 	return d, nil
 }
 
-// UncompressFile compress an existing file
+// UncompressFile uncompress an existing file
 func UncompressFile(path string) (*os.File, error) {
 	d, err := ReadCompressedFile(path)
 	if err != nil {

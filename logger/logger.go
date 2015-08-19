@@ -41,6 +41,6 @@ func main() {
 	case <-sigint:
 		logs.Close()
 		log.Println("i love you guys, be careful")
-		os.Exit(1)
+		os.Exit(0)
 	}
 }
