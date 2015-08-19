@@ -25,9 +25,10 @@ type Config struct {
 		ChannelListPath string
 	}
 	Server struct {
-		ViewPath      string
-		Address       string
-		MaxStalkLines int
+		ViewPath        string
+		Address         string
+		MaxStalkLines   int
+		MaxLogCacheSize int64
 	}
 	Bot struct {
 		IgnoreListPath string

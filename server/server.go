@@ -516,36 +516,35 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 	}
 	w.Header().Set("Content-type", "text/plain")
 	start := time.Now()
-	ls := make([][][]byte, len(logs))
 	today := time.Now().UTC().Format("2006-01-02") + ".txt"
-	for i, name := range logs {
+	for _, name := range logs {
+		var lines [][]byte
 		fullPath := path + "/" + name
 		if name != today {
 			if l, ok := cache.get(fullPath); ok {
-				ls[i] = l
-				continue
+				lines = l
 			}
 		}
-		data, err := readLogFile(fullPath)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		if len(lines) == 0 {
+			data, err := readLogFile(fullPath)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			lines = bytes.Split(data, []byte{'\n'})
+			if name != today {
+				cache.add(fullPath, lines, int64(len(data)))
+			}
 		}
-		ls[i] = bytes.Split(data, []byte{'\n'})
-		if name != today {
-			cache.add(fullPath, ls[i], int64(len(data)))
-		}
-	}
-	for i := 0; i < len(ls); i++ {
-		for j := 0; j < len(ls[i]); j++ {
+		for i := 0; i < len(lines); i++ {
 			if err != nil {
 				if err != io.EOF {
 					log.Printf("error reading bytes %s", err)
 				}
 				break
 			}
-			if filter(ls[i][j]) {
-				w.Write(ls[i][j])
+			if filter(lines[i]) {
+				w.Write(lines[i])
 				w.Write([]byte{'\n'})
 			}
 		}

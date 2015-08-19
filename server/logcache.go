@@ -5,9 +5,8 @@ import (
 	"sync/atomic"
 
 	"github.com/hashicorp/golang-lru"
+	"github.com/slugalisk/overrustlelogs/common"
 )
-
-const maxLogCacheSize = int64(500000000)
 
 type logCache struct {
 	c    *lru.Cache
@@ -33,15 +32,15 @@ func newLogCache() *logCache {
 }
 
 func (l *logCache) handleEvict(key interface{}, item interface{}) {
-	atomic.AddInt64(l.size, -item.(logCacheItem).size)
+	atomic.AddInt64(l.size, -item.(*logCacheItem).size)
 }
 
 func (l *logCache) add(key string, data [][]byte, size int64) {
-	if size > maxLogCacheSize {
+	if size > common.GetConfig().Server.MaxLogCacheSize {
 		return
 	}
 	for {
-		if atomic.LoadInt64(l.size)+size < maxLogCacheSize {
+		if atomic.LoadInt64(l.size)+size < common.GetConfig().Server.MaxLogCacheSize {
 			break
 		}
 		l.c.RemoveOldest()
