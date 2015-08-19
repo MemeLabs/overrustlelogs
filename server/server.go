@@ -49,13 +49,14 @@ func init() {
 	configPath := flag.String("config", "", "config path")
 	flag.Parse()
 	common.SetupConfig(*configPath)
-	cache = newLogCache()
 }
 
 // Start server
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	cache = newLogCache()
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", BaseHandle).Methods("GET")

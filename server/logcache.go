@@ -11,7 +11,7 @@ const maxLogCacheSize = int64(500000000)
 
 type logCache struct {
 	c    *lru.Cache
-	size int64
+	size *int64
 }
 
 type logCacheItem struct {
@@ -20,7 +20,8 @@ type logCacheItem struct {
 }
 
 func newLogCache() *logCache {
-	l := &logCache{}
+	var s int64
+	l := &logCache{size: &s}
 
 	c, err := lru.NewWithEvict(1000, l.handleEvict)
 	if err != nil {
@@ -32,18 +33,21 @@ func newLogCache() *logCache {
 }
 
 func (l *logCache) handleEvict(key interface{}, item interface{}) {
-	atomic.AddInt64(&l.size, -item.(logCacheItem).size)
+	atomic.AddInt64(l.size, -item.(logCacheItem).size)
 }
 
 func (l *logCache) add(key string, data [][]byte, size int64) {
+	if size > maxLogCacheSize {
+		return
+	}
 	for {
-		if atomic.LoadInt64(&l.size)+size < maxLogCacheSize {
+		if atomic.LoadInt64(l.size)+size < maxLogCacheSize {
 			break
 		}
 		l.c.RemoveOldest()
 	}
 	l.c.Add(key, &logCacheItem{size, data})
-	atomic.AddInt64(&l.size, size)
+	atomic.AddInt64(l.size, size)
 }
 
 func (l *logCache) get(key string) ([][]byte, bool) {
