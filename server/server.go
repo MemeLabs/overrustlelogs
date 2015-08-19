@@ -43,10 +43,13 @@ var (
 	NicksExtension = regexp.MustCompile("\\.nicks\\.lz4$")
 )
 
+var cache *logCache
+
 func init() {
 	configPath := flag.String("config", "", "config path")
 	flag.Parse()
 	common.SetupConfig(*configPath)
+	cache = newLogCache()
 }
 
 // Start server
@@ -511,24 +514,40 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 		return
 	}
 	w.Header().Set("Content-type", "text/plain")
-	for _, name := range logs {
-		data, err := readLogFile(path + "/" + name)
+	start := time.Now()
+	ls := make([][][]byte, len(logs))
+	today := time.Now().UTC().Format("2006-01-02") + ".txt"
+	for i, name := range logs {
+		fullPath := path + "/" + name
+		if name != today {
+			if l, ok := cache.get(fullPath); ok {
+				ls[i] = l
+				continue
+			}
+		}
+		data, err := readLogFile(fullPath)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		r := bufio.NewReaderSize(bytes.NewReader(data), len(data))
-		for {
-			line, err := r.ReadSlice('\n')
+		ls[i] = bytes.Split(data, []byte{'\n'})
+		if name != today {
+			cache.add(fullPath, ls[i], int64(len(data)))
+		}
+	}
+	for i := 0; i < len(ls); i++ {
+		for j := 0; j < len(ls[i]); j++ {
 			if err != nil {
 				if err != io.EOF {
 					log.Printf("error reading bytes %s", err)
 				}
 				break
 			}
-			if filter(line) {
-				w.Write(line)
+			if filter(ls[i][j]) {
+				w.Write(ls[i][j])
+				w.Write([]byte{'\n'})
 			}
 		}
 	}
+	log.Printf("generated %s user log in %s", path, time.Since(start))
 }

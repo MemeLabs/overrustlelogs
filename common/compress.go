@@ -12,14 +12,14 @@ import (
 func WriteCompressedFile(path string, data []byte) (*os.File, error) {
 	c := make([]byte, lz4.CompressBound(data)+4)
 	size, err := lz4.CompressHC(data, c[4:])
+	if err != nil {
+		return nil, err
+	}
 	c[0] = byte(len(data) >> 24)
 	c[1] = byte(len(data) >> 16)
 	c[2] = byte(len(data) >> 8)
 	c[3] = byte(len(data))
 	size += 4
-	if err != nil {
-		return nil, err
-	}
 	f, err := os.OpenFile(lz4Path(path), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
