@@ -130,7 +130,7 @@ func (b *Bot) Run() {
 					if b.isNuked(rs) {
 						b.addIgnore(m.Nick)
 					} else if rs != b.lastLine {
-						if b.lastWrite.After(time.Now()) {
+						if time.Now().After(b.lastWrite) {
 							b.lastLine = rs
 							b.lastWrite = time.Now().Add(b.cooldown * time.Second)
 							if err := b.c.Write("MSG", rs); err != nil {
