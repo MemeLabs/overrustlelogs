@@ -17,6 +17,7 @@ var commands = map[string]command{
 	"compress":   compress,
 	"uncompress": uncompress,
 	"read":       read,
+	"readsize":   readSize,
 	"readnicks":  readNicks,
 	"nicks":      nicks,
 	"migrate":    migrate,
@@ -114,6 +115,23 @@ func read() error {
 			return err
 		}
 		os.Stdout.Write(buf)
+	} else {
+		return errors.New("invalid file")
+	}
+	return nil
+}
+
+func readSize() error {
+	if len(os.Args) < 3 {
+		return errors.New("not enough args")
+	}
+	path := os.Args[2]
+	if regexp.MustCompile("\\.txt\\.lz4$").MatchString(path) {
+		size, err := common.ReadUncompressedSize(path)
+		if err != nil {
+			return err
+		}
+		fmt.Println(size)
 	} else {
 		return errors.New("invalid file")
 	}

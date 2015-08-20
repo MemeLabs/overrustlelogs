@@ -33,10 +33,12 @@ func newLogCache() *logCache {
 
 func (l *logCache) handleEvict(key interface{}, item interface{}) {
 	atomic.AddInt64(l.size, -item.(*logCacheItem).size)
+	bufferCache.Put(item.(*logCacheItem).data[0])
 }
 
 func (l *logCache) add(key string, data [][]byte, size int64) {
 	if size > common.GetConfig().Server.MaxLogCacheSize {
+		bufferCache.Put(data[0])
 		return
 	}
 	for {

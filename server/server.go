@@ -7,7 +7,6 @@ import (
 	"errors"
 	"flag"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -27,6 +26,8 @@ import (
 	"github.com/yosssi/ace"
 )
 
+import _ "net/http/pprof"
+
 // temp ish.. move to config
 const (
 	LogLinePrefixLength = 26
@@ -44,6 +45,7 @@ var (
 )
 
 var cache *logCache
+var bufferCache *common.BufferCache
 
 func init() {
 	configPath := flag.String("config", "", "config path")
@@ -56,7 +58,10 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
+	go http.ListenAndServe(":8888", nil)
+
 	cache = newLogCache()
+	bufferCache = common.NewBufferCache(300000000, 0.8)
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", BaseHandle).Methods("GET")
@@ -417,14 +422,41 @@ func readLogDir(path string) ([]string, error) {
 func readLogFile(path string) ([]byte, error) {
 	var buf []byte
 	path = LogExtension.ReplaceAllString(path, "")
-	buf, err := common.ReadCompressedFile(path + ".txt")
-	if os.IsNotExist(err) {
+	f, err := os.Open(path + ".txt.lz4")
+	if err == nil {
+		s, err := f.Stat()
+		if err != nil {
+			return nil, err
+		}
+		src, err := bufferCache.Get(s.Size())
+		defer bufferCache.Put(src)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := io.ReadFull(f, src); err != nil {
+			return nil, err
+		}
+		buf, err = bufferCache.Get(int64(common.UncompressedSize(src)))
+		if err != nil {
+			return nil, err
+		}
+		if err := common.Uncompress(src, buf); err != nil {
+			return nil, err
+		}
+	} else if os.IsNotExist(err) {
 		f, err := os.Open(path + ".txt")
 		if os.IsNotExist(err) {
 			return nil, ErrNotFound
 		}
-		buf, err = ioutil.ReadAll(f)
+		s, err := f.Stat()
 		if err != nil {
+			return nil, err
+		}
+		buf, err := bufferCache.Get(s.Size())
+		if err != nil {
+			return nil, err
+		}
+		if _, err := io.ReadFull(f, buf); err != nil {
 			return nil, err
 		}
 	} else if err != nil {
@@ -539,7 +571,7 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 		for i := 0; i < len(lines); i++ {
 			if err != nil {
 				if err != io.EOF {
-					log.Printf("error reading bytes %s", err)
+					log.Printf("error reading line %s", err)
 				}
 				break
 			}

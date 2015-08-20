@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bufio"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -52,6 +53,36 @@ func ReadCompressedFile(path string) ([]byte, error) {
 		return nil, err
 	}
 	return data, nil
+}
+
+// Uncompress byte slice
+func Uncompress(d []byte, b []byte) error {
+	return lz4.Uncompress(d[4:], b)
+}
+
+// ReadUncompressedSize read uncompressed size from file
+func ReadUncompressedSize(path string) (uint32, error) {
+	f, err := os.Open(lz4Path(path))
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	r := bufio.NewReader(f)
+	c, err := r.ReadBytes(4)
+	if err != nil {
+		return 0, err
+	}
+	return UncompressedSize(c), nil
+}
+
+// UncompressedSize read uncompressed size from byte slice
+func UncompressedSize(c []byte) uint32 {
+	size := uint32(0)
+	size |= uint32(c[0]) << 24
+	size |= uint32(c[1]) << 16
+	size |= uint32(c[2]) << 8
+	size |= uint32(c[3])
+	return size
 }
 
 // CompressFile compress an existing file
