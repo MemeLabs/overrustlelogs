@@ -1,0 +1,4 @@
+= content body
+  div class="info text-center"
+    h3
+      a href="https://github.com/slugalisk/overrustlelogs/commits/master" target="_blank" GitHub
