@@ -54,8 +54,7 @@ html lang=en
       google_ad_slot = "2420900830";
       google_ad_width = 728;
       google_ad_height = 90;
-    = javascript
-      src="//pagead2.googlesyndication.com/pagead/show_ads.js"
+    script type="text/javascript" src="//pagead2.googlesyndication.com/pagead/show_ads.js"
 
     script type="text/rocketscript" data-rocketsrc="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"
     script type="text/rocketscript" data-rocketsrc="//cdnjs.cloudflare.com/ajax/libs/stupidtable/0.0.1/stupidtable.min.js"
