@@ -40,7 +40,7 @@ html lang=en
 
           ul class="nav navbar-nav navbar-right"
             li
-              a href="/changelog" Changelog
+              a href="https://github.com/slugalisk/overrustlelogs/commits/master" Changelog
             li
               a href="/contact" Contact
             li class="donate"
