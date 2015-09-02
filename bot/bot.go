@@ -260,7 +260,7 @@ func (b *Bot) handleLog(path string, r *bufio.Reader) (string, error) {
 		log.Println("err", err)
 		return b.toURL("/" + path + "/" + time.Now().UTC().Format("January 2006") + "/"), nil
 	}
-	if !validNick.Match(nick) {
+	if !validNick.Match([]byte(nick)) {
 		return "", ErrInvalidNick
 		log.Println(ErrInvalidNick.Error())
 	}
