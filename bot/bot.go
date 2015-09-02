@@ -254,16 +254,20 @@ func (b *Bot) handleTwitchLogs(m *common.Message, r *bufio.Reader) (string, erro
 
 func (b *Bot) handleLog(path string, r *bufio.Reader) (string, error) {
 	nick, err := r.ReadString(' ')
+	log.Println(nick, ":nick")
 	nick = strings.TrimSpace(nick)
 	if (err != nil && err != io.EOF) || len(nick) < 1 {
+		log.Println("err", err)
 		return b.toURL("/" + path + "/" + time.Now().UTC().Format("January 2006") + "/"), nil
 	}
 	if !validNick.Match(nick) {
 		return "", ErrInvalidNick
+		log.Println(ErrInvalidNick.Error())
 	}
 	s, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+path, string(nick))
 	if err != nil {
 		return "", err
+		log.Println("err:", err)
 	}
 	rs, err := s.Next()
 	if err != nil {
