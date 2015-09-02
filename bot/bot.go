@@ -34,6 +34,7 @@ const (
 var (
 	ErrIgnored     = errors.New("user ignored")
 	ErrNukeTimeout = errors.New("overrustle nuked")
+	ErrInvalidNick = errors.New("invalid nick")
 )
 
 var validNick = regexp.MustCompile("^[a-zA-Z0-9_]+$")
@@ -252,9 +253,13 @@ func (b *Bot) handleTwitchLogs(m *common.Message, r *bufio.Reader) (string, erro
 }
 
 func (b *Bot) handleLog(path string, r *bufio.Reader) (string, error) {
-	nick, err := ioutil.ReadAll(r)
-	if err != nil || !validNick.Match(nick) {
-		return "", err
+	nick, err := r.ReadString(' ')
+	nick = strings.TrimSpace(nick)
+	if (err != nil && err != io.EOF) || len(nick) < 1 {
+		return b.toURL("/" + path + "/" + time.Now().UTC().Format("January 2006") + "/"), nil
+	}
+	if !validNick.Match(nick) {
+		return "", ErrInvalidNick
 	}
 	s, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+path, string(nick))
 	if err != nil {
