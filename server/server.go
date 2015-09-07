@@ -39,8 +39,8 @@ var (
 
 // log file extension pattern
 var (
-	LogExtension   = regexp.MustCompile("\\.txt(\\.lz4)?$")
-	NicksExtension = regexp.MustCompile("\\.nicks\\.lz4$")
+	LogExtension   = regexp.MustCompile(`\.txt(\.lz4)?$`)
+	NicksExtension = regexp.MustCompile(`\.nicks\.lz4$`)
 )
 
 func init() {
@@ -65,6 +65,8 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{nick:[a-zA-Z0-9_-]{1,25}}.txt", UserHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}", PremiumHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}/{month:[a-zA-Z]+ [0-9]{4}}.txt", PremiumUserHandle).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/current", DestinyBaseHandle).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/current/{nick:[a-zA-Z0-9_]+}", DestinyNickHandle).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", DestinyBroadcasterHandle).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", DestinySubscriberHandle).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans.txt", DestinyBanHandle).Methods("GET")
@@ -269,6 +271,44 @@ func DestinySubscriberHandle(w http.ResponseWriter, r *http.Request) {
 func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("Ban"))
+}
+
+// DestinyBaseHandle shows the most recent months logs directly on the subdomain
+func DestinyBaseHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	vars["channel"] = "Destinygg chatlog"
+	vars["month"] = time.Now().Format("January 2006")
+	MonthHandle(w, r)
+}
+
+// DestinyNickHandle shows the users most recent available log
+func DestinyNickHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	vars["channel"] = "Destinygg chatlog"
+	var err error
+	defer (func() {
+		if err != nil {
+			serveError(w, ErrNotFound)
+			return
+		}
+	})()
+
+	search, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+vars["channel"], vars["nick"])
+	if err != nil {
+		return
+	}
+	rs, err := search.Next()
+	if err != nil {
+		return
+	}
+
+	if rs.Nick() != vars["nick"] {
+		http.Redirect(w, r, "./"+rs.Nick(), 301)
+		return
+	}
+
+	vars["month"] = rs.Month()
+	UserHandle(w, r)
 }
 
 // StalkHandle return n most recent lines of chat for user
