@@ -213,9 +213,8 @@ func (b *Bot) toURL(host string, path string) string {
 		log.Fatalf("error parsing configured log host %s", err)
 	}
 	u.Scheme = ""
-	u.Host = u.Host[2:]
 	u.Path = path
-	return u.String()
+	return u.String()[2:]
 }
 
 func (b *Bot) handlePremiumLog(m *common.Message, r *bufio.Reader) (string, error) {

@@ -49,13 +49,6 @@ html lang=en
 
     = yield body
 
-    = javascript
-      google_ad_client = "ca-pub-9523520456625665";
-      google_ad_slot = "2420900830";
-      google_ad_width = 728;
-      google_ad_height = 90;
-    script type="text/javascript" src="//pagead2.googlesyndication.com/pagead/show_ads.js"
-
     script type="text/rocketscript" data-rocketsrc="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"
     script type="text/rocketscript" data-rocketsrc="//cdnjs.cloudflare.com/ajax/libs/stupidtable/0.0.1/stupidtable.min.js"
     script type="text/rocketscript" data-rocketsrc="/assets/js/listr.min.js"
