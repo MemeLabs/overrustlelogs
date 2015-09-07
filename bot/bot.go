@@ -207,17 +207,19 @@ func (b *Bot) removeIgnore(nick string) {
 	delete(b.ignore, strings.ToLower(string(nick)))
 }
 
-func (b *Bot) toURL(path string) string {
-	var u, err = url.Parse(common.GetConfig().LogHost)
+func (b *Bot) toURL(host string, path string) string {
+	var u, err = url.Parse(host)
 	if err != nil {
 		log.Fatalf("error parsing configured log host %s", err)
 	}
+	u.Scheme = ""
+	u.Host = u.Host[2:]
 	u.Path = path
 	return u.String()
 }
 
 func (b *Bot) handlePremiumLog(m *common.Message, r *bufio.Reader) (string, error) {
-	return b.toURL("/" + destinyPath + "/premium/" + m.Nick + "/" + time.Now().UTC().Format("January 2006") + ".txt"), nil
+	return b.toURL(common.GetConfig().LogHost, "/"+destinyPath+"/premium/"+m.Nick+"/"+time.Now().UTC().Format("January 2006")+".txt"), nil
 }
 
 func (b *Bot) handleIgnore(m *common.Message, r *bufio.Reader) (string, error) {
@@ -248,34 +250,23 @@ func (b *Bot) handleDestinyLogs(m *common.Message, r *bufio.Reader) (string, err
 		return s, err
 	}
 
-	u, err := url.Parse(common.GetConfig().DestinyGG.LogHost)
-	if err != nil {
-		log.Fatalf("error parsing configured log host %s", err)
-	}
-	u.Scheme = ""            // skip scheme
-	urlStr := u.String()[2:] // and skip the leading //
-
-	return rs.Month() + " logs. " + urlStr + "/" + rs.Nick(), nil
+	return rs.Month() + " logs. " + b.toURL(common.GetConfig().DestinyGG.LogHost, "/"+rs.Nick()), nil
 }
 
 func (b *Bot) handleTwitchLogs(m *common.Message, r *bufio.Reader) (string, error) {
-	return b.handleLog(twitchPath, r)
-}
-
-func (b *Bot) handleLog(path string, r *bufio.Reader) (string, error) {
-	rs, u, err := b.searchNickFromLine(path, r)
+	rs, s, err := b.searchNickFromLine(twitchPath, r)
 	if err != nil {
-		return u, err
+		return s, err
 	}
 
-	return rs.Month() + " logs. " + b.toURL("/"+path+"/"+rs.Month()+"/userlogs/"+rs.Nick()+".txt"), nil
+	return rs.Month() + " logs. " + b.toURL(common.GetConfig().LogHost, "/"+twitchPath+"/"+rs.Month()+"/userlogs/"+rs.Nick()+".txt"), nil
 }
 
 func (b *Bot) searchNickFromLine(path string, r *bufio.Reader) (*common.NickSearchResult, string, error) {
 	nick, err := r.ReadString(' ')
 	nick = strings.TrimSpace(nick)
 	if (err != nil && err != io.EOF) || len(nick) < 1 {
-		return nil, b.toURL("/" + path + "/" + time.Now().UTC().Format("January 2006") + "/"), nil
+		return nil, b.toURL(common.GetConfig().LogHost, "/"+path+"/"+time.Now().UTC().Format("January 2006")+"/"), nil
 	}
 	if !validNick.Match([]byte(nick)) {
 		return nil, "", ErrInvalidNick
@@ -323,11 +314,11 @@ func (b *Bot) handleAegis(m *common.Message, r *bufio.Reader) (string, error) {
 }
 
 func (b *Bot) handleBans(m *common.Message, r *bufio.Reader) (string, error) {
-	return b.toURL("/" + destinyPath + "/" + time.Now().UTC().Format("January 2006") + "/bans.txt"), nil
+	return b.toURL(common.GetConfig().LogHost, "/"+destinyPath+"/"+time.Now().UTC().Format("January 2006")+"/bans.txt"), nil
 }
 
 func (b *Bot) handleSubs(m *common.Message, r *bufio.Reader) (string, error) {
-	return b.toURL("/" + destinyPath + "/" + time.Now().UTC().Format("January 2006") + "/subscribers.txt"), nil
+	return b.toURL(common.GetConfig().LogHost, "/"+destinyPath+"/"+time.Now().UTC().Format("January 2006")+"/subscribers.txt"), nil
 }
 
 func (b *Bot) handleUptime(m *common.Message, r *bufio.Reader) (string, error) {
