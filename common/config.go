@@ -9,6 +9,7 @@ import (
 // Config settings
 type Config struct {
 	DestinyGG struct {
+		LogHost   string
 		SocketURL string
 		OriginURL string
 		Cookie    string

@@ -243,7 +243,19 @@ func (b *Bot) handleUnignore(m *common.Message, r *bufio.Reader) (string, error)
 }
 
 func (b *Bot) handleDestinyLogs(m *common.Message, r *bufio.Reader) (string, error) {
-	return b.handleLog(destinyPath, r)
+	rs, s, err := b.searchNickFromLine(destinyPath, r)
+	if err != nil {
+		return s, err
+	}
+
+	u, err := url.Parse(common.GetConfig().DestinyGG.LogHost)
+	if err != nil {
+		log.Fatalf("error parsing configured log host %s", err)
+	}
+	u.Scheme = ""            // skip scheme
+	urlStr := u.String()[2:] // and skip the leading //
+
+	return rs.Month() + " logs. " + urlStr + "/" + rs.Nick(), nil
 }
 
 func (b *Bot) handleTwitchLogs(m *common.Message, r *bufio.Reader) (string, error) {
@@ -251,23 +263,33 @@ func (b *Bot) handleTwitchLogs(m *common.Message, r *bufio.Reader) (string, erro
 }
 
 func (b *Bot) handleLog(path string, r *bufio.Reader) (string, error) {
+	rs, u, err := b.searchNickFromLine(path, r)
+	if err != nil {
+		return u, err
+	}
+
+	return rs.Month() + " logs. " + b.toURL("/"+path+"/"+rs.Month()+"/userlogs/"+rs.Nick()+".txt"), nil
+}
+
+func (b *Bot) searchNickFromLine(path string, r *bufio.Reader) (*common.NickSearchResult, string, error) {
 	nick, err := r.ReadString(' ')
 	nick = strings.TrimSpace(nick)
 	if (err != nil && err != io.EOF) || len(nick) < 1 {
-		return b.toURL("/" + path + "/" + time.Now().UTC().Format("January 2006") + "/"), nil
+		return nil, b.toURL("/" + path + "/" + time.Now().UTC().Format("January 2006") + "/"), nil
 	}
 	if !validNick.Match([]byte(nick)) {
-		return "", ErrInvalidNick
+		return nil, "", ErrInvalidNick
 	}
 	s, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+path, string(nick))
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 	rs, err := s.Next()
 	if err != nil {
-		return "No logs found for that user.", nil
+		return nil, "No logs found for that user.", nil
 	}
-	return rs.Month() + " logs. " + b.toURL("/"+path+"/"+rs.Month()+"/userlogs/"+rs.Nick()+".txt"), nil
+
+	return rs, "", nil
 }
 
 func (b *Bot) handleSimpleNuke(m *common.Message, r *bufio.Reader) (string, error) {
