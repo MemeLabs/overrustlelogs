@@ -285,28 +285,20 @@ func DestinyBaseHandle(w http.ResponseWriter, r *http.Request) {
 func DestinyNickHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	vars["channel"] = "Destinygg chatlog"
-	var err error
-	defer (func() {
-		if err != nil {
-			serveError(w, ErrNotFound)
-			return
-		}
-	})()
-
 	search, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+vars["channel"], vars["nick"])
 	if err != nil {
+		serveError(w, ErrNotFound)
 		return
 	}
 	rs, err := search.Next()
 	if err != nil {
+		serveError(w, ErrNotFound)
 		return
 	}
-
 	if rs.Nick() != vars["nick"] {
 		http.Redirect(w, r, "./"+rs.Nick(), 301)
 		return
 	}
-
 	vars["month"] = rs.Month()
 	UserHandle(w, r)
 }
