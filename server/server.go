@@ -169,7 +169,7 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 		serveError(w, err)
 		return
 	}
-	w.Header().Set("Content-type", "text/plain")
+	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
 	w.Write(data)
 }
 
@@ -557,7 +557,7 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 		serveError(w, err)
 		return
 	}
-	w.Header().Set("Content-type", "text/plain")
+	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
 	for _, name := range logs {
 		data, err := readLogFile(path + "/" + name)
 		if err != nil {
