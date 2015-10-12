@@ -249,7 +249,10 @@ func (b *Bot) handleDestinyLogs(m *common.Message, r *bufio.Reader) (string, err
 		return s, err
 	}
 
-	return rs.Month() + " logs. " + b.toURL(common.GetConfig().DestinyGG.LogHost, "/"+rs.Nick()), nil
+	if rs != nil {
+		return rs.Month() + " logs. " + b.toURL(common.GetConfig().DestinyGG.LogHost, "/"+rs.Nick()), nil
+	}
+	return b.toURL(common.GetConfig().DestinyGG.LogHost, "/"), nil
 }
 
 func (b *Bot) handleTwitchLogs(m *common.Message, r *bufio.Reader) (string, error) {
@@ -258,14 +261,17 @@ func (b *Bot) handleTwitchLogs(m *common.Message, r *bufio.Reader) (string, erro
 		return s, err
 	}
 
-	return rs.Month() + " logs. " + b.toURL(common.GetConfig().LogHost, "/"+twitchPath+"/"+rs.Month()+"/userlogs/"+rs.Nick()+".txt"), nil
+	if rs != nil {
+		return rs.Month() + " logs. " + b.toURL(common.GetConfig().LogHost, "/"+twitchPath+"/"+rs.Month()+"/userlogs/"+rs.Nick()+".txt"), nil
+	}
+	return b.toURL(common.GetConfig().LogHost, "/"+twitchPath+"/"+time.Now().UTC().Format("January 2006")+"/"), nil
 }
 
 func (b *Bot) searchNickFromLine(path string, r *bufio.Reader) (*common.NickSearchResult, string, error) {
 	nick, err := r.ReadString(' ')
 	nick = strings.TrimSpace(nick)
 	if (err != nil && err != io.EOF) || len(nick) < 1 {
-		return nil, b.toURL(common.GetConfig().LogHost, "/"+path+"/"+time.Now().UTC().Format("January 2006")+"/"), nil
+		return nil, "", nil
 	}
 	if !validNick.Match([]byte(nick)) {
 		return nil, "", ErrInvalidNick
@@ -276,7 +282,7 @@ func (b *Bot) searchNickFromLine(path string, r *bufio.Reader) (*common.NickSear
 	}
 	rs, err := s.Next()
 	if err != nil {
-		return nil, "No logs found for that user.", nil
+		return nil, "No logs found for that user.", err
 	}
 
 	return rs, "", nil
