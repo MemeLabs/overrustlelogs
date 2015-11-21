@@ -35,7 +35,7 @@ func (d *DestinyLogger) Log(mc <-chan *common.Message) {
 		case "UNMUTE":
 			d.writeLine(m.Time, "Ban", m.Data+" unmuted by "+m.Nick)
 		case "BROADCAST":
-			if strings.Contains(m.Data, "subscriber!") || strings.Contains(m.Data, "subscribed on Twitch!") {
+			if strings.Contains(m.Data, "subscriber!") || strings.Contains(m.Data, "subscribed on Twitch!") || strings.Contains(m.Data, "has resubscribed! Active for") {
 				d.writeLine(m.Time, "Subscriber", m.Data)
 			}
 		case "MSG":
