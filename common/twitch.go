@@ -236,7 +236,7 @@ func (c *TwitchChat) Leave(ch string) error {
 func (c *TwitchChat) saveChannels() error {
 	c.Lock()
 	defer c.Unlock()
-	c.channels = c.channels[:]
+	c.channels = []string{}
 	for ch := range c.messages {
 		c.channels = append(c.channels, ch)
 	}
