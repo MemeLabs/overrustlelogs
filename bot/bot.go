@@ -319,11 +319,11 @@ func (b *Bot) handleAegis(m *common.Message, r *bufio.Reader) (string, error) {
 }
 
 func (b *Bot) handleBans(m *common.Message, r *bufio.Reader) (string, error) {
-	return b.toURL(common.GetConfig().LogHost, "/"+destinyPath+"/"+time.Now().UTC().Format("January 2006")+"/bans.txt"), nil
+	return b.toURL(common.GetConfig().DestinyGG.LogHost, "/Ban"), nil
 }
 
 func (b *Bot) handleSubs(m *common.Message, r *bufio.Reader) (string, error) {
-	return b.toURL(common.GetConfig().LogHost, "/"+destinyPath+"/"+time.Now().UTC().Format("January 2006")+"/subscribers.txt"), nil
+	return b.toURL(common.GetConfig().DestinyGG.LogHost, "/Subscriber"), nil
 }
 
 func (b *Bot) handleUptime(m *common.Message, r *bufio.Reader) (string, error) {
