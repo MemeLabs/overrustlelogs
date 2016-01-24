@@ -20,6 +20,7 @@ import (
 var (
 	ErrTwitchAlreadyInChannel = errors.New("already in channel")
 	ErrTwitchNotInChannel     = errors.New("not in channel")
+	ErrChannelNotValid        = errors.New("not a valid channel")
 )
 
 // TwitchChat twitch chat client
@@ -164,7 +165,11 @@ func (c *TwitchChat) runCommand(source string, m *Message) {
 			if err := c.Join(ld[1], false); err == nil {
 				c.send("PRIVMSG #" + source + " :Logging " + ld[1])
 			} else {
-				c.send("PRIVMSG #" + source + " :Already logging " + ld[1])
+				if err == ErrChannelNotValid {
+					c.send("PRIVMSG #" + source + " :Channel doesn't exist!")
+				} else {
+					c.send("PRIVMSG #" + source + " :Already logging " + ld[1])
+				}
 			}
 		} else if strings.EqualFold(d[0], "!leave") {
 			if err := c.Leave(ld[1]); err == nil {
@@ -196,6 +201,9 @@ func (c *TwitchChat) send(m string) {
 // Join channel
 func (c *TwitchChat) Join(ch string, init bool) error {
 	ch = strings.ToLower(ch)
+	if !channelExists(ch) {
+		return ErrChannelNotValid
+	}
 	c.Lock()
 	_, ok := c.messages[ch]
 	if !ok {
@@ -231,6 +239,19 @@ func (c *TwitchChat) Leave(ch string) error {
 	delete(c.messages, ch)
 	c.Unlock()
 	return c.saveChannels()
+}
+
+// channelExists
+func channelExists(ch string) bool {
+	res, err := http.Head("https://api.twitch.tv/kraken/users/" + ch)
+	if err != nil {
+		return false
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return false
+	}
+	return true
 }
 
 func (c *TwitchChat) saveChannels() error {
