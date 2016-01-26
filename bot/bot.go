@@ -125,14 +125,19 @@ func (b *Bot) Run() {
 		case m := <-b.c.Messages():
 			if m.Command == "MSG" {
 				if rs, err := b.runCommand(b.public, m); err == nil && rs != "" {
+					isAdmin := b.isAdmin(m.Nick)
 					if b.isNuked(rs) {
 						b.addIgnore(m.Nick)
-					} else if rs != b.lastLine && (b.isAdmin(m.Nick) || time.Now().After(b.cooldownEOL)) {
-						b.lastLine = rs
-						b.cooldownEOL = time.Now().Add(cooldownDuration)
-						if err := b.c.Write("MSG", rs); err != nil {
+					} else if isAdmin || (rs != b.lastLine && time.Now().After(b.cooldownEOL)) {
+						if isAdmin && b.lastLine == rs {
+							if err := b.c.Write("MSG", rs+" ."); err != nil {
+								log.Println(err)
+							}
+						} else if err := b.c.Write("MSG", rs); err != nil {
 							log.Println(err)
 						}
+						b.cooldownEOL = time.Now().Add(cooldownDuration)
+						b.lastLine = rs
 					}
 				} else if err != nil {
 					log.Println(err)
