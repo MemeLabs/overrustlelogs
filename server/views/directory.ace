@@ -1,16 +1,16 @@
 = content body
   div class="container"
-    div class="table-responsive"
-      table id="bs-table" class="table table-hover"
-        thead
-          tr
-             th class="col-lg-8 text-left" data-sort="string" Name
-
-        tbody data-link="row" class="rowlink"
-          {{range .Paths}}
-            tr
-              td class="text-left" data-sort-value="{{.Name}}"
-                span class="glyphicon glyphicon-{{.Icon}}" &nbsp;
-                a href="{{.Path}}"
-                  strong {{.Name}}
+    ul class="collection with-header"
+      {{if .Breadcrumbs}}
+        li class="collection-header"
+          a href="/"
+            i class="fa fa-home fa-fw"
+          {{range .Breadcrumbs}}
+            a href={{.Path}}  \ {{.Name}}
           {{end}}
+      {{end}}
+      {{range .Paths}}
+        a href="{{.Path}}" class="collection-item"
+          i class="fa fa-{{.Icon}} fa-fw"
+          span &nbsp; {{.Name}}
+      {{end}}

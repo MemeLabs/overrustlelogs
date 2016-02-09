@@ -8,9 +8,11 @@ html lang=en
     = javascript
       try{if (!window.CloudFlare) {var CloudFlare=[{verbose:0,p:0,byc:0,owlid:"cf",bag2:1,mirage2:0,oracle:0,paths:{cloudflare:"/cdn-cgi/nexp/dok3v=1613a3a185/"},atok:"55f506b8c93b95856ec102f6bc31d73f",petok:"cba3878429ac864995af99d4c3de9c5053d91350-1439773029-1800",betok:"090fb43b0743cfa5ae19b5f1871084b269ee8fb6-1439773029-120",zone:"overrustlelogs.net",rocket:"a",apps:{"ga_key":{"ua":"UA-46946005-1","ga_bs":"2"}}}];document.write('<script type="text/javascript" src="//ajax.cloudflare.com/cdn-cgi/nexp/dok3v=e9627cd26a/cloudflare.min.js"><'+'\/script>');}}catch(e){};
     link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico"
-    link rel="stylesheet" href="/assets/css/test.css"
-    link rel="stylesheet" href="/assets/css/listr.min.css"
-    link rel="stylesheet" href="/assets/css/jasny-bootstrap.min.css"
+    link rel="stylesheet" href="/assets/css/materialize.css" media="screen,projection"
+    link rel="stylesheet" href="/assets/css/font-awesome.min.css"
+    link rel="stylesheet" href="/assets/css/orl.css"
+    script src="//code.jquery.com/jquery-1.12.0.min.js"
+    script src="/assets/js/materialize.min.js"
     = javascript
       var _gaq = _gaq || [];
       _gaq.push(['_setAccount', 'UA-46946005-1']);
@@ -23,33 +25,35 @@ html lang=en
       })();
 
       (function(b){(function(a){"__CF"in b&&"DJS"in b.__CF?b.__CF.DJS.push(a):"addEventListener"in b?b.addEventListener("load",a,!1):b.attachEvent("onload",a)})(function(){"FB"in b&&"Event"in FB&&"subscribe"in FB.Event&&(FB.Event.subscribe("edge.create",function(a){_gaq.push(["_trackSocial","facebook","like",a])}),FB.Event.subscribe("edge.remove",function(a){_gaq.push(["_trackSocial","facebook","unlike",a])}),FB.Event.subscribe("message.send",function(a){_gaq.push(["_trackSocial","facebook","send",a])}));"twttr"in b&&"events"in twttr&&"bind"in twttr.events&&twttr.events.bind("tweet",function(a){if(a){var b;if(a.target&&a.target.nodeName=="IFRAME")a:{if(a=a.target.src){a=a.split("#")[0].match(/[^?=&]+=([^&]*)?/g);b=0;for(var c;c=a[b];++b)if(c.indexOf("url")===0){b=unescape(c.split("=")[1]);break a}}b=void 0}_gaq.push(["_trackSocial","twitter","tweet",b])}})})})(window);
-  body dir="ltr"
-    nav class="navbar navbar-inverse navbar-fixed-top"
-      div class="container"
-        div class="navbar-header"
-          a class="navbar-brand" href="http://overrustlelogs.net/" OverRustle Logs
-
-        div id="navbar" class="collapse navbar-collapse"
-          ul class="nav navbar-nav navbar-left"
+    = javascript
+      $( document ).ready(function(){$(".button-collapse").sideNav();})
+  body
+    div class="navbar-fixed"
+      nav
+        div class="nav-wrapper container"
+          span
+            a class="brand-logo" href="http://overrustlelogs.net/" OverRustle Logs
+          a href="#" data-activates="mobile-demo" class="button-collapse"
+            i class="fa fa-bars"
+          ul id="nav-mobile" class="right hide-on-med-and-down"
             li
-              ol class="breadcrumb" dir="ltr"
-                {{range .Breadcrumbs}}
-                  li
-                    a href={{.Path}} {{.Name}}
-                {{end}}
-
-          ul class="nav navbar-nav navbar-right"
+              a class="active" href="/changelog" Changelog
             li
-              a href="/changelog" Changelog
+              a class="active" href="/contact" Contact
             li
-              a href="/contact" Contact
-            li class="donate"
-              a target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=Q3SAFTXUR4UHG"
+              a class="red accent-3" target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=Q3SAFTXUR4UHG"
+                i class="fa fa-paypal fa-fw"
+                span Donate
+          ul class="side-nav" id="mobile-demo"
+            li
+              a class="active" href="/changelog" Changelog
+            li
+              a class="active" href="/contact" Contact
+            li
+              a class="red accent-3" target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=Q3SAFTXUR4UHG"
+                i class="fa fa-paypal fa-fw"
                 span Donate
 
     = yield body
 
     script type="text/rocketscript" data-rocketsrc="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"
-    script type="text/rocketscript" data-rocketsrc="//cdnjs.cloudflare.com/ajax/libs/stupidtable/0.0.1/stupidtable.min.js"
-    script type="text/rocketscript" data-rocketsrc="/assets/js/listr.min.js"
-    script type="text/rocketscript" data-rocketsrc="/assets/js/jasny-bootstrap.min.js"

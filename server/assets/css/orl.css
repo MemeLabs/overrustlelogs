@@ -1,0 +1,50 @@
+a {
+	color: #fff
+}
+body {
+	background: #141414;
+	color: #fff
+}
+nav {
+	background-color: #212121
+}
+nav ul li.active {
+	background-color: rgba(0, 0, 0, 5)
+}
+.collection {
+	background-color: #212121
+}
+.collection .collection-item {
+	background: #212121;
+	padding: 10px 20px
+}
+.collection a.collection-item {
+	color: #fff
+}
+.collection a.collection-item:not(.active):hover {
+  background-color: rgba(0,0,0,2);
+  opacity: 1;
+}
+.collection.with-header .collection-header {
+	background: #212121;
+	border-bottom: 1px solid #424242;
+	padding: 10px 20px
+}
+.collection.with-header .collection-item {
+	padding-left: 20px
+}
+.card {
+	background-color: #212121
+}
+.card .card-action a:not(.btn):not(.btn-large):not(.btn-floating) {
+	color: #fff
+}
+.side-nav {
+	background-color: #212121
+}
+.side-nav li:hover, .side-nav li.active {
+	background: rgba(0, 0, 0, 5)
+}
+.side-nav a {
+	color: #fff
+}

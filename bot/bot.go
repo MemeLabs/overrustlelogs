@@ -129,8 +129,13 @@ func (b *Bot) Run() {
 					if b.isNuked(rs) {
 						b.addIgnore(m.Nick)
 					} else if isAdmin || (rs != b.lastLine && time.Now().After(b.cooldownEOL)) {
+						// if Destiny requests a log it's pretty SWEATSTINY,so let's add SWEATSTINY at the end of the message :^)
+						if m.Nick == "Destiny" {
+							rs = rs + " SWEATSTINY"
+						}
 						if isAdmin && b.lastLine == rs {
-							if err := b.c.Write("MSG", rs+" ."); err != nil {
+							rs = rs + " ."
+							if err := b.c.Write("MSG", rs); err != nil {
 								log.Println(err)
 							}
 						} else if err := b.c.Write("MSG", rs); err != nil {

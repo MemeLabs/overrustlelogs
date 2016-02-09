@@ -1,3 +1,7 @@
 = content body
-  h2 Error
-  p {{.Message}}
+  div class="container"
+    div class="card"
+      div class="card-content"
+        h3 class="center"
+          i class="fa fa-exclamation-triangle"
+          span &nbsp; Error {{.Message}}

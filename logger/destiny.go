@@ -22,6 +22,7 @@ func NewDestinyLogger(logs *ChatLogs) *DestinyLogger {
 
 // Log starts logging loop
 func (d *DestinyLogger) Log(mc <-chan *common.Message) {
+	var subTrigger bool
 	for {
 		m := <-mc
 
@@ -37,9 +38,13 @@ func (d *DestinyLogger) Log(mc <-chan *common.Message) {
 		case "BROADCAST":
 			if strings.Contains(m.Data, "subscriber!") || strings.Contains(m.Data, "subscribed on Twitch!") || strings.Contains(m.Data, "has resubscribed! Active for") {
 				d.writeLine(m.Time, "Subscriber", m.Data)
+				subTrigger = true
+			} else if subTrigger {
+				d.writeLine(m.Time, "SubscriberMessage", m.Data)
 			}
 		case "MSG":
 			d.writeLine(m.Time, m.Nick, m.Data)
+			subTrigger = false
 		}
 	}
 }

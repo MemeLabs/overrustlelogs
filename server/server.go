@@ -34,7 +34,8 @@ const (
 
 // errors
 var (
-	ErrNotFound = errors.New("file not found")
+	ErrNotFound          = errors.New("file not found")
+	ErrSearchKeyNotFound = errors.New("didn't find what you were looking for :(")
 )
 
 // log file extension pattern
@@ -60,12 +61,15 @@ func main() {
 	r.HandleFunc("/changelog", ChangelogHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}", ChannelHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}", MonthHandle).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", DayHandle).Queries("search", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", DayHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs", UsersHandle).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{nick:[a-zA-Z0-9_-]{1,25}}.txt", UserHandle).Queries("search", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{nick:[a-zA-Z0-9_-]{1,25}}.txt", UserHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}", PremiumHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}/{month:[a-zA-Z]+ [0-9]{4}}.txt", PremiumUserHandle).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/current", DestinyBaseHandle).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/current/{nick:[a-zA-Z0-9_]+}", DestinyNickHandle).Queries("search", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/current/{nick:[a-zA-Z0-9_]+}", DestinyNickHandle).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", DestinyBroadcasterHandle).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", DestinySubscriberHandle).Methods("GET")
@@ -170,6 +174,29 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
+	if _, ok := vars["filter"]; ok {
+		reader := bufio.NewReaderSize(bytes.NewReader(data), len(data))
+		var lineCount int
+		for {
+			line, err := reader.ReadSlice('\n')
+			if err != nil {
+				if err != io.EOF {
+					log.Printf("error reading bytes %s", err)
+				}
+				break
+			}
+			if filterKey(line, vars["filter"]) {
+				w.Write(line)
+				lineCount++
+			}
+		}
+		if lineCount == 0 {
+			w.Header().Set("Content-type", "text/html")
+			serveError(w, ErrSearchKeyNotFound)
+			return
+		}
+		return
+	}
 	w.Write(data)
 }
 
@@ -203,6 +230,10 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 // UserHandle user log
 func UserHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	if _, ok := vars["filter"]; ok {
+		serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], searchKey(vars["nick"], vars["filter"]))
+		return
+	}
 	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter(vars["nick"]))
 }
 
@@ -488,6 +519,28 @@ func nickFilter(nick string) func([]byte) bool {
 	}
 }
 
+func searchKey(nick, filter string) func([]byte) bool {
+	nick += ":"
+	return func(line []byte) bool {
+		for i := 0; i < len(nick); i++ {
+			if i+LogLinePrefixLength > len(line) || line[i+LogLinePrefixLength] != nick[i] {
+				return false
+			}
+		}
+		if bytes.Contains(bytes.ToLower(line[len(nick)+LogLinePrefixLength:]), bytes.ToLower([]byte(filter))) {
+			return true
+		}
+		return false
+	}
+}
+
+func filterKey(line []byte, f string) bool {
+	if bytes.Contains(bytes.ToLower(line), bytes.ToLower([]byte(f))) {
+		return true
+	}
+	return false
+}
+
 // serveError ...
 func serveError(w http.ResponseWriter, e error) {
 	tpl, err := ace.Load(common.GetConfig().Server.ViewPath+"/layout", common.GetConfig().Server.ViewPath+"/error", nil)
@@ -534,9 +587,9 @@ func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
 	}
 	basePath += "/"
 	for _, path := range paths {
-		icon := "file"
+		icon := "file-text"
 		if filepath.Ext(path) == "" {
-			icon = "folder-close"
+			icon = "folder"
 		}
 		data["Paths"] = append(data["Paths"].([]map[string]string), map[string]string{
 			"Path": basePath + path,
@@ -558,6 +611,7 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 		return
 	}
 	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
+	var lineCount int
 	for _, name := range logs {
 		data, err := readLogFile(path + "/" + name)
 		if err != nil {
@@ -575,7 +629,12 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 			}
 			if filter(line) {
 				w.Write(line)
+				lineCount++
 			}
 		}
+	}
+	if lineCount == 0 {
+		w.Header().Set("Content-type", "text/html")
+		serveError(w, ErrSearchKeyNotFound)
 	}
 }

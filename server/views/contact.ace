@@ -1,18 +1,24 @@
 = content body
-  div class="info text-center"
-    h3 E-mail
-    p
-      a href="mailto:dbc@overrustlelogs.net" dbc@overrustlelogs.net
-    p
-      a href="mailto:tensei@overrustlelogs.net" tensei@overrustlelogs.net
-    h3
-      a href="http://www.destiny.gg/bigscreen" target="_blank" Destiny.gg Chat
-    p dbC_ and Tenseyi
-    h3
-      a href="http://www.twitch.tv/" target="_blank" Twitch.tv
-    p
-      a href="http://www.twitch.tv/tenseyi" target="_blank" twitch.tv/tenseyi
-    p
-      a href="http://www.twitch.tv/dbc__" target="_blank" twitch.tv/dbc__
-    h4
-      a href="https://github.com/slugalisk/overrustlelogs" target="_blank" Fork this project on GitHub
+  div class="container"
+    div class="card"
+      div class="card-content"
+        h4 E-mail
+        p
+          a class="flow-text" href="mailto:dbc@overrustlelogs.net" dbc@overrustlelogs.net
+        p
+          a class="flow-text" href="mailto:tensei@overrustlelogs.net" tensei@overrustlelogs.net
+        h4
+          a href="http://www.destiny.gg/bigscreen" target="_blank" Destiny.gg Chat
+        p class="flow-text" dbc, Tensei and Slugalisk
+        h4
+          i class="fa fa-twitch fa-fw"
+          span Twitch.tv
+        p
+          a class="flow-text" href="http://www.twitch.tv/tenseyi" target="_blank" twitch.tv/tenseyi
+        p
+          a class="flow-text" href="http://www.twitch.tv/dbc__" target="_blank" twitch.tv/dbc__
+        div class="card-action"
+          h6 class="center-align"
+            span
+              i class="fa fa-github fa-fw"
+            a href="https://github.com/slugalisk/overrustlelogs" target="_blank" Fork this project on GitHub
