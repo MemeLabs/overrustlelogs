@@ -31,8 +31,9 @@ type Config struct {
 		MaxStalkLines int
 	}
 	Bot struct {
-		IgnoreListPath string
-		Admins         []string
+		IgnoreListPath    string
+		IgnoreLogListPath string
+		Admins            []string
 	}
 	LogHost     string
 	LogPath     string

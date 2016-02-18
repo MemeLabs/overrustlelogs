@@ -41,6 +41,8 @@ func (d *DestinyLogger) Log(mc <-chan *common.Message) {
 				subTrigger = true
 			} else if subTrigger {
 				d.writeLine(m.Time, "SubscriberMessage", m.Data)
+			} else {
+				d.writeLine(m.Time, "Broadcast", m.Data)
 			}
 		case "MSG":
 			d.writeLine(m.Time, m.Nick, m.Data)

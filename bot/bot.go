@@ -76,14 +76,16 @@ type Bot struct {
 	private     map[string]command
 	admins      map[string]struct{}
 	ignore      map[string]struct{}
+	ignoreLog   map[string]struct{}
 }
 
 func NewBot(c *common.DestinyChat) *Bot {
 	b := &Bot{
-		c:      c,
-		stop:   make(chan bool),
-		start:  time.Now(),
-		admins: make(map[string]struct{}, len(common.GetConfig().Bot.Admins)),
+		c:         c,
+		stop:      make(chan bool),
+		start:     time.Now(),
+		admins:    make(map[string]struct{}, len(common.GetConfig().Bot.Admins)),
+		ignoreLog: make(map[string]struct{}),
 	}
 	for _, admin := range common.GetConfig().Bot.Admins {
 		b.admins[admin] = struct{}{}
@@ -99,10 +101,12 @@ func NewBot(c *common.DestinyChat) *Bot {
 		"subs":  b.handleSubs,
 	}
 	b.private = map[string]command{
-		"p":        b.handlePremiumLog,
-		"uptime":   b.handleUptime,
-		"ignore":   b.handleIgnore,
-		"unignore": b.handleUnignore,
+		"p":           b.handlePremiumLog,
+		"uptime":      b.handleUptime,
+		"ignore":      b.handleIgnore,
+		"unignore":    b.handleUnignore,
+		"ignorelog":   b.handleIgnoreLog,
+		"unignorelog": b.handleUnignoreLog,
 	}
 	b.ignore = make(map[string]struct{})
 	if d, err := ioutil.ReadFile(common.GetConfig().Bot.IgnoreListPath); err == nil {
@@ -110,6 +114,14 @@ func NewBot(c *common.DestinyChat) *Bot {
 		if err := json.Unmarshal(d, &ignore); err == nil {
 			for _, nick := range ignore {
 				b.addIgnore(nick)
+			}
+		}
+	}
+	if d, err := ioutil.ReadFile(common.GetConfig().Bot.IgnoreLogListPath); err == nil {
+		ignoreLog := []string{}
+		if err := json.Unmarshal(d, &ignoreLog); err == nil {
+			for _, nick := range ignoreLog {
+				b.addIgnoreLog(nick)
 			}
 		}
 	}
@@ -171,6 +183,14 @@ func (b *Bot) Stop() {
 	if err := ioutil.WriteFile(common.GetConfig().Bot.IgnoreListPath, data, 0644); err != nil {
 		log.Fatalf("unable to write ignore list %s", err)
 	}
+	ignoreLog := []string{}
+	for nick := range b.ignoreLog {
+		ignoreLog = append(ignoreLog, nick)
+	}
+	data, _ = json.Marshal(ignoreLog)
+	if err := ioutil.WriteFile(common.GetConfig().Bot.IgnoreLogListPath, data, 0644); err != nil {
+		log.Fatalf("unable to write ignorelog list %s", err)
+	}
 }
 
 func (b *Bot) runCommand(commands map[string]command, m *common.Message) (string, error) {
@@ -209,12 +229,25 @@ func (b *Bot) isIgnored(nick string) bool {
 	return ok
 }
 
+func (b *Bot) isLogIgnored(nick string) bool {
+	_, ok := b.ignoreLog[strings.ToLower(nick)]
+	return ok
+}
+
 func (b *Bot) addIgnore(nick string) {
 	b.ignore[strings.ToLower(nick)] = struct{}{}
 }
 
 func (b *Bot) removeIgnore(nick string) {
 	delete(b.ignore, strings.ToLower(string(nick)))
+}
+
+func (b *Bot) addIgnoreLog(nick string) {
+	b.ignoreLog[strings.ToLower(nick)] = struct{}{}
+}
+
+func (b *Bot) removeIgnoreLog(nick string) {
+	delete(b.ignoreLog, strings.ToLower(string(nick)))
 }
 
 func (b *Bot) toURL(host string, path string) string {
@@ -229,6 +262,30 @@ func (b *Bot) toURL(host string, path string) string {
 
 func (b *Bot) handlePremiumLog(m *common.Message, r *bufio.Reader) (string, error) {
 	return b.toURL(common.GetConfig().LogHost, "/"+destinyPath+"/premium/"+m.Nick+"/"+time.Now().UTC().Format("January 2006")+".txt"), nil
+}
+
+func (b *Bot) handleIgnoreLog(m *common.Message, r *bufio.Reader) (string, error) {
+	if b.isAdmin(m.Nick) {
+		nick, err := ioutil.ReadAll(r)
+		if err != nil || !validNick.Match(nick) {
+			return "Invalid nick", err
+		}
+		b.addIgnoreLog(string(nick))
+	}
+	return "", nil
+}
+
+func (b *Bot) handleUnignoreLog(m *common.Message, r *bufio.Reader) (string, error) {
+	if b.isAdmin(m.Nick) {
+		nick, err := ioutil.ReadAll(r)
+		if err != nil || !validNick.Match(nick) {
+			return "Invalid nick", err
+		}
+		if b.isLogIgnored(string(nick)) {
+			b.removeIgnoreLog(string(nick))
+		}
+	}
+	return "", nil
 }
 
 func (b *Bot) handleIgnore(m *common.Message, r *bufio.Reader) (string, error) {
@@ -248,7 +305,9 @@ func (b *Bot) handleUnignore(m *common.Message, r *bufio.Reader) (string, error)
 		if err != nil || !validNick.Match(nick) {
 			return "Invalid nick", err
 		}
-		b.removeIgnore(string(nick))
+		if b.isIgnored(string(nick)) {
+			b.removeIgnore(string(nick))
+		}
 	}
 	return "", nil
 }
@@ -280,7 +339,7 @@ func (b *Bot) handleTwitchLogs(m *common.Message, r *bufio.Reader) (string, erro
 func (b *Bot) searchNickFromLine(path string, r *bufio.Reader) (*common.NickSearchResult, string, error) {
 	nick, err := r.ReadString(' ')
 	nick = strings.TrimSpace(nick)
-	if (err != nil && err != io.EOF) || len(nick) < 1 {
+	if (err != nil && err != io.EOF) || len(nick) < 1 || b.isLogIgnored(nick) {
 		return nil, "", nil
 	}
 	if !validNick.Match([]byte(nick)) {
