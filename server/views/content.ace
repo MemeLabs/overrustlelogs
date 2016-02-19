@@ -1,3 +1,4 @@
 = content body
-  div class="text"
-    {{.}}
+  div class="container"
+    div class="text"
+      {{.}}

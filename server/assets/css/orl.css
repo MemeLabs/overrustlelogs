@@ -12,7 +12,6 @@ nav ul li.active {
 	background-color: rgba(0, 0, 0, 5)
 }
 .text {
-	margin-left: 10px;
 	white-space: pre-line;
 	word-wrap: break-word;
 	opacity: 0.7;

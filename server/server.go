@@ -236,16 +236,7 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tpl, err := ace.Load(common.GetConfig().Server.ViewPath+"/layout", common.GetConfig().Server.ViewPath+"/content", nil)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if isTXT {
-		w.Header().Set("Content-type", "text/plain; charset=UTF-8")
-	} else {
-		w.Header().Set("Content-type", "text/html; charset=UTF-8")
-	}
+	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
 	if _, ok := vars["filter"]; ok {
 		reader := bufio.NewReaderSize(bytes.NewReader(data), len(data))
 		filteredData := bytes.NewBuffer([]byte{})
@@ -272,17 +263,14 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !isTXT {
-			if err := tpl.Execute(w, filteredData.String()); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+			serveHTML(w, data)
+			return
 		}
+
 		return
 	}
 	if !isTXT {
-		if err := tpl.Execute(w, string(data)); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		serveHTML(w, data)
 		return
 	}
 	w.Write(data)
@@ -706,16 +694,7 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 		return
 	}
 
-	tpl, err := ace.Load(common.GetConfig().Server.ViewPath+"/layout", common.GetConfig().Server.ViewPath+"/content", nil)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if isTXT {
-		w.Header().Set("Content-type", "text/plain; charset=UTF-8")
-	} else {
-		w.Header().Set("Content-type", "text/html; charset=UTF-8")
-	}
+	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
 	filteredData := bytes.NewBuffer([]byte{})
 	var lineCount int
 	for _, name := range logs {
@@ -748,8 +727,18 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 		return
 	}
 	if !isTXT {
-		if err := tpl.Execute(w, filteredData.String()); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		serveHTML(w, filteredData.Bytes())
+	}
+}
+
+func serveHTML(w http.ResponseWriter, data []byte) {
+	tpl, err := ace.Load(common.GetConfig().Server.ViewPath+"/layout", common.GetConfig().Server.ViewPath+"/content", nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-type", "text/html; charset=UTF-8")
+	if err := tpl.Execute(w, string(data)); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
