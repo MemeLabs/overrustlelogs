@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"regexp"
 
@@ -19,6 +20,8 @@ var commands = map[string]command{
 	"read":       read,
 	"readnicks":  readNicks,
 	"nicks":      nicks,
+	"readlines":  readLines,
+	"indexlines": indexLines,
 	"migrate":    migrate,
 }
 
@@ -132,6 +135,56 @@ func readNicks() error {
 		}
 		for nick := range nicks {
 			fmt.Println(nick)
+		}
+	} else {
+		return errors.New("invalid file")
+	}
+	return nil
+}
+
+func indexLines() error {
+	if len(os.Args) < 3 {
+		return errors.New("not enough args")
+	}
+	path := os.Args[2]
+	if regexp.MustCompile("\\.txt\\.lz4$").MatchString(path) {
+		buf, err := common.ReadCompressedFile(path)
+		if err != nil {
+			return err
+		}
+		reader := bufio.NewReaderSize(bytes.NewReader(buf), len(buf))
+		index := &common.LineIndex{}
+		for {
+			line, err := reader.ReadSlice('\n')
+			if err != nil {
+				if err != io.EOF {
+					log.Printf("error reading bytes %s", err)
+				}
+				break
+			}
+			index.Add(uint16(len(line)))
+		}
+		if err := index.WriteTo(regexp.MustCompile("\\.txt(\\.lz4)?$").ReplaceAllString(path, ".index")); err != nil {
+			return err
+		}
+	} else {
+		return errors.New("invalid file")
+	}
+	return nil
+}
+
+func readLines() error {
+	if len(os.Args) < 3 {
+		return errors.New("not enough args")
+	}
+	path := os.Args[2]
+	if regexp.MustCompile("\\.index\\.lz4$").MatchString(path) {
+		index := &common.LineIndex{}
+		if err := common.ReadLineIndex(index, path); err != nil {
+			return err
+		}
+		for _, v := range *index {
+			fmt.Println(v)
 		}
 	} else {
 		return errors.New("invalid file")

@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestWrite(t *testing.T) {
+func TestNickListWrite(t *testing.T) {
 	n := NickList{}
 	n.Add("foo")
 	n.Add("bar")
@@ -17,7 +17,7 @@ func TestWrite(t *testing.T) {
 	}
 }
 
-func TestRead(t *testing.T) {
+func TestNickListRead(t *testing.T) {
 	n := NickList{}
 	n.Add("foo")
 	n.Add("bar")

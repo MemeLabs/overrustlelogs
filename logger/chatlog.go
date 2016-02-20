@@ -18,6 +18,7 @@ type ChatLog struct {
 	sync.Mutex
 	f        *os.File
 	nicks    common.NickList
+	index    common.LineIndex
 	modified time.Time
 }
 
@@ -41,10 +42,13 @@ func NewChatLog(path string) (*ChatLog, error) {
 
 	nicks := common.NickList{}
 	common.ReadNickList(nicks, nickPath(path))
+	index := &common.LineIndex{}
+	common.ReadLineIndex(index, indexPath(path))
 
 	return &ChatLog{
 		f:        f,
 		nicks:    nicks,
+		index:    *index,
 		modified: time.Now(),
 	}, nil
 }
@@ -54,6 +58,15 @@ func (l *ChatLog) WriteNicks() {
 	l.Lock()
 	if err := l.nicks.WriteTo(nickPath(l.f.Name())); err != nil {
 		log.Printf("error writing nicks for %s %s", l.f.Name(), err)
+	}
+	l.Unlock()
+}
+
+// WriteIndex persist line index
+func (l *ChatLog) WriteIndex() {
+	l.Lock()
+	if err := l.index.WriteTo(indexPath(l.f.Name())); err != nil {
+		log.Printf("error line index for %s %s", l.f.Name(), err)
 	}
 	l.Unlock()
 }
@@ -70,9 +83,11 @@ func (l *ChatLog) Close() {
 }
 
 func (l *ChatLog) Write(timestamp time.Time, nick string, message string) {
+	line := timestamp.Format("[2006-01-02 15:04:05 MST] ") + nick + ": " + message + "\n"
 	l.Lock()
 	l.nicks.Add(nick)
-	l.f.WriteString(timestamp.Format("[2006-01-02 15:04:05 MST] ") + nick + ": " + message + "\n")
+	l.index.Add(uint16(len(line)))
+	l.f.WriteString(line)
 	l.modified = time.Now()
 	l.Unlock()
 }
@@ -87,6 +102,11 @@ func (l *ChatLog) Modified() time.Time {
 func nickPath(path string) string {
 	ext := filepath.Ext(path)
 	return path[:len(path)-len(ext)] + ".nicks"
+}
+
+func indexPath(path string) string {
+	ext := filepath.Ext(path)
+	return path[:len(path)-len(ext)] + ".index"
 }
 
 // ChatLogs chat log collection
