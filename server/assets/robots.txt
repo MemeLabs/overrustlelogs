@@ -1,2 +1,2 @@
 User-agent: *
-Disallow: /Destinygg chatlogs/
+Disallow: /Destinygg chatlog/
