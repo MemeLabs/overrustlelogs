@@ -64,12 +64,10 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}", d.WatchHandle("Channel", ChannelHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}", d.WatchHandle("Month", MonthHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", d.WatchHandle("Day", DayHandle)).Queries("search", "{filter:.+}").Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}", d.WatchHandle("Day", DayHandle)).Queries("search", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", d.WatchHandle("Day", DayHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}", d.WatchHandle("Day", DayHandle)).Queries("search", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}", d.WatchHandle("Day", DayHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs", d.WatchHandle("Users", UsersHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}/{month:[a-zA-Z]+ [0-9]{4}}.txt", d.WatchHandle("PremiumUser", PremiumUserHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}/{month:[a-zA-Z]+ [0-9]{4}}", d.WatchHandle("PremiumUser", PremiumUserHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{nick:[a-zA-Z0-9_-]{1,25}}.txt", d.WatchHandle("User", UserHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{nick:[a-zA-Z0-9_-]{1,25}}", d.WatchHandle("User", UserHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}", d.WatchHandle("Premium", PremiumHandle)).Methods("GET")
@@ -79,19 +77,18 @@ func main() {
 	r.HandleFunc("/Destinygg chatlog/current/{nick:[a-zA-Z0-9_]+}", d.WatchHandle("DestinyNick", DestinyNickHandle)).Queries("search", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/current/{nick:[a-zA-Z0-9_]+}", d.WatchHandle("DestinyNick", DestinyNickHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", d.WatchHandle("DestinyBroadcaster", DestinyBroadcasterHandle)).Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("DestinySubscriber", DestinySubscriberHandle)).Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans.txt", d.WatchHandle("DestinyBan", DestinyBanHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", d.WatchHandle("DestinyBroadcaster", DestinyBroadcasterHandle)).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("DestinySubscriber", DestinySubscriberHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", d.WatchHandle("DestinySubscriber", DestinySubscriberHandle)).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans.txt", d.WatchHandle("DestinyBan", DestinyBanHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans", d.WatchHandle("DestinyBan", DestinyBanHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", d.WatchHandle("Broadcaster", BroadcasterHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("Subscriber", SubscriberHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", d.WatchHandle("Broadcaster", BroadcasterHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("Subscriber", SubscriberHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", d.WatchHandle("Subscriber", SubscriberHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+ chatlog}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Queries("limit", "{limit:[0-9]+}").Methods("GET")
 	r.HandleFunc("/api/v1/status.json", d.WatchHandle("Debug", d.HTTPHandle))
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
-	r.PathPrefix("/assets").Handler(http.FileServer(http.Dir("/var/overrustlelogs/public/assets/")))
 	go http.ListenAndServe(common.GetConfig().Server.Address, r)
 
 	sigint := make(chan os.Signal, 1)
@@ -263,10 +260,9 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !isTXT {
-			serveHTML(w, data)
+			serveHTML(w, filteredData.Bytes())
 			return
 		}
-
 		return
 	}
 	if !isTXT {
