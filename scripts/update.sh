@@ -58,6 +58,13 @@ updateLogger(){
 	echo "updated the orl-logger"
 }
 
+updatePack(){
+	cp -r $GOPATH/src/$src/package/* /
+	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
+	systemctl daemon-reload
+	echo "updated package etc & var"
+}
+
 if [[ $TODO == "bot" ]]; then
 	echo "updating the orl-bot..."
 	updateBot
@@ -67,6 +74,9 @@ elif [[ $TODO == "server" ]]; then
 elif [[ $TODO == "logger" ]]; then
 	echo "updating the orl-logger"
 	updateLogger
+elif [[ $TODO == "pack" ]]; then
+	echo "updating package etc & var"
+	updatePack
 else
 	echo "updating everything..."
 	updateBot
