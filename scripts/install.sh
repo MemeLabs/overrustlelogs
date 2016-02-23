@@ -27,6 +27,13 @@ chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
 mkdir -p /var/nginx/cache
 chown -R www-data:www-data /var/nginx
 
+## systemd support
+if [ -z `which start` ]; then
+	SSS="systemctl "
+else
+	SSS=""
+fi
+
 echo "next steps:"
 echo "1.) add creds to /etc/overrustlelogs/overrustlelogs.conf"
-echo "2.) run $ start logger && start server"
+echo "2.) run $ ${SSS}start logger && ${SSS}start server"
