@@ -1,3 +1,4 @@
+.vagrant
 *.swp
 logger/logger.exe
 *.sublime-project
