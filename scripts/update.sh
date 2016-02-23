@@ -2,7 +2,13 @@
 
 export src="github.com/slugalisk/overrustlelogs"
 
-git pull
+## local mode to deploy ignoring git
+if [[ $1 == "local" ]]; then
+	TODO=$2
+else
+	TODO=$1
+	git pull
+fi
 
 ## systemd support
 if [ -z `which start` ]; then
@@ -52,13 +58,13 @@ updateLogger(){
 	echo "updated the orl-logger"
 }
 
-if [[ $1 == "bot" ]]; then
+if [[ $TODO == "bot" ]]; then
 	echo "updating the orl-bot..."
 	updateBot
-elif [[ $1 == "server" ]]; then
+elif [[ $TODO == "server" ]]; then
 	echo "updating the orl-server..."
 	updateServer
-elif [[ $1 == "logger" ]]; then
+elif [[ $TODO == "logger" ]]; then
 	echo "updating the orl-logger"
 	updateLogger
 else
