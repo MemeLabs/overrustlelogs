@@ -5,8 +5,10 @@ export src="github.com/slugalisk/overrustlelogs"
 ## local mode to deploy ignoring git
 if [[ $1 == "local" ]]; then
 	TODO=$2
+	MODE=local
 else
 	TODO=$1
+	MODE=default
 	git pull
 fi
 
@@ -79,6 +81,14 @@ elif [[ $TODO == "pack" ]]; then
 	updatePack
 else
 	echo "updating everything..."
+	if [[ $MODE == "local" ]]; then
+		echo
+		echo "NOTE, local mode will replace etc with the pack!!!"
+		sleep 3
+		echo "..."
+		sleep 2
+		updatePack
+	fi
 	updateBot
 	updateLogger
 	updateServer
