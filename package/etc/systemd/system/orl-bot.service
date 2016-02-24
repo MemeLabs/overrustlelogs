@@ -1,0 +1,13 @@
+[Unit]
+Description=Overrustlelogs Bot-Part
+After=network.target
+
+[Service]
+User=overrustlelogs
+Restart=always
+EnvironmentFile=/etc/overrustlelogs/systemd.conf
+PIDFile=/var/run/orl-bot.pid
+ExecStart=/usr/bin/orl-bot $DAEMON_OPTS
+
+[Install]
+WantedBy=multi-user.target

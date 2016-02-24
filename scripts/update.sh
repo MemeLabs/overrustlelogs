@@ -2,24 +2,39 @@
 
 export src="github.com/slugalisk/overrustlelogs"
 
-git pull
+## local mode to deploy ignoring git
+if [[ $1 == "local" ]]; then
+	TODO=$2
+	MODE=local
+else
+	TODO=$1
+	MODE=default
+	git pull
+fi
+
+## systemd support
+if [ -z `which start` ]; then
+	SSS=systemctl
+else
+	SSS=
+fi
 
 source /etc/profile
 
 updateBot(){
 	go install $src/bot
 
-	stop orl-bot
+	$SSS stop orl-bot
 	
 	cp $GOPATH/bin/bot /usr/bin/orl-bot
 	
-	start orl-bot
+	$SSS start orl-bot
 	echo "updated the orl-bot"
 }
 
 updateServer(){
 	go install $src/server
-	stop orl-server
+	$SSS stop orl-server
 
 	cp -r $GOPATH/src/$src/server/views /var/overrustlelogs/
 	cp -r $GOPATH/src/$src/server/assets /var/overrustlelogs/public/
@@ -28,7 +43,7 @@ updateServer(){
 
 	cp $GOPATH/bin/server /usr/bin/orl-server
 
-	start orl-server
+	$SSS start orl-server
 	echo "updated the orl-server"
 }
 
@@ -36,26 +51,48 @@ updateLogger(){
 	go install $src/logger
 	go install $src/tool
 
-	stop orl-logger
+	$SSS stop orl-logger
 
 	cp $GOPATH/bin/logger /usr/bin/orl-logger
 	cp $GOPATH/bin/tool /usr/bin/orl-tool
 
-	start orl-logger
+	$SSS start orl-logger
 	echo "updated the orl-logger"
 }
 
-if [[ $1 == "bot" ]]; then
+updatePack(){
+	cp -r $GOPATH/src/$src/package/* /
+	if [ -f "$GOPATH/src/$src/package/etc/overrustlelogs/overrustlelogs.local.conf" ]; then
+		echo "NOTICE: found overrustlelogs.local.conf, overwriting default file..."
+		cp -p "$GOPATH/src/$src/package/etc/overrustlelogs/overrustlelogs.local.conf" /etc/overrustlelogs/overrustlelogs.conf
+	fi
+	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
+	systemctl daemon-reload
+	echo "updated package etc & var"
+}
+
+if [[ $TODO == "bot" ]]; then
 	echo "updating the orl-bot..."
 	updateBot
-elif [[ $1 == "server" ]]; then
+elif [[ $TODO == "server" ]]; then
 	echo "updating the orl-server..."
 	updateServer
-elif [[ $1 == "logger" ]]; then
+elif [[ $TODO == "logger" ]]; then
 	echo "updating the orl-logger"
 	updateLogger
+elif [[ $TODO == "pack" ]]; then
+	echo "updating package etc & var"
+	updatePack
 else
 	echo "updating everything..."
+	if [[ $MODE == "local" ]]; then
+		echo
+		echo "NOTE, local mode will replace etc with the pack!!!"
+		sleep 3
+		echo "..."
+		sleep 2
+		updatePack
+	fi
 	updateBot
 	updateLogger
 	updateServer
