@@ -22,6 +22,9 @@ cp -r $GOPATH/src/$src/server/assets /var/overrustlelogs/public/assets
 chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/views
 chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/public/assets
 cp -r $GOPATH/src/$src/package/* /
+if [ -f "$GOPATH/src/$src/package/etc/overrustlelogs/overrustlelogs.local.conf" ]; then
+	cp -p "$GOPATH/src/$src/package/etc/overrustlelogs/overrustlelogs.local.conf" /etc/overrustlelogs/overrustlelogs.conf
+fi
 chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
 
 mkdir -p /var/nginx/cache

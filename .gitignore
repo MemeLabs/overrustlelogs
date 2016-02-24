@@ -1,4 +1,5 @@
 .vagrant
+/package/etc/overrustlelogs/overrustlelogs.local.conf
 *.swp
 logger/logger.exe
 *.sublime-project

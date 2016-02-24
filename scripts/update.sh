@@ -62,6 +62,10 @@ updateLogger(){
 
 updatePack(){
 	cp -r $GOPATH/src/$src/package/* /
+	if [ -f "$GOPATH/src/$src/package/etc/overrustlelogs/overrustlelogs.local.conf" ]; then
+		echo "NOTICE: found overrustlelogs.local.conf, overwriting default file..."
+		cp -p "$GOPATH/src/$src/package/etc/overrustlelogs/overrustlelogs.local.conf" /etc/overrustlelogs/overrustlelogs.conf
+	fi
 	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
 	systemctl daemon-reload
 	echo "updated package etc & var"
