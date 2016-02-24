@@ -75,6 +75,7 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}/{month:[a-zA-Z]+ [0-9]{4}}", d.WatchHandle("PremiumUser", PremiumUserHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/current", d.WatchHandle("DestinyBase", DestinyBaseHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/current/{nick:[a-zA-Z0-9_]+}", d.WatchHandle("DestinyNick", DestinyNickHandle)).Queries("search", "{filter:.+}").Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/current/{nick:[a-zA-Z0-9_]+}.txt", d.WatchHandle("DestinyNick", DestinyNickHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/current/{nick:[a-zA-Z0-9_]+}", d.WatchHandle("DestinyNick", DestinyNickHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", d.WatchHandle("DestinyBroadcaster", DestinyBroadcasterHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", d.WatchHandle("DestinyBroadcaster", DestinyBroadcasterHandle)).Methods("GET")
