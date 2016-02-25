@@ -6,7 +6,6 @@ After=network.target
 User=overrustlelogs
 Restart=always
 EnvironmentFile=/etc/overrustlelogs/systemd.conf
-PIDFile=/var/run/orl-bot.pid
 ExecStart=/usr/bin/orl-bot $DAEMON_OPTS
 
 [Install]
