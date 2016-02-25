@@ -88,6 +88,7 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("Subscriber", SubscriberHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", d.WatchHandle("Subscriber", SubscriberHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+ chatlog}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Queries("limit", "{limit:[0-9]+}").Methods("GET")
+	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+ chatlog}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/status.json", d.WatchHandle("Debug", d.HTTPHandle))
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
 	go http.ListenAndServe(common.GetConfig().Server.Address, r)
@@ -423,7 +424,7 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	vars := mux.Vars(r)
 	limit, err := strconv.ParseUint(vars["limit"], 10, 32)
-	if err != nil {
+	if err != nil && vars["limit"] != "" {
 		d, _ := json.Marshal(Error{err.Error()})
 		http.Error(w, string(d), http.StatusBadRequest)
 		return
@@ -431,7 +432,7 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 	if limit > uint64(common.GetConfig().Server.MaxStalkLines) {
 		limit = uint64(common.GetConfig().Server.MaxStalkLines)
 	} else if limit < 1 {
-		limit = 1
+		limit = 10
 	}
 	buf := make([]string, limit)
 	index := limit
