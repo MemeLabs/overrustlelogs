@@ -407,6 +407,10 @@ func DestinyNickHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if rs.Nick() != vars["nick"] {
+		isTXT := strings.HasSuffix(r.URL.Path, ".txt")
+		if isTXT {
+			http.Redirect(w, r, "./"+rs.Nick()+".txt", 301)
+		}
 		http.Redirect(w, r, "./"+rs.Nick(), 301)
 		return
 	}
