@@ -85,7 +85,7 @@ func (c *TwitchChat) Run() {
 	}()
 
 	for _, ch := range c.channels {
-		if err := c.Join(ch, true); err != nil {
+		if err := c.join(ch); err != nil {
 			log.Printf("error joining channel %s %s", ch, err)
 		}
 	}
@@ -106,6 +106,7 @@ func (c *TwitchChat) runCommandChannel() error {
 		if err != nil {
 			return err
 		}
+	ReadLoop:
 		for {
 			select {
 			case m, ok := <-mc:
@@ -114,7 +115,7 @@ func (c *TwitchChat) runCommandChannel() error {
 				}
 				c.runCommand(sc, m)
 			case <-sc.Evicted:
-				break
+				break ReadLoop
 			}
 		}
 	}
@@ -127,7 +128,7 @@ func (c *TwitchChat) runCommand(sc *twitchSocketClient, m *Message) {
 		ld := strings.Split(strings.ToLower(m.Data), " ")
 
 		if strings.EqualFold(d[0], "!join") {
-			if err := c.Join(ld[1], false); err == nil {
+			if err := c.Join(ld[1]); err == nil {
 				sc.Send("PRIVMSG #" + ch + " :Logging " + ld[1])
 			} else {
 				if err == ErrChannelNotValid {
@@ -149,7 +150,34 @@ func (c *TwitchChat) runCommand(sc *twitchSocketClient, m *Message) {
 }
 
 // Join channel
-func (c *TwitchChat) Join(ch string, init bool) error {
+func (c *TwitchChat) Join(ch string) error {
+	if err := c.join(ch); err != nil {
+		return err
+	}
+	return c.saveChannels()
+}
+
+// Leave channel
+func (c *TwitchChat) Leave(ch string) error {
+	if err := c.leave(ch); err != nil {
+		return err
+	}
+	return c.saveChannels()
+}
+
+func (c *TwitchChat) runEvictHandler(sc *twitchSocketClient) {
+	for {
+		ch, ok := <-sc.Evicted
+		if !ok {
+			return
+		}
+		log.Printf("channel evicted %s", ch)
+		c.leave(ch)
+		c.join(ch)
+	}
+}
+
+func (c *TwitchChat) join(ch string) error {
 	h, err := c.lookupHost(ch)
 	if err != nil {
 		return err
@@ -173,45 +201,27 @@ func (c *TwitchChat) Join(ch string, init bool) error {
 		return err
 	}
 	go c.joinHandler(ch, m)
-
-	if init {
-		return nil
-	}
-	return c.saveChannels()
+	return nil
 }
 
-func (c *TwitchChat) runEvictHandler(sc *twitchSocketClient) {
-	for {
-		ch := <-sc.Evicted
-		ch = strings.ToLower(ch)
-		c.Lock()
-		delete(c.channelClients, ch)
-		if sc.Empty() {
-			sc.Stop()
-			delete(c.clients, sc.Host())
-			c.Unlock()
-			c.Join(ch, false)
-			return
-		}
-		c.Unlock()
-		c.Join(ch, false)
-	}
-}
-
-// Leave channel
-func (c *TwitchChat) Leave(ch string) error {
+func (c *TwitchChat) leave(ch string) error {
 	ch = strings.ToLower(ch)
 	c.Lock()
 	sc, ok := c.channelClients[ch]
-	c.Unlock()
 	if !ok {
+		c.Unlock()
 		return ErrTwitchNotInChannel
 	}
-	sc.Leave(ch)
-	c.Lock()
 	delete(c.channelClients, ch)
+	sc.Leave(ch)
+	if sc.Empty() {
+		delete(c.clients, sc.Host())
+		c.Unlock()
+		sc.Stop()
+		return nil
+	}
 	c.Unlock()
-	return c.saveChannels()
+	return nil
 }
 
 func (c *TwitchChat) lookupHost(ch string) (string, error) {
@@ -286,6 +296,7 @@ func newTwitchSocketClient(host string) *twitchSocketClient {
 	c := &twitchSocketClient{
 		messages: make(map[string]chan *Message, 0),
 		host:     host,
+		Evicted:  make(chan string),
 	}
 	c.connect()
 	go c.run()
@@ -299,6 +310,7 @@ func (c *twitchSocketClient) run() {
 		c.connLock.RLock()
 		_, msg, err := c.conn.ReadMessage()
 		if c.stopped == true {
+			c.connLock.RUnlock()
 			return
 		}
 		c.connLock.RUnlock()
@@ -342,19 +354,14 @@ func (c *twitchSocketClient) run() {
 }
 
 func (c *twitchSocketClient) evict(ch string) {
-	c.messagesLock.Lock()
+	c.messagesLock.RLock()
 	ch = strings.ToLower(ch)
-	m, ok := c.messages[ch]
-	if !ok {
-		c.messagesLock.Unlock()
-		return
+	_, ok := c.messages[ch]
+	c.messagesLock.RUnlock()
+	if ok {
+		c.Leave(ch)
+		c.Evicted <- ch
 	}
-	log.Printf("channel evicted %s", ch)
-	close(m)
-	delete(c.messages, ch)
-	c.messagesLock.Unlock()
-	c.Send("PART #" + ch)
-	c.Evicted <- ch
 }
 
 func (c *twitchSocketClient) connect() {
@@ -365,12 +372,11 @@ func (c *twitchSocketClient) connect() {
 	c.conn, _, err = dialer.Dial(fmt.Sprintf("ws://%s/ws", c.host), headers)
 	c.connLock.Unlock()
 	if err != nil {
-		log.Printf("error connecting to twitch ws %s", err)
+		log.Printf("error connecting to twitch ws %s %s", c.host, err)
 		c.retries++
 		if c.retries >= TwitchMaxConnectRetries {
-			for ch := range c.messages {
-				c.evict(ch)
-			}
+			c.Stop()
+			return
 		}
 		c.reconnect()
 		return
@@ -396,7 +402,25 @@ func (c *twitchSocketClient) reconnect() {
 
 func (c *twitchSocketClient) Stop() {
 	c.connLock.Lock()
+	if c.stopped {
+		c.connLock.Unlock()
+		return
+	}
 	c.stopped = true
+	c.connLock.Unlock()
+
+	c.messagesLock.RLock()
+	m := make([]string, 0, len(c.messages))
+	for ch := range c.messages {
+		m = append(m, ch)
+	}
+	c.messagesLock.RUnlock()
+	for _, ch := range m {
+		c.evict(ch)
+	}
+	close(c.Evicted)
+
+	c.connLock.Lock()
 	c.conn.Close()
 	c.connLock.Unlock()
 }
@@ -430,14 +454,15 @@ func (c *twitchSocketClient) Join(ch string) (chan *Message, error) {
 func (c *twitchSocketClient) Leave(ch string) error {
 	ch = strings.ToLower(ch)
 	c.messagesLock.Lock()
-	_, ok := c.messages[ch]
+	m, ok := c.messages[ch]
 	if !ok {
 		c.messagesLock.Unlock()
 		return ErrTwitchNotInChannel
 	}
 	delete(c.messages, ch)
+	close(m)
 	c.messagesLock.Unlock()
-	defer c.Send("PART #" + ch)
+	c.Send("PART #" + ch)
 	return nil
 }
 
