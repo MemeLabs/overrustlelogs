@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -18,22 +20,29 @@ import (
 
 // errors
 var (
-	ErrTwitchAlreadyInChannel = errors.New("already in channel")
-	ErrTwitchNotInChannel     = errors.New("not in channel")
-	ErrChannelNotValid        = errors.New("not a valid channel")
+	ErrTwitchAlreadyInChannel      = errors.New("already in channel")
+	ErrTwitchNotInChannel          = errors.New("not in channel")
+	ErrChannelNotValid             = errors.New("not a valid channel")
+	ErrChannelMetadataNotAvailable = errors.New("channel metadata not available")
+	ErrCommandChannelFailure       = errors.New("command channel failed")
+)
+
+// consts...
+const (
+	TwitchChannelServerAPI  = "http://tmi.twitch.tv/servers"
+	TwitchMaxConnectRetries = 3
+	TwitchReadTimeout       = 30 * time.Minute
 )
 
 // TwitchChat twitch chat client
 type TwitchChat struct {
-	sync.RWMutex
-	conn        *websocket.Conn
-	dialer      websocket.Dialer
-	headers     http.Header
-	messages    map[string]chan *Message
-	channels    []string
-	writeLock   sync.Mutex
-	joinHandler TwitchJoinHandler
-	admins      map[string]bool
+	sync.Mutex
+	messages       map[string]chan *Message
+	channels       []string
+	channelClients map[string]*twitchSocketClient
+	clients        map[string]*twitchSocketClient
+	joinHandler    TwitchJoinHandler
+	admins         map[string]bool
 }
 
 // TwitchJoinHandler called when joining channels
@@ -42,12 +51,12 @@ type TwitchJoinHandler func(string, chan *Message)
 // NewTwitchChat new twitch chat client
 func NewTwitchChat(j TwitchJoinHandler) *TwitchChat {
 	c := &TwitchChat{
-		dialer:      websocket.Dialer{HandshakeTimeout: SocketHandshakeTimeout},
-		headers:     http.Header{"Origin": []string{GetConfig().Twitch.OriginURL}},
-		messages:    make(map[string]chan *Message, 0),
-		channels:    make([]string, 0),
-		joinHandler: j,
-		admins:      make(map[string]bool, len(GetConfig().Twitch.Admins)),
+		messages:       make(map[string]chan *Message, 0),
+		channels:       make([]string, 0),
+		clients:        make(map[string]*twitchSocketClient, 0),
+		channelClients: make(map[string]*twitchSocketClient, 0),
+		joinHandler:    j,
+		admins:         make(map[string]bool, len(GetConfig().Twitch.Admins)),
 	}
 
 	for _, u := range GetConfig().Twitch.Admins {
@@ -65,200 +74,180 @@ func NewTwitchChat(j TwitchJoinHandler) *TwitchChat {
 	return c
 }
 
-// Connect open ws connection
-func (c *TwitchChat) Connect() {
-	var err error
-	c.Lock()
-	c.conn, _, err = c.dialer.Dial(GetConfig().Twitch.SocketURL, c.headers)
-	c.Unlock()
-	if err != nil {
-		log.Printf("error connecting to twitch ws %s", err)
-		c.reconnect()
-	}
-
-	c.send("PASS " + GetConfig().Twitch.OAuth)
-	c.send("NICK " + GetConfig().Twitch.Nick)
+// Run ...
+func (c *TwitchChat) Run() {
+	go func() {
+		if err := c.runCommandChannel(); err != nil {
+			log.Panicf("error connecting to command channel %s", err)
+		} else {
+			log.Panicln("command channel closed unexppectedly")
+		}
+	}()
 
 	for _, ch := range c.channels {
-		c.Join(ch, true)
-	}
-}
-
-func (c *TwitchChat) reconnect() {
-	if c.conn != nil {
-		c.Lock()
-		c.conn.Close()
-
-		for ch, mc := range c.messages {
-			close(mc)
-			delete(c.messages, ch)
+		if err := c.Join(ch, true); err != nil {
+			log.Printf("error joining channel %s %s", ch, err)
 		}
-		c.Unlock()
 	}
-
-	time.Sleep(SocketReconnectDelay)
-	c.Connect()
 }
 
-// Run connect and start message read loop
-func (c *TwitchChat) Run() {
-	c.Connect()
-
-	messagePattern := regexp.MustCompile(`:(.+)\!.+tmi\.twitch\.tv PRIVMSG #([a-z0-9_-]+) :(.+)`)
-
+func (c *TwitchChat) runCommandChannel() error {
 	for {
-		err := c.conn.SetReadDeadline(time.Now().Add(SocketReadTimeout))
+		ch := GetConfig().Twitch.CommandChannel
+		h, err := c.lookupHost(ch)
 		if err != nil {
-			c.reconnect()
-			continue
+			return err
 		}
-
-		c.RLock()
-		_, msg, err := c.conn.ReadMessage()
-		c.RUnlock()
+		sc := newTwitchSocketClient(h)
 		if err != nil {
-			log.Printf("error reading message %s", err)
-			c.reconnect()
-			continue
+			return err
 		}
-
-		if strings.Index(string(msg), "PING") == 0 {
-			c.send(strings.Replace(string(msg), "PING", "PONG", -1))
-			continue
+		mc, err := sc.Join(ch)
+		if err != nil {
+			return err
 		}
-
-		l := messagePattern.FindAllStringSubmatch(string(msg), -1)
-		for _, v := range l {
-			c.RLock()
-			mc, ok := c.messages[strings.ToLower(v[2])]
-			c.RUnlock()
-			if !ok {
-				continue
-			}
-
-			data := strings.TrimSpace(v[3])
-			data = strings.Replace(data, "ACTION", "/me", -1)
-			data = strings.Replace(data, "", "", -1)
-			m := &Message{
-				Command: "MSG",
-				Nick:    v[1],
-				Data:    data,
-				Time:    time.Now().UTC(),
-			}
-
-			c.runCommand(v[2], m)
-
+		for {
 			select {
-			case mc <- m:
-			default:
+			case m, ok := <-mc:
+				if !ok {
+					break
+				}
+				c.runCommand(sc, m)
+			case <-sc.Evicted:
+				break
 			}
 		}
 	}
 }
 
-func (c *TwitchChat) runCommand(source string, m *Message) {
+func (c *TwitchChat) runCommand(sc *twitchSocketClient, m *Message) {
 	if _, ok := c.admins[m.Nick]; ok && m.Command == "MSG" {
+		ch := GetConfig().Twitch.CommandChannel
 		d := strings.Split(m.Data, " ")
 		ld := strings.Split(strings.ToLower(m.Data), " ")
 
 		if strings.EqualFold(d[0], "!join") {
 			if err := c.Join(ld[1], false); err == nil {
-				c.send("PRIVMSG #" + source + " :Logging " + ld[1])
+				sc.Send("PRIVMSG #" + ch + " :Logging " + ld[1])
 			} else {
 				if err == ErrChannelNotValid {
-					c.send("PRIVMSG #" + source + " :Channel doesn't exist!")
+					sc.Send("PRIVMSG #" + ch + " :Channel doesn't exist!")
 				} else {
-					c.send("PRIVMSG #" + source + " :Already logging " + ld[1])
+					sc.Send("PRIVMSG #" + ch + " :Already logging " + ld[1])
 				}
 			}
 		} else if strings.EqualFold(d[0], "!leave") {
 			if err := c.Leave(ld[1]); err == nil {
-				c.send("PRIVMSG #" + source + " :Leaving " + ld[1])
+				sc.Send("PRIVMSG #" + ch + " :Leaving " + ld[1])
 			} else {
-				c.send("PRIVMSG #" + source + " :Not logging " + ld[1])
+				sc.Send("PRIVMSG #" + ch + " :Not logging " + ld[1])
 			}
 		} else if strings.EqualFold(d[0], "!channels") {
-			c.send("PRIVMSG #" + source + " :Logging " + strings.Join(c.channels, ", "))
+			sc.Send("PRIVMSG #" + ch + " :Logging " + strings.Join(c.channels, ", "))
 		}
-	}
-}
-
-func (c *TwitchChat) send(m string) {
-	c.writeLock.Lock()
-	c.RLock()
-	err := c.conn.WriteMessage(websocket.TextMessage, []byte(m+"\r\n"))
-	c.RUnlock()
-	if err == nil {
-		time.Sleep(SocketWriteDebounce)
-	}
-	c.writeLock.Unlock()
-	if err != nil {
-		log.Printf("error sending message %s", err)
-		c.reconnect()
 	}
 }
 
 // Join channel
 func (c *TwitchChat) Join(ch string, init bool) error {
-	ch = strings.ToLower(ch)
-	if !channelExists(ch) {
-		return ErrChannelNotValid
+	h, err := c.lookupHost(ch)
+	if err != nil {
+		return err
 	}
 	c.Lock()
-	_, ok := c.messages[ch]
-	if !ok {
-		c.messages[ch] = make(chan *Message, MessageBufferSize)
-	}
-	c.Unlock()
-	if ok {
+	if _, ok := c.channelClients[ch]; ok {
+		c.Unlock()
 		return ErrTwitchAlreadyInChannel
 	}
-	c.send("JOIN #" + ch)
-	c.Lock()
-	if messages, ok := c.messages[ch]; ok {
-		go c.joinHandler(ch, messages)
+	sc, ok := c.clients[h]
+	if !ok {
+		sc = newTwitchSocketClient(h)
+		go c.runEvictHandler(sc)
+		c.clients[h] = sc
 	}
+	c.channelClients[ch] = sc
 	c.Unlock()
+
+	m, err := sc.Join(ch)
+	if err != nil {
+		return err
+	}
+	go c.joinHandler(ch, m)
+
 	if init {
 		return nil
 	}
 	return c.saveChannels()
 }
 
+func (c *TwitchChat) runEvictHandler(sc *twitchSocketClient) {
+	for {
+		ch := <-sc.Evicted
+		ch = strings.ToLower(ch)
+		c.Lock()
+		delete(c.channelClients, ch)
+		if sc.Empty() {
+			sc.Stop()
+			delete(c.clients, sc.Host())
+			c.Unlock()
+			c.Join(ch, false)
+			return
+		}
+		c.Unlock()
+		c.Join(ch, false)
+	}
+}
+
 // Leave channel
 func (c *TwitchChat) Leave(ch string) error {
 	ch = strings.ToLower(ch)
 	c.Lock()
-	_, ok := c.messages[ch]
+	sc, ok := c.channelClients[ch]
 	c.Unlock()
 	if !ok {
 		return ErrTwitchNotInChannel
 	}
-	c.send("PART #" + ch)
+	sc.Leave(ch)
 	c.Lock()
-	delete(c.messages, ch)
+	delete(c.channelClients, ch)
 	c.Unlock()
 	return c.saveChannels()
 }
 
-// channelExists
-func channelExists(ch string) bool {
-	res, err := http.Head("https://api.twitch.tv/kraken/users/" + ch)
+func (c *TwitchChat) lookupHost(ch string) (string, error) {
+	ch = strings.ToLower(ch)
+	u, err := url.Parse(TwitchChannelServerAPI)
 	if err != nil {
-		return false
+		log.Panicf("error parsing twitch metadata endpoint url %s", err)
 	}
-	res.Body.Close()
+	q := url.Values{}
+	q.Add("channel", ch)
+	u.RawQuery = q.Encode()
+	res, err := http.Get(u.String())
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return false
+		return "", ErrChannelMetadataNotAvailable
 	}
-	return true
+	d := json.NewDecoder(res.Body)
+	s := &struct {
+		Cluster           string   `json:"cluster"`
+		Servers           []string `json:"servers"`
+		WebsocketsServers []string `json:"websockets_servers"`
+	}{}
+	if err := d.Decode(&s); err != nil {
+		return "", err
+	}
+	return s.WebsocketsServers[0], nil
 }
 
 func (c *TwitchChat) saveChannels() error {
 	c.Lock()
 	defer c.Unlock()
 	c.channels = []string{}
-	for ch := range c.messages {
+	for ch := range c.channelClients {
 		c.channels = append(c.channels, ch)
 	}
 	f, err := os.Create(GetConfig().Twitch.ChannelListPath)
@@ -278,4 +267,191 @@ func (c *TwitchChat) saveChannels() error {
 	f.Write(buf.Bytes())
 	f.Close()
 	return nil
+}
+
+type twitchSocketClient struct {
+	conn         *websocket.Conn
+	messages     map[string]chan *Message
+	sendLock     sync.Mutex
+	connLock     sync.RWMutex
+	messagesLock sync.RWMutex
+	host         string
+	stopped      bool
+	retries      int
+	Evicted      chan string
+}
+
+// NewTwitchChat new twitch chat client
+func newTwitchSocketClient(host string) *twitchSocketClient {
+	c := &twitchSocketClient{
+		messages: make(map[string]chan *Message, 0),
+		host:     host,
+	}
+	c.connect()
+	go c.run()
+	return c
+}
+
+func (c *twitchSocketClient) run() {
+	messagePattern := regexp.MustCompile(`:(.+)\!.+tmi\.twitch\.tv PRIVMSG #([a-z0-9_-]+) :(.+)`)
+	w := NewTimeWheel(TwitchReadTimeout, time.Second, c.evict)
+	for {
+		c.connLock.RLock()
+		_, msg, err := c.conn.ReadMessage()
+		if c.stopped == true {
+			return
+		}
+		c.connLock.RUnlock()
+		if err != nil {
+			log.Printf("error reading from websocket %s", err)
+			c.reconnect()
+			continue
+		}
+
+		if strings.Index(string(msg), "PING") == 0 {
+			c.Send(strings.Replace(string(msg), "PING", "PONG", -1))
+			continue
+		}
+
+		l := messagePattern.FindAllStringSubmatch(string(msg), -1)
+		for _, v := range l {
+			w.Update(v[2])
+			c.messagesLock.RLock()
+			mc, ok := c.messages[strings.ToLower(v[2])]
+			c.messagesLock.RUnlock()
+			if !ok {
+				continue
+			}
+
+			data := strings.TrimSpace(v[3])
+			data = strings.Replace(data, "ACTION", "/me", -1)
+			data = strings.Replace(data, "", "", -1)
+			m := &Message{
+				Command: "MSG",
+				Nick:    v[1],
+				Data:    data,
+				Time:    time.Now().UTC(),
+			}
+
+			select {
+			case mc <- m:
+			default:
+			}
+		}
+	}
+}
+
+func (c *twitchSocketClient) evict(ch string) {
+	c.messagesLock.Lock()
+	ch = strings.ToLower(ch)
+	m, ok := c.messages[ch]
+	if !ok {
+		c.messagesLock.Unlock()
+		return
+	}
+	log.Printf("channel evicted %s", ch)
+	close(m)
+	delete(c.messages, ch)
+	c.messagesLock.Unlock()
+	c.Send("PART #" + ch)
+	c.Evicted <- ch
+}
+
+func (c *twitchSocketClient) connect() {
+	var err error
+	dialer := websocket.Dialer{HandshakeTimeout: SocketHandshakeTimeout}
+	headers := http.Header{"Origin": []string{c.host}}
+	c.connLock.Lock()
+	c.conn, _, err = dialer.Dial(fmt.Sprintf("ws://%s/ws", c.host), headers)
+	c.connLock.Unlock()
+	if err != nil {
+		log.Printf("error connecting to twitch ws %s", err)
+		c.retries++
+		if c.retries >= TwitchMaxConnectRetries {
+			for ch := range c.messages {
+				c.evict(ch)
+			}
+		}
+		c.reconnect()
+		return
+	}
+	c.retries = 0
+	log.Printf("connected to %s", c.host)
+
+	c.Send("PASS " + GetConfig().Twitch.OAuth)
+	c.Send("NICK " + GetConfig().Twitch.Nick)
+
+	for ch := range c.messages {
+		c.Send("JOIN #" + ch)
+	}
+}
+
+func (c *twitchSocketClient) reconnect() {
+	if c.conn != nil {
+		c.conn.Close()
+	}
+	time.Sleep(SocketReconnectDelay)
+	c.connect()
+}
+
+func (c *twitchSocketClient) Stop() {
+	c.connLock.Lock()
+	c.stopped = true
+	c.conn.Close()
+	c.connLock.Unlock()
+}
+
+func (c *twitchSocketClient) Host() string {
+	return c.host
+}
+
+func (c *twitchSocketClient) Empty() bool {
+	c.messagesLock.RLock()
+	defer c.messagesLock.RUnlock()
+	return len(c.messages) == 0
+}
+
+func (c *twitchSocketClient) Join(ch string) (chan *Message, error) {
+	ch = strings.ToLower(ch)
+	c.messagesLock.Lock()
+	m, ok := c.messages[ch]
+	if ok {
+		c.messagesLock.Unlock()
+		return nil, ErrTwitchAlreadyInChannel
+	}
+	m = make(chan *Message, MessageBufferSize)
+	c.messages[ch] = m
+	c.messagesLock.Unlock()
+	c.Send("JOIN #" + ch)
+	return m, nil
+}
+
+// Leave channel
+func (c *twitchSocketClient) Leave(ch string) error {
+	ch = strings.ToLower(ch)
+	c.messagesLock.Lock()
+	_, ok := c.messages[ch]
+	if !ok {
+		c.messagesLock.Unlock()
+		return ErrTwitchNotInChannel
+	}
+	delete(c.messages, ch)
+	c.messagesLock.Unlock()
+	defer c.Send("PART #" + ch)
+	return nil
+}
+
+func (c *twitchSocketClient) Send(m string) {
+	c.connLock.RLock()
+	c.sendLock.Lock()
+	err := c.conn.WriteMessage(websocket.TextMessage, []byte(m+"\r\n"))
+	if err == nil {
+		time.Sleep(SocketWriteDebounce)
+	}
+	c.sendLock.Unlock()
+	c.connLock.RUnlock()
+	if err != nil {
+		log.Printf("error sending message %s", err)
+		c.reconnect()
+	}
 }

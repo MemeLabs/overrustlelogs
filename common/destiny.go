@@ -44,7 +44,9 @@ func (c *DestinyChat) Connect() {
 	if err != nil {
 		log.Printf("error connecting to destiny ws %s", err)
 		c.reconnect()
+		return
 	}
+	log.Printf("connected to destiny ws")
 }
 
 func (c *DestinyChat) reconnect() {
@@ -63,15 +65,14 @@ func (c *DestinyChat) Run() {
 	c.Connect()
 
 	for {
-		err := c.conn.SetReadDeadline(time.Now().Add(SocketReadTimeout))
-		if err != nil {
-			c.reconnect()
-			continue
-		}
-
 		c.RLock()
 		_, msg, err := c.conn.ReadMessage()
 		c.RUnlock()
+		if err != nil {
+			log.Printf("error reading from websocket %s", err)
+			c.reconnect()
+			continue
+		}
 		if err != nil {
 			log.Printf("error reading message %s", err)
 			c.reconnect()
