@@ -372,7 +372,7 @@ func (c *twitchSocketClient) connect() {
 	c.conn, _, err = dialer.Dial(fmt.Sprintf("ws://%s/ws", c.host), headers)
 	c.connLock.Unlock()
 	if err != nil {
-		log.Printf("error connecting to twitch ws %s %s", c.host, err)
+		log.Printf("error connecting to twitch ws %s", err)
 		c.retries++
 		if c.retries >= TwitchMaxConnectRetries {
 			c.Stop()
