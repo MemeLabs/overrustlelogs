@@ -309,7 +309,7 @@ func (c *twitchSocketClient) run() {
 	for {
 		c.connLock.RLock()
 		_, msg, err := c.conn.ReadMessage()
-		if c.stopped == true {
+		if c.stopped {
 			c.connLock.RUnlock()
 			return
 		}
@@ -467,14 +467,14 @@ func (c *twitchSocketClient) Leave(ch string) error {
 }
 
 func (c *twitchSocketClient) Send(m string) {
-	c.connLock.RLock()
 	c.sendLock.Lock()
+	c.connLock.RLock()
 	err := c.conn.WriteMessage(websocket.TextMessage, []byte(m+"\r\n"))
+	c.connLock.RUnlock()
 	if err == nil {
 		time.Sleep(SocketWriteDebounce)
 	}
 	c.sendLock.Unlock()
-	c.connLock.RUnlock()
 	if err != nil {
 		log.Printf("error sending message %s", err)
 		c.reconnect()
