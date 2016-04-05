@@ -50,7 +50,7 @@ html lang=en
             li
               a class="active" href="/contact" Contact
             li
-              a class="red accent-3" target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=Q3SAFTXUR4UHG"
+              a class="donate" target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=Q3SAFTXUR4UHG"
                 i class="fa fa-paypal fa-fw"
                 span Donate
 

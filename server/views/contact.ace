@@ -2,11 +2,9 @@
   div class="container"
     div class="card"
       div class="card-content"
-        h4 E-mail
+        h4 Support E-mail
         p
-          a class="flow-text" href="mailto:dbc@overrustlelogs.net" dbc@overrustlelogs.net
-        p
-          a class="flow-text" href="mailto:tensei@overrustlelogs.net" tensei@overrustlelogs.net
+          a class="flow-text" href="mailto:support@overrustlelogs.net" support@overrustlelogs.net
         h4
           a href="http://www.destiny.gg/bigscreen" target="_blank" Destiny.gg Chat
         p class="flow-text" dbc, Tensei and Slugalisk
