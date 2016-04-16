@@ -6,7 +6,8 @@
           a href="/"
             i class="fa fa-home fa-fw"
           {{range .Breadcrumbs}}
-            a href={{.Path}}  / {{.Name}}
+            span &nbsp;/&nbsp;
+            a href={{.Path}} {{.Name}}
           {{end}}
       {{end}}
       {{range .Paths}}

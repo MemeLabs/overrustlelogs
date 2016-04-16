@@ -1,21 +1,35 @@
 a {
 	color: #fff
 }
+a:hover {
+	color: #ff5722
+}
+.donate {
+	background-color: #ff5722
+}
+.donate:hover {
+	background-color: #ff5722;
+	color: #fff
+}
 body {
-	background: #141414;
+	background: #212121;
 	color: #fff
 }
 nav {
 	background-color: #212121
 }
 nav ul li.active {
-	background-color: rgba(0, 0, 0, 5)
+	background-color: #212121
+}
+nav ul a:hover {
+	background-color: rgba(0, 0, 0, 0.1);
 }
 .text {
 	white-space: pre-line;
 	word-wrap: break-word;
-	opacity: 0.7;
 	font-style: normal;
+	color: #fff;
+	opacity: 0.8;
 }
 .collection {
 	background-color: #212121
@@ -28,7 +42,8 @@ nav ul li.active {
 	color: #fff
 }
 .collection a.collection-item:not(.active):hover {
-	background-color: rgba(0, 0, 0, 2);
+	background-color: rgba(0, 0, 0, 0.1);
+	color: #ff5722;
 	opacity: 1;
 }
 .collection.with-header .collection-header {
@@ -40,10 +55,14 @@ nav ul li.active {
 	padding-left: 20px
 }
 .card {
-	background-color: #212121
+	background-color: #212121;
+	color: #fff
 }
 .card .card-action a:not(.btn):not(.btn-large):not(.btn-floating) {
 	color: #fff
+}
+.card .card-action a:not(.btn):not(.btn-large):not(.btn-floating):hover {
+	color: #ff5722;
 }
 .side-nav {
 	background-color: #212121
