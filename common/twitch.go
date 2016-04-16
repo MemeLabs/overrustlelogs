@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -32,6 +33,7 @@ const (
 	TwitchChannelServerAPI  = "http://tmi.twitch.tv/servers"
 	TwitchMaxConnectRetries = 3
 	TwitchReadTimeout       = 30 * time.Minute
+	TwitchReconnectDelay    = 30 * time.Second
 )
 
 // TwitchChat twitch chat client
@@ -70,6 +72,7 @@ func NewTwitchChat(j TwitchJoinHandler) *TwitchChat {
 	if err := json.Unmarshal(d, &c.channels); err != nil {
 		log.Fatalf("unable to read channels %s", err)
 	}
+	sort.Strings(c.channels)
 
 	return c
 }
@@ -114,7 +117,7 @@ func (c *TwitchChat) runCommandChannel() error {
 					break
 				}
 				c.runCommand(sc, m)
-			case <-sc.Evicted:
+			case <-sc.Evicted():
 				break ReadLoop
 			}
 		}
@@ -133,18 +136,18 @@ func (c *TwitchChat) runCommand(sc *twitchSocketClient, m *Message) {
 			} else {
 				if err == ErrChannelNotValid {
 					sc.Send("PRIVMSG #" + ch + " :Channel doesn't exist!")
-				} else {
+				} else if err == ErrTwitchAlreadyInChannel {
 					sc.Send("PRIVMSG #" + ch + " :Already logging " + ld[1])
+				} else {
+					sc.Send("PRIVMSG #" + ch + " :Error connnecting to channel " + ld[1])
 				}
 			}
 		} else if strings.EqualFold(d[0], "!leave") {
 			if err := c.Leave(ld[1]); err == nil {
 				sc.Send("PRIVMSG #" + ch + " :Leaving " + ld[1])
-			} else {
+			} else if err == ErrTwitchNotInChannel {
 				sc.Send("PRIVMSG #" + ch + " :Not logging " + ld[1])
 			}
-		} else if strings.EqualFold(d[0], "!channels") {
-			sc.Send("PRIVMSG #" + ch + " :Logging " + strings.Join(c.channels, ", "))
 		}
 	}
 }
@@ -154,20 +157,39 @@ func (c *TwitchChat) Join(ch string) error {
 	if err := c.join(ch); err != nil {
 		return err
 	}
+
+	i := c.findChannelIndex(ch)
+	if i > -1 && c.channels[i] == ch {
+		return ErrTwitchAlreadyInChannel
+	}
+	c.channels = append(c.channels, ch)
 	return c.saveChannels()
 }
 
 // Leave channel
 func (c *TwitchChat) Leave(ch string) error {
-	if err := c.leave(ch); err != nil {
+	i := c.findChannelIndex(ch)
+	if i == -1 || c.channels[i] != ch {
+		return ErrTwitchNotInChannel
+	}
+	copy(c.channels[i:], c.channels[i+1:])
+	c.channels = c.channels[:len(c.channels)-1]
+	if err := c.saveChannels(); err != nil {
 		return err
 	}
-	return c.saveChannels()
+
+	return c.leave(ch)
+}
+
+func (c *TwitchChat) findChannelIndex(ch string) int {
+	return sort.Search(len(c.channels), func(i int) bool {
+		return strings.Compare(c.channels[i], ch) > -1
+	})
 }
 
 func (c *TwitchChat) runEvictHandler(sc *twitchSocketClient) {
 	for {
-		ch, ok := <-sc.Evicted
+		ch, ok := <-sc.Evicted()
 		if !ok {
 			return
 		}
@@ -178,6 +200,18 @@ func (c *TwitchChat) runEvictHandler(sc *twitchSocketClient) {
 }
 
 func (c *TwitchChat) join(ch string) error {
+	retries := TwitchMaxConnectRetries
+	for {
+		err := c.tryJoin(ch)
+		if err == nil || retries == 0 {
+			return err
+		}
+		time.Sleep(TwitchReconnectDelay)
+		retries--
+	}
+}
+
+func (c *TwitchChat) tryJoin(ch string) error {
 	h, err := c.lookupHost(ch)
 	if err != nil {
 		return err
@@ -256,10 +290,6 @@ func (c *TwitchChat) lookupHost(ch string) (string, error) {
 func (c *TwitchChat) saveChannels() error {
 	c.Lock()
 	defer c.Unlock()
-	c.channels = []string{}
-	for ch := range c.channelClients {
-		c.channels = append(c.channels, ch)
-	}
 	f, err := os.Create(GetConfig().Twitch.ChannelListPath)
 	if err != nil {
 		log.Printf("error saving channel list %s", err)
@@ -288,7 +318,7 @@ type twitchSocketClient struct {
 	host         string
 	stopped      bool
 	retries      int
-	Evicted      chan string
+	evicted      chan string
 }
 
 // NewTwitchChat new twitch chat client
@@ -296,7 +326,7 @@ func newTwitchSocketClient(host string) *twitchSocketClient {
 	c := &twitchSocketClient{
 		messages: make(map[string]chan *Message, 0),
 		host:     host,
-		Evicted:  make(chan string),
+		evicted:  make(chan string),
 	}
 	c.connect()
 	go c.run()
@@ -360,7 +390,7 @@ func (c *twitchSocketClient) evict(ch string) {
 	c.messagesLock.RUnlock()
 	if ok {
 		c.Leave(ch)
-		c.Evicted <- ch
+		c.evicted <- ch
 	}
 }
 
@@ -418,7 +448,7 @@ func (c *twitchSocketClient) Stop() {
 	for _, ch := range m {
 		c.evict(ch)
 	}
-	close(c.Evicted)
+	close(c.evicted)
 
 	c.connLock.Lock()
 	c.conn.Close()
@@ -427,6 +457,10 @@ func (c *twitchSocketClient) Stop() {
 
 func (c *twitchSocketClient) Host() string {
 	return c.host
+}
+
+func (c *twitchSocketClient) Evicted() chan string {
+	return c.evicted
 }
 
 func (c *twitchSocketClient) Empty() bool {
