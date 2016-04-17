@@ -409,7 +409,7 @@ func DestinyNickHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if rs.Nick() != vars["nick"] {
-		http.Redirect(w, r, "./"+rs.Nick(), 301)
+		http.Redirect(w, r, "./"+rs.Nick()+".txt", 301)
 		return
 	}
 	vars["month"] = rs.Month()
