@@ -206,8 +206,8 @@ func (c *TwitchChat) join(ch string) error {
 		if err == nil || retries == 0 {
 			return err
 		}
-		time.Sleep(TwitchReconnectDelay)
 		retries--
+		time.Sleep(TwitchReconnectDelay)
 	}
 }
 

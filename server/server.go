@@ -65,28 +65,27 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}", d.WatchHandle("Month", MonthHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", d.WatchHandle("Day", DayHandle)).Queries("search", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", d.WatchHandle("Day", DayHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}", d.WatchHandle("Day", DayHandle)).Queries("search", "{filter:.+}").Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}", d.WatchHandle("Day", DayHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}", d.WatchHandle("Day", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs", d.WatchHandle("Users", UsersHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{nick:[a-zA-Z0-9_-]{1,25}}.txt", d.WatchHandle("User", UserHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{nick:[a-zA-Z0-9_-]{1,25}}", d.WatchHandle("User", UserHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{nick:[a-zA-Z0-9_-]{1,25}}", d.WatchHandle("User", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}", d.WatchHandle("Premium", PremiumHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}/{month:[a-zA-Z]+ [0-9]{4}}.txt", d.WatchHandle("PremiumUser", PremiumUserHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}/{month:[a-zA-Z]+ [0-9]{4}}", d.WatchHandle("PremiumUser", PremiumUserHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}/{month:[a-zA-Z]+ [0-9]{4}}", d.WatchHandle("PremiumUser", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/current", d.WatchHandle("DestinyBase", DestinyBaseHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/current/{nick:[a-zA-Z0-9_]+}", d.WatchHandle("DestinyNick", DestinyNickHandle)).Queries("search", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/current/{nick:[a-zA-Z0-9_]+}.txt", d.WatchHandle("DestinyNick", DestinyNickHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/current/{nick:[a-zA-Z0-9_]+}", d.WatchHandle("DestinyNick", DestinyNickHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", d.WatchHandle("DestinyBroadcaster", DestinyBroadcasterHandle)).Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", d.WatchHandle("DestinyBroadcaster", DestinyBroadcasterHandle)).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", d.WatchHandle("DestinyBroadcaster", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("DestinySubscriber", DestinySubscriberHandle)).Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", d.WatchHandle("DestinySubscriber", DestinySubscriberHandle)).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", d.WatchHandle("DestinySubscriber", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans.txt", d.WatchHandle("DestinyBan", DestinyBanHandle)).Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans", d.WatchHandle("DestinyBan", DestinyBanHandle)).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans", d.WatchHandle("DestinyBan", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", d.WatchHandle("Broadcaster", BroadcasterHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", d.WatchHandle("Broadcaster", BroadcasterHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", d.WatchHandle("Broadcaster", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("Subscriber", SubscriberHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", d.WatchHandle("Subscriber", SubscriberHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", d.WatchHandle("Subscriber", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+ chatlog}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Queries("limit", "{limit:[0-9]+}").Methods("GET")
 	r.HandleFunc("/api/v1/status.json", d.WatchHandle("Debug", d.HTTPHandle))
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
@@ -120,12 +119,18 @@ func NewDebugger() *Debugger {
 
 // WatchHandle ...
 func (d *Debugger) WatchHandle(name string, f http.HandlerFunc) http.HandlerFunc {
-	var c int64
-	d.counters[name] = &c
+	var c *int64
+	var ok bool
+	if c, ok = d.counters[name]; !ok {
+		c = new(int64)
+		d.counters[name] = c
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt64(&c, 1)
+		atomic.AddInt64(c, 1)
+		start := time.Now()
 		f.ServeHTTP(w, r)
-		atomic.AddInt64(&c, -1)
+		log.Printf("served \"%s\" in %s", r.URL.Path, time.Since(start))
+		atomic.AddInt64(c, -1)
 	}
 }
 
@@ -161,6 +166,23 @@ func BaseHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	serveDirIndex(w, []string{}, paths)
+}
+
+// WrapperHandle static html log wrapper
+func WrapperHandle(w http.ResponseWriter, r *http.Request) {
+	tpl, err := ace.Load(common.GetConfig().Server.ViewPath+"/layout", common.GetConfig().Server.ViewPath+"/wrapper", nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-type", "text/html; charset=UTF-8")
+	path := r.URL.Path + ".txt"
+	if r.URL.RawQuery != "" {
+		path += "?" + r.URL.RawQuery
+	}
+	if err := tpl.Execute(w, struct{ Path string }{Path: path}); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // ContactHandle contact page
@@ -227,7 +249,6 @@ func MonthHandle(w http.ResponseWriter, r *http.Request) {
 // DayHandle channel index
 func DayHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	isTXT := strings.HasSuffix(r.URL.Path, ".txt")
 	data, err := readLogFile(common.GetConfig().LogPath + "/" + vars["channel"] + "/" + vars["month"] + "/" + vars["date"])
 	if err != nil {
 		serveError(w, err)
@@ -235,9 +256,9 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
+	w.Header().Set("Cache-Control", "max-age=60")
 	if _, ok := vars["filter"]; ok {
 		reader := bufio.NewReaderSize(bytes.NewReader(data), len(data))
-		filteredData := bytes.NewBuffer([]byte{})
 		var lineCount int
 		for {
 			line, err := reader.ReadSlice('\n')
@@ -248,11 +269,7 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			if filterKey(line, vars["filter"]) {
-				if !isTXT {
-					filteredData.Write(line)
-				} else {
-					w.Write(line)
-				}
+				w.Write(line)
 				lineCount++
 			}
 		}
@@ -260,14 +277,6 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 			serveError(w, ErrSearchKeyNotFound)
 			return
 		}
-		if !isTXT {
-			serveHTML(w, filteredData.Bytes())
-			return
-		}
-		return
-	}
-	if !isTXT {
-		serveHTML(w, data)
 		return
 	}
 	w.Write(data)
@@ -303,12 +312,11 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 // UserHandle user log
 func UserHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	isTXT := strings.HasSuffix(r.URL.Path, ".txt")
 	if _, ok := vars["filter"]; ok {
-		serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], searchKey(vars["nick"], vars["filter"]), isTXT)
+		serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], searchKey(vars["nick"], vars["filter"]))
 		return
 	}
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter(vars["nick"]), isTXT)
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter(vars["nick"]))
 }
 
 // PremiumHandle premium user log index
@@ -328,18 +336,16 @@ func PremiumHandle(w http.ResponseWriter, r *http.Request) {
 // PremiumUserHandle user logs + replies
 func PremiumUserHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	isTXT := strings.HasSuffix(r.URL.Path, ".txt")
 	nick := bytes.ToLower([]byte(vars["nick"]))
 	filter := func(line []byte) bool {
 		return bytes.Contains(bytes.ToLower(line), nick)
 	}
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], filter, isTXT)
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], filter)
 }
 
 // BroadcasterHandle channel index
 func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	isTXT := strings.HasSuffix(r.URL.Path, ".txt")
 	nick := vars["channel"][:len(vars["channel"])-8]
 	search, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+vars["channel"], nick)
 	if err != nil {
@@ -353,35 +359,31 @@ func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	} else if err != nil {
 		serveError(w, err)
 	}
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter(rs.Nick()), isTXT)
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter(rs.Nick()))
 }
 
 // SubscriberHandle channel index
 func SubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	isTXT := strings.HasSuffix(r.URL.Path, ".txt")
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter("twitchnotify"), isTXT)
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter("twitchnotify"))
 }
 
 // DestinyBroadcasterHandle destiny logs
 func DestinyBroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	isTXT := strings.HasSuffix(r.URL.Path, ".txt")
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("Destiny"), isTXT)
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("Destiny"))
 }
 
 // DestinySubscriberHandle destiny subscriber logs
 func DestinySubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	isTXT := strings.HasSuffix(r.URL.Path, ".txt")
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("Subscriber"), isTXT)
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("Subscriber"))
 }
 
 // DestinyBanHandle channel ban list
 func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	isTXT := strings.HasSuffix(r.URL.Path, ".txt")
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("Ban"), isTXT)
+	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("Ban"))
 }
 
 // DestinyBaseHandle shows the most recent months logs directly on the subdomain
@@ -407,11 +409,7 @@ func DestinyNickHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if rs.Nick() != vars["nick"] {
-		isTXT := strings.HasSuffix(r.URL.Path, ".txt")
-		if isTXT {
-			http.Redirect(w, r, "./"+rs.Nick()+".txt", 301)
-		}
-		http.Redirect(w, r, "./"+rs.Nick(), 301)
+		http.Redirect(w, r, "./"+rs.Nick()+".txt", 301)
 		return
 	}
 	vars["month"] = rs.Month()
@@ -688,7 +686,7 @@ func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
 	}
 }
 
-func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) bool, isTXT bool) {
+func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) bool) {
 	logs, err := readLogDir(path)
 	if err != nil {
 		serveError(w, err)
@@ -696,7 +694,6 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 	}
 
 	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
-	filteredData := bytes.NewBuffer([]byte{})
 	var lineCount int
 	for _, name := range logs {
 		data, err := readLogFile(path + "/" + name)
@@ -714,11 +711,7 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 				break
 			}
 			if filter(line) {
-				if !isTXT {
-					filteredData.Write(line)
-				} else {
-					w.Write(line)
-				}
+				w.Write(line)
 				lineCount++
 			}
 		}
@@ -726,20 +719,5 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 	if lineCount == 0 {
 		serveError(w, ErrSearchKeyNotFound)
 		return
-	}
-	if !isTXT {
-		serveHTML(w, filteredData.Bytes())
-	}
-}
-
-func serveHTML(w http.ResponseWriter, data []byte) {
-	tpl, err := ace.Load(common.GetConfig().Server.ViewPath+"/layout", common.GetConfig().Server.ViewPath+"/content", nil)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-type", "text/html; charset=UTF-8")
-	if err := tpl.Execute(w, string(data)); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

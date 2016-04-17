@@ -25,8 +25,22 @@ html lang=en
       })();
 
       (function(b){(function(a){"__CF"in b&&"DJS"in b.__CF?b.__CF.DJS.push(a):"addEventListener"in b?b.addEventListener("load",a,!1):b.attachEvent("onload",a)})(function(){"FB"in b&&"Event"in FB&&"subscribe"in FB.Event&&(FB.Event.subscribe("edge.create",function(a){_gaq.push(["_trackSocial","facebook","like",a])}),FB.Event.subscribe("edge.remove",function(a){_gaq.push(["_trackSocial","facebook","unlike",a])}),FB.Event.subscribe("message.send",function(a){_gaq.push(["_trackSocial","facebook","send",a])}));"twttr"in b&&"events"in twttr&&"bind"in twttr.events&&twttr.events.bind("tweet",function(a){if(a){var b;if(a.target&&a.target.nodeName=="IFRAME")a:{if(a=a.target.src){a=a.split("#")[0].match(/[^?=&]+=([^&]*)?/g);b=0;for(var c;c=a[b];++b)if(c.indexOf("url")===0){b=unescape(c.split("=")[1]);break a}}b=void 0}_gaq.push(["_trackSocial","twitter","tweet",b])}})})})(window);
+
     = javascript
-      $( document ).ready(function(){$(".button-collapse").sideNav();})
+      $(function(){$(".button-collapse").sideNav();})
+    = javascript
+      (function(path) {
+        if (!path) return;
+        var req = new XMLHttpRequest();
+        var offset = 0;
+        req.onreadystatechange = function() {
+          var text = req.responseText;
+          $('<span />').text(text.substring(offset, text.length)).appendTo('.text');
+          offset = text.length;
+        };
+        req.open('GET', path);
+        req.send();
+      })({{.Path}})
   body
     div class="navbar-fixed"
       nav
@@ -55,5 +69,3 @@ html lang=en
                 span Donate
 
     = yield body
-
-    script type="text/rocketscript" data-rocketsrc="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"
