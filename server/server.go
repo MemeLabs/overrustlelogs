@@ -251,7 +251,7 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	data, err := readLogFile(common.GetConfig().LogPath + "/" + vars["channel"] + "/" + vars["month"] + "/" + vars["date"])
 	if err != nil {
-		serveError(w, err)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
