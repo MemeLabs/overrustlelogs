@@ -274,7 +274,7 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if lineCount == 0 {
-			serveError(w, ErrSearchKeyNotFound)
+			http.Error(w, ErrSearchKeyNotFound.Error(), http.StatusNotFound)
 			return
 		}
 		return
@@ -717,7 +717,7 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 		}
 	}
 	if lineCount == 0 {
-		serveError(w, ErrSearchKeyNotFound)
+		http.Error(w, ErrSearchKeyNotFound.Error(), http.StatusNotFound)
 		return
 	}
 }
