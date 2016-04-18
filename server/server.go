@@ -395,7 +395,8 @@ func CurrentBaseHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func convertChannelCase(ch string) string {
-	p := strings.Split(strings.ToLower(ch), " ")
+	ch = strings.ToLower(ch)
+	p := strings.Split(ch, " ")
 	p[0] = strings.Title(p[0])
 	return strings.Join(p, " ")
 }
