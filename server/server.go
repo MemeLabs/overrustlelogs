@@ -35,6 +35,7 @@ const (
 
 // errors
 var (
+	ErrUserNotFound      = errors.New("didn't find any logs for this user")
 	ErrNotFound          = errors.New("file not found")
 	ErrSearchKeyNotFound = errors.New("didn't find what you were looking for :(")
 )
@@ -72,10 +73,10 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}", d.WatchHandle("Premium", PremiumHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}/{month:[a-zA-Z]+ [0-9]{4}}.txt", d.WatchHandle("PremiumUser", PremiumUserHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}/{month:[a-zA-Z]+ [0-9]{4}}", d.WatchHandle("PremiumUser", WrapperHandle)).Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/current", d.WatchHandle("DestinyBase", DestinyBaseHandle)).Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/current/{nick:[a-zA-Z0-9_]+}", d.WatchHandle("DestinyNick", WrapperHandle)).Queries("search", "{filter:.+}").Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/current/{nick:[a-zA-Z0-9_]+}.txt", d.WatchHandle("DestinyNick", DestinyNickHandle)).Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/current/{nick:[a-zA-Z0-9_]+}", d.WatchHandle("DestinyNick", WrapperHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current", d.WatchHandle("CurrentBase", CurrentBaseHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current/{nick:[a-zA-Z0-9_]+}", d.WatchHandle("NickHandle", WrapperHandle)).Queries("search", "{filter:.+}").Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current/{nick:[a-zA-Z0-9_]+}.txt", d.WatchHandle("NickHandle", NickHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current/{nick:[a-zA-Z0-9_]+}", d.WatchHandle("NickHandle", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", d.WatchHandle("DestinyBroadcaster", DestinyBroadcasterHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", d.WatchHandle("DestinyBroadcaster", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("DestinySubscriber", DestinySubscriberHandle)).Methods("GET")
@@ -386,26 +387,31 @@ func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
 	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("Ban"))
 }
 
-// DestinyBaseHandle shows the most recent months logs directly on the subdomain
-func DestinyBaseHandle(w http.ResponseWriter, r *http.Request) {
+// CurrentBaseHandle shows the most recent months logs directly on the subdomain
+func CurrentBaseHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	vars["channel"] = "Destinygg chatlog"
 	vars["month"] = time.Now().Format("January 2006")
 	MonthHandle(w, r)
 }
 
-// DestinyNickHandle shows the users most recent available log
-func DestinyNickHandle(w http.ResponseWriter, r *http.Request) {
+func convertChannelCase(ch string) string {
+	p := strings.Split(strings.ToLower(ch), " ")
+	p[0] = strings.Title(p[0])
+	return strings.Join(p, " ")
+}
+
+// NickHandle shows the users most recent available log
+func NickHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	vars["channel"] = "Destinygg chatlog"
+	vars["channel"] = convertChannelCase(vars["channel"])
 	search, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+vars["channel"], vars["nick"])
 	if err != nil {
-		serveError(w, ErrNotFound)
+		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
 		return
 	}
 	rs, err := search.Next()
 	if err != nil {
-		serveError(w, ErrNotFound)
+		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
 		return
 	}
 	if rs.Nick() != vars["nick"] {
