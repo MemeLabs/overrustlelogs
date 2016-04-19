@@ -331,9 +331,9 @@ func (b *Bot) handleTwitchLogs(m *common.Message, r *bufio.Reader) (string, erro
 	}
 
 	if rs != nil {
-		return rs.Month() + " logs. " + b.toURL(common.GetConfig().LogHost, "/"+twitchPath+"/"+rs.Month()+"/userlogs/"+rs.Nick()+".txt"), nil
+		return rs.Month() + " logs. " + b.toURL(common.GetConfig().Twitch.LogHost, "/Destiny/"+rs.Nick()), nil
 	}
-	return b.toURL(common.GetConfig().LogHost, "/"+twitchPath+"/"+time.Now().UTC().Format("January 2006")+"/"), nil
+	return b.toURL(common.GetConfig().Twitch.LogHost, "/Destiny"), nil
 }
 
 func (b *Bot) searchNickFromLine(path string, r *bufio.Reader) (*common.NickSearchResult, string, error) {

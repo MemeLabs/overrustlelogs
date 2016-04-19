@@ -18,6 +18,7 @@ type Config struct {
 		}
 	}
 	Twitch struct {
+		LogHost         string
 		OAuth           string
 		Nick            string
 		Admins          []string
