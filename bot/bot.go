@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -79,6 +78,7 @@ type Bot struct {
 	ignoreLog   map[string]struct{}
 }
 
+// NewBot ...
 func NewBot(c *common.DestinyChat) *Bot {
 	b := &Bot{
 		c:         c,
@@ -91,9 +91,7 @@ func NewBot(c *common.DestinyChat) *Bot {
 		b.admins[admin] = struct{}{}
 	}
 	b.public = map[string]command{
-		"logs":  b.handleDestinyLogs,
 		"log":   b.handleDestinyLogs,
-		"tlogs": b.handleTwitchLogs,
 		"tlog":  b.handleTwitchLogs,
 		"nuke":  b.handleSimpleNuke,
 		"aegis": b.handleAegis,
@@ -206,10 +204,11 @@ func (b *Bot) runCommand(commands map[string]command, m *common.Message) (string
 		if err != io.EOF {
 			c = c[:len(c)-1]
 		}
-		if cmd, ok := commands[c]; ok {
-			return cmd(m, r)
-		} else if len(c) >= 4 && strings.EqualFold(c[0:4], "nuke") {
-			return b.handleCustomNuke(m, c[4:], r)
+		c = strings.ToLower(c)
+		for cs, cmd := range commands {
+			if strings.Index(c, cs) == 0 {
+				return cmd(m, r)
+			}
 		}
 	}
 	return "", nil
@@ -359,13 +358,6 @@ func (b *Bot) searchNickFromLine(path string, r *bufio.Reader) (*common.NickSear
 
 func (b *Bot) handleSimpleNuke(m *common.Message, r *bufio.Reader) (string, error) {
 	return b.handleNuke(m, defaultNukeDuration, r)
-}
-
-func (b *Bot) handleCustomNuke(m *common.Message, d string, r *bufio.Reader) (string, error) {
-	if s, err := strconv.ParseUint(d, 10, 64); err == nil {
-		return b.handleNuke(m, time.Duration(s)*time.Second, r)
-	}
-	return "", nil
 }
 
 func (b *Bot) handleNuke(m *common.Message, d time.Duration, r *bufio.Reader) (string, error) {

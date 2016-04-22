@@ -325,7 +325,7 @@ func PremiumHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	paths, err := readDirIndex(common.GetConfig().LogPath + "/" + vars["channel"])
 	if err != nil {
-		serveError(w, err)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	for i := range paths {
@@ -350,15 +350,15 @@ func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	nick := vars["channel"][:len(vars["channel"])-8]
 	search, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+vars["channel"], nick)
 	if err != nil {
-		serveError(w, ErrNotFound)
+		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
 		return
 	}
 	rs, err := search.Next()
 	if err == io.EOF {
-		serveError(w, ErrNotFound)
+		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
 		return
 	} else if err != nil {
-		serveError(w, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter(rs.Nick()))
 }
