@@ -54,7 +54,6 @@
     var right = getOffset(selection.extentNode) + selection.extentOffset;
     var hash = left === right ? '' : '#' + Math.min(left, right) + '-' + Math.max(left, right);
     history.replaceState('', document.title, window.location.pathname + hash);
-    console.log('>>>', window.location.pathname + hash);
   }
 
   function getOffset(node) {
