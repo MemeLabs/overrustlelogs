@@ -13,6 +13,7 @@ html lang=en
     link rel="stylesheet" href="/assets/css/orl.css"
     script src="//code.jquery.com/jquery-1.12.0.min.js"
     script src="/assets/js/materialize.min.js"
+    script src="/assets/js/orl.js"
     = javascript
       var _gaq = _gaq || [];
       _gaq.push(['_setAccount', 'UA-46946005-1']);
@@ -29,17 +30,26 @@ html lang=en
     = javascript
       $(function(){$(".button-collapse").sideNav();})
     = javascript
-      (function(path) {
-        if (!path) return;
-        var req = new XMLHttpRequest();
-        var offset = 0;
-        req.onreadystatechange = function() {
-          var text = req.responseText;
-          $('<span />').text(text.substring(offset, text.length)).appendTo('.text');
-          offset = text.length;
+      (function() {
+        function load(path) {
+          var req = new XMLHttpRequest();
+          var offset = 0;
+          req.onreadystatechange = function() {
+            var text = req.responseText;
+            $('<span />').text(text.substring(offset, text.length)).appendTo('.text');
+            offset = text.length;
+          };
+          req.open('GET', path);
+          req.send();
+        }
+
+        window.orl = {
+          load: load
         };
-        req.open('GET', path);
-        req.send();
+      })();
+      (function(path) {
+        var selection = location.hash.match(/\#([0-9]+)-([0-9]+)/);
+        path && orl.load(path, selection && [selection[1] >> 0, selection[2] >> 0]);
       })({{.Path}})
   body
     div class="navbar-fixed"

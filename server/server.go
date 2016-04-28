@@ -257,7 +257,7 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
-	w.Header().Set("Cache-Control", "max-age=60")
+	w.Header().Set("Cache-control", "max-age=60")
 	if _, ok := vars["filter"]; ok {
 		reader := bufio.NewReaderSize(bytes.NewReader(data), len(data))
 		var lineCount int
