@@ -35,7 +35,7 @@
         if (selection) {
           var span = $('.selection');
           if (span.size()) {
-            $('body').scrollTop(span.offset().top - HEADER_HEIGHT);
+            $('body').scrollTop(span.offset().top + HEADER_HEIGHT);
           }
         }
 
@@ -54,6 +54,7 @@
     var right = getOffset(selection.extentNode) + selection.extentOffset;
     var hash = left === right ? '' : '#' + Math.min(left, right) + '-' + Math.max(left, right);
     history.replaceState('', document.title, window.location.pathname + hash);
+    console.log('>>>', window.location.pathname + hash);
   }
 
   function getOffset(node) {
