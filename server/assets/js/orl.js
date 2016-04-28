@@ -1,4 +1,6 @@
 (function() {
+	var HEADER_HEIGHT = 64;
+
   function load(path, selection) {
     var offset = 0;
 
@@ -33,7 +35,7 @@
         if (selection) {
           var span = $('.selection');
           if (span.size()) {
-            $('body').scrollTop(span.offset().top);
+            $('body').scrollTop(span.offset().top - HEADER_HEIGHT);
           }
         }
 
