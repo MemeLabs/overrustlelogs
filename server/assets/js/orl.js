@@ -52,7 +52,8 @@
     var selection = document.getSelection();
     var left = getOffset(selection.baseNode) + selection.baseOffset;
     var right = getOffset(selection.extentNode) + selection.extentOffset;
-    location.hash = left === right ? '' : Math.min(left, right) + '-' + Math.max(left, right);
+    var hash = left === right ? '' : '#' + Math.min(left, right) + '-' + Math.max(left, right);
+    history.replaceState('', document.title, window.location.pathname + hash);
   }
 
   function getOffset(node) {
