@@ -30,23 +30,6 @@ html lang=en
     = javascript
       $(function(){$(".button-collapse").sideNav();})
     = javascript
-      (function() {
-        function load(path) {
-          var req = new XMLHttpRequest();
-          var offset = 0;
-          req.onreadystatechange = function() {
-            var text = req.responseText;
-            $('<span />').text(text.substring(offset, text.length)).appendTo('.text');
-            offset = text.length;
-          };
-          req.open('GET', path);
-          req.send();
-        }
-
-        window.orl = {
-          load: load
-        };
-      })();
       (function(path) {
         var selection = location.hash.match(/\#([0-9]+)-([0-9]+)/);
         path && orl.load(path, selection && [selection[1] >> 0, selection[2] >> 0]);
