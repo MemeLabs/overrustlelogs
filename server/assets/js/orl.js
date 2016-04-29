@@ -35,7 +35,7 @@
         if (selection) {
           var span = $('.selection');
           if (span.size()) {
-            $('body').scrollTop(span.offset().top + HEADER_HEIGHT);
+            $('body').scrollTop(span.offset().top - HEADER_HEIGHT);
           }
         }
 
