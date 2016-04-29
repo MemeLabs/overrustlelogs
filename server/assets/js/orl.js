@@ -13,12 +13,12 @@
       var text = req.responseText;
       var length = text.length;
       if (selection) {
-        if (offset <= selection[0] && offset+length > selection[0]) {
+        if (offset < selection[0] && length >= selection[0]) {
           appendChunk(text.substring(offset, selection[0]));
           offset = selection[0];
         }
         if (offset >= selection[0] && offset < selection[1]) {
-          if (offset + length >= selection[1]) {
+          if (length >= selection[1]) {
             appendChunk(text.substring(selection[0], selection[1]), 'selection');
             offset = selection[1];
           }
@@ -29,6 +29,7 @@
       }
       if (offset < length) {
         appendChunk(text.substring(offset, length));
+        offset = length;
       }
 
       if (req.readyState === 4) {
