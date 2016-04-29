@@ -13,7 +13,7 @@ html lang=en
     link rel="stylesheet" href="/assets/css/orl.css"
     script src="//code.jquery.com/jquery-1.12.0.min.js"
     script src="/assets/js/materialize.min.js"
-    script src="/assets/js/orl.js"
+    script src="/assets/js/orl.js?_v=1"
     = javascript
       var _gaq = _gaq || [];
       _gaq.push(['_setAccount', 'UA-46946005-1']);
