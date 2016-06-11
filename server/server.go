@@ -59,6 +59,7 @@ func main() {
 
 	d := NewDebugger()
 	r := mux.NewRouter()
+	r.StrictSlash(true)
 	r.HandleFunc("/", d.WatchHandle("Base", BaseHandle)).Methods("GET")
 	r.HandleFunc("/contact", d.WatchHandle("Contact", ContactHandle)).Methods("GET")
 	r.HandleFunc("/changelog", d.WatchHandle("Changelog", ChangelogHandle)).Methods("GET")
