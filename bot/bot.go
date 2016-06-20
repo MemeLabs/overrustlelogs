@@ -99,6 +99,8 @@ func NewBot(c *common.DestinyChat) *Bot {
 		"subs":  b.handleSubs,
 	}
 	b.private = map[string]command{
+		"log":         b.handleDestinyLogs,
+		"tlog":        b.handleTwitchLogs,
 		"p":           b.handlePremiumLog,
 		"uptime":      b.handleUptime,
 		"ignore":      b.handleIgnore,
@@ -139,16 +141,16 @@ func (b *Bot) Run() {
 					if b.isNuked(rs) {
 						b.addIgnore(m.Nick)
 					} else if isAdmin || (rs != b.lastLine && time.Now().After(b.cooldownEOL)) {
-						// if Destiny requests a log it's pretty SWEATSTINY,so let's add SWEATSTINY at the end of the message :^)
+						// NOTE if Destiny requests a log it's pretty SWEATSTINY,so let's add SWEATSTINY at the end of the message :^)
 						if m.Nick == "Destiny" {
-							rs = rs + " SWEATSTINY"
+							rs += " SWEATSTINY"
 						}
 						if isAdmin && b.lastLine == rs {
-							rs = rs + " ."
-							if err := b.c.Write("MSG", rs); err != nil {
+							rs += " ."
+							if err = b.c.Write(rs); err != nil {
 								log.Println(err)
 							}
-						} else if err := b.c.Write("MSG", rs); err != nil {
+						} else if err = b.c.Write(rs); err != nil {
 							log.Println(err)
 						}
 						b.cooldownEOL = time.Now().Add(cooldownDuration)
@@ -159,7 +161,7 @@ func (b *Bot) Run() {
 				}
 			} else if m.Command == "PRIVMSG" {
 				if rs, err := b.runCommand(b.private, m); err == nil && rs != "" {
-					if err := b.c.WritePrivate("PRIVMSG", m.Nick, rs); err != nil {
+					if err = b.c.WritePrivate(m.Nick, rs); err != nil {
 						log.Println(err)
 					}
 				} else if err != nil {

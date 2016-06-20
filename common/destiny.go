@@ -129,13 +129,13 @@ func (c *DestinyChat) send(command string, msg map[string]string) error {
 }
 
 // Write send message
-func (c *DestinyChat) Write(command, data string) error {
-	return c.send(command, map[string]string{"data": data})
+func (c *DestinyChat) Write(data string) error {
+	return c.send("MSG", map[string]string{"data": data})
 }
 
 // WritePrivate send private message
-func (c *DestinyChat) WritePrivate(command, nick, data string) error {
-	return c.send(command, map[string]string{
+func (c *DestinyChat) WritePrivate(nick, data string) error {
+	return c.send("PRIVMSG", map[string]string{
 		"nick": nick,
 		"data": data,
 	})
