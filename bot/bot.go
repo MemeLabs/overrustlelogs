@@ -135,13 +135,14 @@ func (b *Bot) Run() {
 		case <-b.stop:
 			return
 		case m := <-b.c.Messages():
-			if m.Command == "MSG" {
+			switch m.Command {
+			case "MSG":
 				if rs, err := b.runCommand(b.public, m); err == nil && rs != "" {
 					isAdmin := b.isAdmin(m.Nick)
 					if b.isNuked(rs) {
 						b.addIgnore(m.Nick)
 					} else if isAdmin || (rs != b.lastLine && time.Now().After(b.cooldownEOL)) {
-						// NOTE if Destiny requests a log it's pretty SWEATSTINY,so let's add SWEATSTINY at the end of the message :^)
+						// NOTE if Destiny requests a log it's pretty SWEATSTINY, so let's add SWEATSTINY at the end of the message :^)
 						if m.Nick == "Destiny" {
 							rs += " SWEATSTINY"
 						}
@@ -159,7 +160,7 @@ func (b *Bot) Run() {
 				} else if err != nil {
 					log.Println(err)
 				}
-			} else if m.Command == "PRIVMSG" {
+			case "PRIVMSG":
 				if rs, err := b.runCommand(b.private, m); err == nil && rs != "" {
 					if err = b.c.WritePrivate(m.Nick, rs); err != nil {
 						log.Println(err)
