@@ -41,6 +41,7 @@ type TwitchChat struct {
 	headers      http.Header
 	messagesLock sync.RWMutex
 	messages     map[string]chan *Message
+	channelsLock sync.Mutex
 	channels     []string
 	joinHandler  TwitchJoinHandler
 	admins       map[string]bool
@@ -258,12 +259,15 @@ func (c *TwitchChat) Join(ch string) error {
 		go c.joinHandler(ch, messages)
 	}
 	// if the channel is already in the list then there is no need to save the channels again
+	c.channelsLock.Lock()
 	for _, channel := range c.channels {
 		if strings.EqualFold(channel, ch) {
+			c.channelsLock.Unlock()
 			return nil
 		}
 	}
 	c.channels = append(c.channels, ch)
+	c.channelsLock.Unlock()
 	return c.saveChannels()
 }
 
@@ -288,10 +292,11 @@ func (c *TwitchChat) Leave(ch string) error {
 }
 
 func (c *TwitchChat) removeChannel(ch string) error {
+	c.channelsLock.Lock()
+	defer c.channelsLock.Unlock()
 	for i, channel := range c.channels {
 		if strings.EqualFold(channel, ch) {
 			c.channels = append(c.channels[:i], c.channels[i+1:]...)
-			log.Println("removed", ch)
 			return nil
 		}
 	}
@@ -304,6 +309,7 @@ func (c *TwitchChat) evict(ch string) {
 	_, ok := c.messages[ch]
 	c.messagesLock.RUnlock()
 	if ok {
+		log.Printf("evicted %s", ch)
 		err := c.Leave(ch)
 		if err != nil {
 			log.Println(err)
