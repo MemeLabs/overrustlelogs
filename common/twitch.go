@@ -75,12 +75,12 @@ func NewTwitchChat(j TwitchJoinHandler) *TwitchChat {
 		log.Fatalf("unable to read channels %s", err)
 	}
 	sort.Strings(c.channels)
+	go c.runEvictHandler()
 	return c
 }
 
 // Connect open ws connection
 func (c *TwitchChat) Connect() {
-	go c.runEvictHandler()
 	var err error
 	c.connLock.RLock()
 	c.conn, _, err = c.dialer.Dial(GetConfig().Twitch.SocketURL, c.headers)
@@ -105,16 +105,24 @@ func (c *TwitchChat) reconnect() {
 	if c.conn != nil {
 		c.connLock.Lock()
 		c.conn.Close()
-
-		for ch, mc := range c.messages {
-			close(mc)
-			delete(c.messages, ch)
-		}
 		c.connLock.Unlock()
 	}
+	c.cleanupMessages()
 
 	time.Sleep(SocketReconnectDelay)
 	c.Connect()
+}
+
+func (c *TwitchChat) cleanupMessages() {
+	c.messagesLock.Lock()
+	defer c.messagesLock.Unlock()
+	if len(c.messages) == 0 {
+		return
+	}
+	for ch, mc := range c.messages {
+		close(mc)
+		delete(c.messages, ch)
+	}
 }
 
 // Run connect and start message read loop
@@ -166,13 +174,14 @@ func (c *TwitchChat) Run() {
 			data = strings.Replace(data, "", "", -1)
 			m := &Message{
 				Command: "MSG",
+				Channel: v[2],
 				Nick:    v[1],
 				Data:    data,
 				Time:    time.Now().UTC(),
 			}
 
 			if strings.EqualFold(v[2], GetConfig().Twitch.CommandChannel) {
-				c.runCommand(strings.ToLower(v[2]), m)
+				c.runCommand(m)
 			}
 
 			select {
@@ -183,7 +192,7 @@ func (c *TwitchChat) Run() {
 	}
 }
 
-func (c *TwitchChat) runCommand(source string, m *Message) {
+func (c *TwitchChat) runCommand(m *Message) {
 	if _, ok := c.admins[m.Nick]; !ok && m.Command != "MSG" {
 		return
 	}
@@ -193,24 +202,24 @@ func (c *TwitchChat) runCommand(source string, m *Message) {
 		err := c.Join(ld[1])
 		switch err {
 		case nil:
-			c.send(fmt.Sprintf("PRIVMSG #%s :Logging %s", source, ld[1]))
+			c.send(fmt.Sprintf("PRIVMSG #%s :Logging %s", m.Channel, ld[1]))
 		case ErrChannelNotValid:
-			c.send(fmt.Sprintf("PRIVMSG #%s :Channel doesn't exist!", source))
+			c.send(fmt.Sprintf("PRIVMSG #%s :Channel doesn't exist!", m.Channel))
 		case ErrAlreadyInChannel:
-			c.send(fmt.Sprintf("PRIVMSG #%s :Already logging %s", source, ld[1]))
+			c.send(fmt.Sprintf("PRIVMSG #%s :Already logging %s", m.Channel, ld[1]))
 		default:
 		}
 	case "!leave":
 		err := c.Leave(ld[1])
 		switch err {
 		case nil:
-			c.send(fmt.Sprintf("PRIVMSG #%s :Leaving %s", source, ld[1]))
+			c.send(fmt.Sprintf("PRIVMSG #%s :Leaving %s", m.Channel, ld[1]))
 		case ErrNotInChannel:
-			c.send(fmt.Sprintf("PRIVMSG #%s :Not logging %s", source, ld[1]))
+			c.send(fmt.Sprintf("PRIVMSG #%s :Not logging %s", m.Channel, ld[1]))
 		default:
 		}
 	case "!channels":
-		c.send(fmt.Sprintf("PRIVMSG #%s :Logging %d channels.", source, len(c.channels)))
+		c.send(fmt.Sprintf("PRIVMSG #%s :Logging %d channels.", m.Channel, len(c.channels)))
 	}
 }
 
@@ -233,7 +242,7 @@ func (c *TwitchChat) send(m string) {
 func (c *TwitchChat) Join(ch string) error {
 	ch = strings.ToLower(ch)
 	if !channelExists(ch) {
-		log.Println("channel:", ch, "doesn't exist")
+		c.removeChannel(ch)
 		return ErrChannelNotValid
 	}
 	c.messagesLock.Lock()
@@ -254,7 +263,6 @@ func (c *TwitchChat) Join(ch string) error {
 			return nil
 		}
 	}
-	log.Println("JOINING: adding channel:", ch)
 	c.channels = append(c.channels, ch)
 	return c.saveChannels()
 }
@@ -369,14 +377,13 @@ func (c *TwitchChat) saveChannels() error {
 		log.Printf("error saving channel list %s", err)
 		return err
 	}
-	sort.Strings(c.channels)
 	defer f.Close()
+	sort.Strings(c.channels)
 	data, err := json.Marshal(c.channels)
 	if err != nil {
 		log.Printf("error saving channel list %s", err)
 		return err
 	}
-	sort.Strings(c.channels)
 	var buf bytes.Buffer
 	if err := json.Indent(&buf, data, "", "\t"); err != nil {
 		log.Printf("error saving channel list %s", err)
