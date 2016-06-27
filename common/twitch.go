@@ -309,7 +309,7 @@ func (c *TwitchChat) evict(ch string) {
 	_, ok := c.messages[ch]
 	c.messagesLock.RUnlock()
 	if ok {
-		log.Printf("evicted %s", ch)
+		log.Printf("evicted %s\n", ch)
 		err := c.Leave(ch)
 		if err != nil {
 			log.Println(err)
