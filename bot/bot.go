@@ -46,7 +46,7 @@ func init() {
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	c := chat.NewDestinyChat()
+	c := chat.NewDestiny()
 	b := NewBot(c)
 	go b.Run()
 	go c.Run()
@@ -65,7 +65,7 @@ type command func(m *common.Message, r *bufio.Reader) (string, error)
 
 // Bot commands
 type Bot struct {
-	c           *chat.DestinyChat
+	c           *chat.Destiny
 	stop        chan bool
 	start       time.Time
 	nukeEOL     time.Time
@@ -80,7 +80,7 @@ type Bot struct {
 }
 
 // NewBot ...
-func NewBot(c *chat.DestinyChat) *Bot {
+func NewBot(c *chat.Destiny) *Bot {
 	b := &Bot{
 		c:         c,
 		stop:      make(chan bool),
