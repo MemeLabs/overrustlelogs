@@ -11,7 +11,7 @@ import (
 	"github.com/slugalisk/overrustlelogs/common"
 )
 
-var empty struct{}
+// var empty struct{}
 
 // ChatLog handles single log file
 type ChatLog struct {

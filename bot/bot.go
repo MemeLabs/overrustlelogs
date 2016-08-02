@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/slugalisk/overrustlelogs/chat"
 	"github.com/slugalisk/overrustlelogs/common"
 )
 
@@ -45,7 +46,7 @@ func init() {
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	c := common.NewDestinyChat()
+	c := chat.NewDestinyChat()
 	b := NewBot(c)
 	go b.Run()
 	go c.Run()
@@ -64,7 +65,7 @@ type command func(m *common.Message, r *bufio.Reader) (string, error)
 
 // Bot commands
 type Bot struct {
-	c           *common.DestinyChat
+	c           *chat.DestinyChat
 	stop        chan bool
 	start       time.Time
 	nukeEOL     time.Time
@@ -79,7 +80,7 @@ type Bot struct {
 }
 
 // NewBot ...
-func NewBot(c *common.DestinyChat) *Bot {
+func NewBot(c *chat.DestinyChat) *Bot {
 	b := &Bot{
 		c:         c,
 		stop:      make(chan bool),
@@ -148,10 +149,10 @@ func (b *Bot) Run() {
 						}
 						if isAdmin && b.lastLine == rs {
 							rs += " ."
-							if err = b.c.Write(rs); err != nil {
+							if err = b.c.Message(m.Channel, rs); err != nil {
 								log.Println(err)
 							}
-						} else if err = b.c.Write(rs); err != nil {
+						} else if err = b.c.Message(m.Channel, rs); err != nil {
 							log.Println(err)
 						}
 						b.cooldownEOL = time.Now().Add(cooldownDuration)
@@ -162,7 +163,7 @@ func (b *Bot) Run() {
 				}
 			case "PRIVMSG":
 				if rs, err := b.runCommand(b.private, m); err == nil && rs != "" {
-					if err = b.c.WritePrivate(m.Nick, rs); err != nil {
+					if err = b.c.Whisper(m.Nick, rs); err != nil {
 						log.Println(err)
 					}
 				} else if err != nil {

@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/slugalisk/overrustlelogs/chat"
 	"github.com/slugalisk/overrustlelogs/common"
 )
 
@@ -21,23 +22,26 @@ func main() {
 
 	logs := NewChatLogs()
 
-	dc := common.NewDestinyChat()
-	dl := NewDestinyLogger(logs)
-	go dl.Log(dc.Messages())
+	dc := chat.NewDestiny()
+	dl := NewLogger(logs)
+	go dl.DestinyLog(dc.Messages())
 	go dc.Run()
 
-	tc := common.NewTwitchChat(func(ch string, m chan *common.Message) {
-		log.Printf("started logging %s", ch)
-		NewTwitchLogger(logs, ch).Log(m)
-		log.Printf("stopped logging %s", ch)
-	})
-	go tc.Run()
+	twitchLogHandler := func(m <-chan *common.Message) {
+		tLogs := NewChatLogs()
+		NewLogger(tLogs).TwitchLog(m)
+	}
+
+	orl := NewTwitchLogger(twitchLogHandler)
+	orl.Start()
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
 	select {
 	case <-sigint:
 		logs.Close()
+		dc.Stop()
+		orl.Stop()
 		log.Println("i love you guys, be careful")
 		os.Exit(0)
 	}
