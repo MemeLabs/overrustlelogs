@@ -33,7 +33,6 @@ type Twitch struct {
 	messages       chan *common.Message
 	MessagePattern *regexp.Regexp
 	stopped        bool
-	join           chan string
 	debug          bool
 }
 
@@ -44,7 +43,6 @@ func NewTwitch() *Twitch {
 		headers:  http.Header{"Origin": []string{common.GetConfig().Twitch.OriginURL}},
 		channels: make([]string, 0),
 		messages: make(chan *common.Message, common.MessageBufferSize),
-		join:     make(chan string, 10),
 	}
 	c.MessagePattern = regexp.MustCompile(`:(.+)\!.+tmi\.twitch\.tv PRIVMSG #([a-z0-9_-]+) :(.+)`)
 	return c
@@ -95,6 +93,7 @@ func (c *Twitch) Run() {
 
 	for {
 		if c.stopped {
+			close(c.messages)
 			return
 		}
 		err := c.conn.SetReadDeadline(time.Now().Add(common.SocketReadTimeout))
@@ -215,8 +214,10 @@ func (c *Twitch) removeChannel(ch string) error {
 
 func (c *Twitch) rejoinHandler() {
 	tick := time.NewTicker(common.TwitchMessageTimeout)
-	for {
-		<-tick.C
+	for range tick.C {
+		if c.stopped {
+			return
+		}
 		log.Println("it's channel rejoin triggered------------------------------------------------------")
 		for _, ch := range c.channels {
 			ch = strings.ToLower(ch)
@@ -239,5 +240,4 @@ func (c *Twitch) Stop() {
 	}
 	c.connLock.Unlock()
 	c.sendLock.Unlock()
-	close(c.join)
 }

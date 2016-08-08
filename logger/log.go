@@ -24,12 +24,7 @@ func NewLogger(logs *ChatLogs) *Logger {
 // DestinyLog starts logging loop
 func (l *Logger) DestinyLog(mc <-chan *common.Message) {
 	var subTrigger bool
-	for {
-		m, ok := <-mc
-		if !ok {
-			return
-		}
-
+	for m := range mc {
 		switch m.Command {
 		case "BAN":
 			l.writeLine(m.Time, m.Channel, "Ban", m.Data+" banned by "+m.Nick)
@@ -57,12 +52,7 @@ func (l *Logger) DestinyLog(mc <-chan *common.Message) {
 
 // TwitchLog starts logging loop
 func (l *Logger) TwitchLog(mc <-chan *common.Message) {
-	for {
-		m, ok := <-mc
-		if !ok {
-			return
-		}
-
+	for m := range mc {
 		if m.Command == "MSG" {
 			l.writeLine(m.Time, m.Channel, m.Nick, m.Data)
 		}

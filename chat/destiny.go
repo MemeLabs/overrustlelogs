@@ -68,6 +68,7 @@ func (c *Destiny) Run() {
 
 	for {
 		if c.stopped {
+			close(c.messages)
 			return
 		}
 		err := c.conn.SetReadDeadline(time.Now().UTC().Add(common.SocketReadTimeout))
@@ -81,11 +82,6 @@ func (c *Destiny) Run() {
 		c.connLock.Unlock()
 		if err != nil {
 			log.Printf("error reading from websocket %s", err)
-			c.reconnect()
-			continue
-		}
-		if err != nil {
-			log.Printf("error reading message %s", err)
 			c.reconnect()
 			continue
 		}
@@ -132,7 +128,6 @@ func (c *Destiny) Stop() {
 	if c.conn != nil {
 		c.conn.Close()
 	}
-	close(c.messages)
 	return
 }
 

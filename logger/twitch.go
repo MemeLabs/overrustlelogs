@@ -38,8 +38,6 @@ type TwitchLogger struct {
 	admins         map[string]struct{}
 	chLock         sync.RWMutex
 	channels       []string
-	listenersLock  sync.Mutex
-	listeners      []chan *common.Message
 	logHandler     func(m <-chan *common.Message)
 	commandChannel string
 }
@@ -49,7 +47,6 @@ func NewTwitchLogger(f func(m <-chan *common.Message)) *TwitchLogger {
 	t := &TwitchLogger{
 		chats:      make(map[int]*chat.Twitch, 0),
 		admins:     make(map[string]struct{}),
-		listeners:  make([]chan *common.Message, 0),
 		logHandler: f,
 	}
 
@@ -66,7 +63,6 @@ func NewTwitchLogger(f func(m <-chan *common.Message)) *TwitchLogger {
 	if err := json.Unmarshal(d, &t.channels); err != nil {
 		log.Fatalf("unable to read channels %s", err)
 	}
-	sort.Strings(t.channels)
 
 	t.commandChannel = common.GetConfig().Twitch.CommandChannel
 
@@ -105,62 +101,50 @@ func (t *TwitchLogger) Start() {
 func (t *TwitchLogger) Stop() {
 	t.chatLock.Lock()
 	defer t.chatLock.Unlock()
-	for id, chat := range t.chats {
+	for id, c := range t.chats {
 		log.Printf("stopping chat: %d\n", id)
-		chat.Stop()
-	}
-
-	for _, l := range t.listeners {
-		close(l)
+		c.Stop()
 	}
 }
 
-func (t *TwitchLogger) join(ch string, init bool) error {
-	if inSlice(t.channels, ch) && init {
-		return errAlreadyInChannel
+func (t *TwitchLogger) getChatToJoin() (int, *chat.Twitch) {
+	t.chLock.Lock()
+	defer t.chLock.Unlock()
+	for id, c := range t.chats {
+		if len(c.Channels()) < common.MaxChannelsPerChat {
+			return id, c
+		}
 	}
+	id := len(t.chats) + 1
+	c, _ := t.startNewChat(id)
+	return id, c
+}
+
+func (t *TwitchLogger) join(ch string, init bool) error {
 	if init {
+		if inSlice(t.channels, ch) {
+			return errAlreadyInChannel
+		}
 		if !channelExists(ch) {
 			return errChannelNotValid
 		}
-	}
-	t.chLock.Lock()
-	var c *chat.Twitch
-	for i := 1; i <= len(t.chats); i++ {
-		if len(t.chats[i].Channels()) < common.MaxChannelsPerChat {
-			log.Printf("joininng %s on chat %d ...", ch, i)
-			c = t.chats[i]
-			break
-		}
-	}
-	if c == nil {
-		log.Println("creating new chat")
-		c, _ = t.startNewChat(len(t.chats) + 1)
-	}
-	t.chLock.Unlock()
-
-	var retrys int
-again:
-	err := c.Join(ch)
-	if err != nil {
-		log.Println(err)
-		if retrys == 3 {
-			return errors.New("failed to join " + ch + " :(")
-		}
-		log.Println("retrying to join", ch)
-		err := c.Join(ch)
-		if err != nil {
-			log.Println(err)
-			retrys++
-			goto again
-		}
-	}
-	if init {
 		t.addChannel(ch)
 		err := t.saveChannels()
 		if err != nil {
 			log.Println(err)
 		}
+	}
+	id, c := t.getChatToJoin()
+	for try := 1; try <= 3; try++ {
+		err := c.Join(ch)
+		if err == nil {
+			log.Printf("joining %s on chat %d.", ch, id)
+			return nil
+		}
+		if err != nil && try == 3 {
+			return errors.New("failed to join " + ch + " :(")
+		}
+		log.Println("retrying to join", ch)
 	}
 	return nil
 }
@@ -207,11 +191,7 @@ func (t *TwitchLogger) startNewChat(id int) (*chat.Twitch, error) {
 func (t *TwitchLogger) msgHandler(chatID int, ch <-chan *common.Message) {
 	logCh := make(chan *common.Message, common.MessageBufferSize)
 	go t.logHandler(logCh)
-	for {
-		m, ok := <-ch
-		if !ok {
-			return
-		}
+	for m := range ch {
 		if t.commandChannel == m.Channel {
 			go t.runCommand(chatID, m)
 		}
@@ -219,13 +199,8 @@ func (t *TwitchLogger) msgHandler(chatID int, ch <-chan *common.Message) {
 		case logCh <- m:
 		default:
 		}
-		for _, l := range t.listeners {
-			select {
-			case l <- m:
-			default:
-			}
-		}
 	}
+	close(logCh)
 }
 
 func (t *TwitchLogger) runCommand(chatID int, m *common.Message) {
