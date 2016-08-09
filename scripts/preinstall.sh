@@ -23,8 +23,8 @@ if [ -z `which go` ]; then
   echo "export PATH=\$PATH:\$GOPATH/bin:\$GOROOT/bin" >> /etc/profile
   source /etc/profile
 
-  wget https://storage.googleapis.com/golang/go1.6.2.src.tar.gz
-  tar xzf go1.6.2.src.tar.gz
+  wget https://storage.googleapis.com/golang/go1.6.3.src.tar.gz
+  tar xzf go1.6.3.src.tar.gz
   cd go/src
   GOROOT_BOOTSTRAP=$GOROOT bash ./make.bash
   cd /tmp
