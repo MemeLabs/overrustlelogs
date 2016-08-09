@@ -38,11 +38,13 @@ func (l *Logger) DestinyLog(mc <-chan *common.Message) {
 			if strings.Contains(m.Data, "subscriber!") || strings.Contains(m.Data, "subscribed on Twitch!") || strings.Contains(m.Data, "has resubscribed! Active for") {
 				l.writeLine(m.Time, m.Channel, "Subscriber", m.Data)
 				subTrigger = true
-			} else if subTrigger {
-				l.writeLine(m.Time, m.Channel, "SubscriberMessage", m.Data)
-			} else {
-				l.writeLine(m.Time, m.Channel, "Broadcast", m.Data)
+				continue
 			}
+			if subTrigger {
+				l.writeLine(m.Time, m.Channel, "SubscriberMessage", m.Data)
+				continue
+			}
+			l.writeLine(m.Time, m.Channel, "Broadcast", m.Data)
 		case "MSG":
 			l.writeLine(m.Time, m.Channel, m.Nick, m.Data)
 			subTrigger = false

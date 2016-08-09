@@ -66,7 +66,6 @@ type command func(m *common.Message, r *bufio.Reader) (string, error)
 // Bot commands
 type Bot struct {
 	c           *chat.Destiny
-	stop        chan bool
 	start       time.Time
 	nukeEOL     time.Time
 	nukeText    []byte
@@ -83,7 +82,6 @@ type Bot struct {
 func NewBot(c *chat.Destiny) *Bot {
 	b := &Bot{
 		c:         c,
-		stop:      make(chan bool),
 		start:     time.Now(),
 		admins:    make(map[string]struct{}, len(common.GetConfig().Bot.Admins)),
 		ignoreLog: make(map[string]struct{}),
@@ -94,6 +92,8 @@ func NewBot(c *chat.Destiny) *Bot {
 	b.public = map[string]command{
 		"log":   b.handleDestinyLogs,
 		"tlog":  b.handleTwitchLogs,
+		"logs":  b.handleDestinyLogs,
+		"tlogs": b.handleTwitchLogs,
 		"nuke":  b.handleSimpleNuke,
 		"aegis": b.handleAegis,
 		"bans":  b.handleBans,
@@ -102,6 +102,8 @@ func NewBot(c *chat.Destiny) *Bot {
 	b.private = map[string]command{
 		"log":         b.handleDestinyLogs,
 		"tlog":        b.handleTwitchLogs,
+		"logs":        b.handleDestinyLogs,
+		"tlogs":       b.handleTwitchLogs,
 		"p":           b.handlePremiumLog,
 		"uptime":      b.handleUptime,
 		"ignore":      b.handleIgnore,
@@ -131,44 +133,40 @@ func NewBot(c *chat.Destiny) *Bot {
 
 // Run start bot
 func (b *Bot) Run() {
-	for {
-		select {
-		case <-b.stop:
-			return
-		case m := <-b.c.Messages():
-			switch m.Command {
-			case "MSG":
-				if rs, err := b.runCommand(b.public, m); err == nil && rs != "" {
-					isAdmin := b.isAdmin(m.Nick)
-					if b.isNuked(rs) {
-						b.addIgnore(m.Nick)
-					} else if isAdmin || (rs != b.lastLine && time.Now().After(b.cooldownEOL)) {
-						// NOTE if Destiny requests a log it's pretty SWEATSTINY, so let's add SWEATSTINY at the end of the message :^)
-						if m.Nick == "Destiny" {
-							rs += " SWEATSTINY"
-						}
-						if isAdmin && b.lastLine == rs {
-							rs += " ."
-							if err = b.c.Message(m.Channel, rs); err != nil {
-								log.Println(err)
-							}
-						} else if err = b.c.Message(m.Channel, rs); err != nil {
-							log.Println(err)
-						}
-						b.cooldownEOL = time.Now().Add(cooldownDuration)
-						b.lastLine = rs
-					}
-				} else if err != nil {
-					log.Println(err)
-				}
-			case "PRIVMSG":
-				if rs, err := b.runCommand(b.private, m); err == nil && rs != "" {
-					if err = b.c.Whisper(m.Nick, rs); err != nil {
-						log.Println(err)
-					}
-				} else if err != nil {
-					log.Println(err)
-				}
+	for m := range b.c.Messages() {
+		admin := b.isAdmin(m.Nick)
+		ignoredNick := b.isIgnored(m.Nick)
+		switch m.Command {
+		case "MSG":
+			if (!time.Now().After(b.cooldownEOL) && !admin) || ignoredNick {
+				continue
+			}
+			rs, err := b.runCommand(b.public, m)
+			if err != nil || rs == "" {
+				continue
+			}
+			if rs == b.lastLine && !admin {
+				return
+			}
+			if admin {
+				rs += " SWEATSTINY"
+			}
+			if rs == b.lastLine && admin {
+				rs += " ."
+			}
+			if err = b.c.Message(m.Channel, rs); err != nil {
+				log.Println(err)
+			}
+			// log.Println(m.Nick, m.Data, "> send:", rs)
+			b.cooldownEOL = time.Now().Add(cooldownDuration)
+			b.lastLine = rs
+		case "PRIVMSG":
+			rs, err := b.runCommand(b.private, m)
+			if err != nil || rs == "" {
+				continue
+			}
+			if err = b.c.Whisper(m.Nick, rs); err != nil {
+				log.Println(err)
 			}
 		}
 	}
@@ -176,7 +174,7 @@ func (b *Bot) Run() {
 
 // Stop bot
 func (b *Bot) Stop() {
-	b.stop <- true
+	b.c.Stop()
 	ignore := []string{}
 	for nick := range b.ignore {
 		ignore = append(ignore, nick)
@@ -196,26 +194,23 @@ func (b *Bot) Stop() {
 }
 
 func (b *Bot) runCommand(commands map[string]command, m *common.Message) (string, error) {
-	if m.Data[0] == '!' {
-		if b.isIgnored(m.Nick) {
-			return "", ErrIgnored
-		}
-		r := bufio.NewReader(bytes.NewReader([]byte(m.Data[1:])))
-		c, err := r.ReadString(' ')
-		if err != nil && err != io.EOF {
-			return "", err
-		}
-		if err != io.EOF {
-			c = c[:len(c)-1]
-		}
-		c = strings.ToLower(c)
-		for cs, cmd := range commands {
-			if strings.Index(c, cs) == 0 {
-				return cmd(m, r)
-			}
-		}
+	if m.Data[0] != '!' {
+		return "", errors.New("not a command")
 	}
-	return "", nil
+	r := bufio.NewReader(bytes.NewReader([]byte(m.Data[1:])))
+	c, err := r.ReadString(' ')
+	if err != nil && err != io.EOF {
+		return "", err
+	}
+	if err != io.EOF {
+		c = c[:len(c)-1]
+	}
+	c = strings.ToLower(c)
+	cmd, ok := commands[c]
+	if !ok {
+		return "", errors.New("not a valid command")
+	}
+	return cmd(m, r)
 }
 
 func (b *Bot) isNuked(text string) bool {

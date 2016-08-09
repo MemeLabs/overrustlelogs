@@ -153,23 +153,19 @@ func (t *TwitchLogger) leave(ch string) error {
 	if !inSlice(t.channels, ch) {
 		return errNotInChannel
 	}
-	var err error
 	for i, c := range t.chats {
-		err = c.Leave(ch)
-		if err == nil {
+		if inSlice(c.Channels(), ch) {
+			c.Leave(ch)
 			log.Printf("found channel in chat %d", i)
 			break
 		}
 	}
-	if err == nil {
-		log.Println("removing channel", ch, "from the list")
-		t.removeChannel(ch)
-		log.Println("left", ch)
-	}
-	errs := t.saveChannels()
+	t.removeChannel(ch)
+	err := t.saveChannels()
 	if err != nil {
-		log.Println(errs)
+		log.Println(err)
 	}
+	log.Println("left", ch)
 	return err
 }
 
@@ -180,6 +176,7 @@ func (t *TwitchLogger) startNewChat(id int) (*chat.Twitch, error) {
 	go t.msgHandler(id, newChat.Messages())
 	t.chatLock.Lock()
 	if _, ok := t.chats[id]; ok {
+		newChat.Stop()
 		return nil, fmt.Errorf("a chat exists already with the id: %d.\n", id)
 	}
 	t.chats[id] = newChat
@@ -190,6 +187,7 @@ func (t *TwitchLogger) startNewChat(id int) (*chat.Twitch, error) {
 
 func (t *TwitchLogger) msgHandler(chatID int, ch <-chan *common.Message) {
 	logCh := make(chan *common.Message, common.MessageBufferSize)
+	defer close(logCh)
 	go t.logHandler(logCh)
 	for m := range ch {
 		if t.commandChannel == m.Channel {
@@ -200,7 +198,6 @@ func (t *TwitchLogger) msgHandler(chatID int, ch <-chan *common.Message) {
 		default:
 		}
 	}
-	close(logCh)
 }
 
 func (t *TwitchLogger) runCommand(chatID int, m *common.Message) {
@@ -232,7 +229,6 @@ func (t *TwitchLogger) runCommand(chatID int, m *common.Message) {
 }
 
 func (t *TwitchLogger) addChannel(ch string) {
-	log.Println("adding", ch, "to list")
 	t.chLock.Lock()
 	defer t.chLock.Unlock()
 	t.channels = append(t.channels, ch)
@@ -287,7 +283,7 @@ func channelExists(ch string) bool {
 	}
 	client := http.Client{}
 	res, _ := client.Do(req)
-	defer res.Body.Close()
+	res.Body.Close()
 	return res.StatusCode == http.StatusOK
 }
 
