@@ -146,7 +146,7 @@ func (b *Bot) Run() {
 				continue
 			}
 			if rs == b.lastLine && !admin {
-				return
+				continue
 			}
 			if admin {
 				rs += " SWEATSTINY"
@@ -181,7 +181,8 @@ func (b *Bot) Stop() {
 	}
 	data, _ := json.Marshal(ignore)
 	if err := ioutil.WriteFile(common.GetConfig().Bot.IgnoreListPath, data, 0644); err != nil {
-		log.Fatalf("unable to write ignore list %s", err)
+		log.Printf("unable to write ignore list %s", err)
+		return
 	}
 	ignoreLog := []string{}
 	for nick := range b.ignoreLog {
@@ -189,7 +190,7 @@ func (b *Bot) Stop() {
 	}
 	data, _ = json.Marshal(ignoreLog)
 	if err := ioutil.WriteFile(common.GetConfig().Bot.IgnoreLogListPath, data, 0644); err != nil {
-		log.Fatalf("unable to write ignorelog list %s", err)
+		log.Printf("unable to write ignorelog list %s", err)
 	}
 }
 
