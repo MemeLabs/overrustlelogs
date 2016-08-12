@@ -15,7 +15,7 @@ const (
 	SocketReconnectDelay = 20 * time.Second
 	SocketWriteDebounce  = 500 * time.Millisecond
 	SocketWriteTimeout   = 5 * time.Second
-	TwitchMessageTimeout = 1 * time.Hour
+	TwitchMessageTimeout = 2 * time.Hour
 )
 
 var messageNickPathUnsafe = regexp.MustCompile("[^a-zA-Z0-9_-]")

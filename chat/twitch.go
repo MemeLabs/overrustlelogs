@@ -28,7 +28,7 @@ type Twitch struct {
 	conn           *websocket.Conn
 	dialer         websocket.Dialer
 	headers        http.Header
-	chLock         sync.Mutex
+	ChLock         sync.Mutex
 	channels       []string
 	messages       chan *common.Message
 	MessagePattern *regexp.Regexp
@@ -158,7 +158,7 @@ func (c *Twitch) Message(ch, payload string) error {
 
 // Whisper ...
 func (c *Twitch) Whisper(nick, payload string) error {
-	// NOTE: implement
+	// NOTE: implement (maybe)
 	return nil
 }
 
@@ -181,15 +181,12 @@ func (c *Twitch) Join(ch string) error {
 	if err != nil {
 		return fmt.Errorf("failed to join %s", ch)
 	}
-	for _, channel := range c.channels {
-		if strings.EqualFold(channel, ch) {
-			log.Println("wut")
-			return nil
-		}
+	if inSlice(c.channels, ch) {
+		return nil
 	}
-	c.chLock.Lock()
+	c.ChLock.Lock()
 	c.channels = append(c.channels, ch)
-	c.chLock.Unlock()
+	c.ChLock.Unlock()
 	return nil
 }
 
@@ -201,10 +198,10 @@ func (c *Twitch) Leave(ch string) error {
 }
 
 func (c *Twitch) removeChannel(ch string) error {
-	c.chLock.Lock()
-	defer c.chLock.Unlock()
+	c.ChLock.Lock()
+	defer c.ChLock.Unlock()
 	for i, channel := range c.channels {
-		if strings.EqualFold(channel, ch) {
+		if strings.EqualFold(ch, channel) {
 			c.channels = append(c.channels[:i], c.channels[i+1:]...)
 			return nil
 		}
@@ -240,4 +237,13 @@ func (c *Twitch) Stop() {
 	}
 	c.connLock.Unlock()
 	c.sendLock.Unlock()
+}
+
+func inSlice(s []string, v string) bool {
+	for _, sv := range s {
+		if strings.EqualFold(sv, v) {
+			return true
+		}
+	}
+	return false
 }

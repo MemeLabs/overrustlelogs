@@ -33,7 +33,7 @@ func main() {
 	}
 
 	orl := NewTwitchLogger(twitchLogHandler)
-	orl.Start()
+	go orl.Start()
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)

@@ -23,13 +23,8 @@ var (
 	debug               bool
 	errNotInChannel     = errors.New("not in channel")
 	errAlreadyInChannel = errors.New("already in channel")
-	errChannelNotValid  = errors.New("channel not validq")
+	errChannelNotValid  = errors.New("channel not valid")
 )
-
-// Message ...
-type Message struct {
-	common.Message
-}
 
 // TwitchLogger ...
 type TwitchLogger struct {
@@ -71,30 +66,14 @@ func NewTwitchLogger(f func(m <-chan *common.Message)) *TwitchLogger {
 
 // Start ...
 func (t *TwitchLogger) Start() {
-	var count int
-	var chatID = 1
 	for _, channel := range t.channels {
-		if count == common.MaxChannelsPerChat {
-			log.Printf("chat %d reached %d joined channels\n", chatID, common.MaxChannelsPerChat)
-			chatID++
-			count = 0
-		}
-
-		if _, ok := t.chats[chatID]; !ok {
-			log.Println("starting twitch chat client", chatID)
-			_, err := t.startNewChat(chatID)
-			if err != nil {
-				log.Println("REEEEEEEEEEEEEEEEEE")
-			}
-		}
-
 		err := t.join(channel, false)
 		if err != nil {
 			log.Println("failed to join", channel)
 			continue
 		}
-		count++
 	}
+	log.Println("joined", len(t.channels), "chats, wew lad :^)")
 }
 
 // Stop ...
@@ -108,14 +87,18 @@ func (t *TwitchLogger) Stop() {
 }
 
 func (t *TwitchLogger) getChatToJoin() (int, *chat.Twitch) {
-	t.chLock.Lock()
-	defer t.chLock.Unlock()
+	t.chatLock.Lock()
 	for id, c := range t.chats {
+		c.ChLock.Lock()
 		if len(c.Channels()) < common.MaxChannelsPerChat {
+			c.ChLock.Unlock()
+			t.chatLock.Unlock()
 			return id, c
 		}
+		c.ChLock.Unlock()
 	}
 	id := len(t.chats) + 1
+	t.chatLock.Unlock()
 	c, _ := t.startNewChat(id)
 	return id, c
 }
@@ -182,6 +165,7 @@ func (t *TwitchLogger) startNewChat(id int) (*chat.Twitch, error) {
 	t.chats[id] = newChat
 	t.chatLock.Unlock()
 	time.Sleep(5 * time.Second)
+	log.Println("started chat", id)
 	return newChat, nil
 }
 
@@ -273,7 +257,8 @@ func (t *TwitchLogger) saveChannels() error {
 func channelExists(ch string) bool {
 	u, err := url.Parse("https://api.twitch.tv/kraken/users/" + ch)
 	if err != nil {
-		log.Panicf("error parsing twitch metadata endpoint url %s", err)
+		log.Printf("error parsing twitch metadata endpoint url %s", err)
+		return false
 	}
 	req := &http.Request{
 		Header: http.Header{
@@ -281,8 +266,14 @@ func channelExists(ch string) bool {
 		},
 		URL: u,
 	}
-	client := http.Client{}
-	res, _ := client.Do(req)
+	client := http.Client{
+		Timeout: 10 * time.Second,
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return false
+	}
 	res.Body.Close()
 	return res.StatusCode == http.StatusOK
 }
