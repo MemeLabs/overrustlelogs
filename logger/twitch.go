@@ -69,7 +69,7 @@ func (t *TwitchLogger) Start() {
 	for _, channel := range t.channels {
 		err := t.join(channel, false)
 		if err != nil {
-			log.Println("failed to join", channel)
+			log.Printf("failed to join %s err: %s", channel, err.Error())
 			continue
 		}
 	}
@@ -105,11 +105,11 @@ func (t *TwitchLogger) getChatToJoin() (int, *chat.Twitch) {
 
 func (t *TwitchLogger) join(ch string, init bool) error {
 	if init {
-		if inSlice(t.channels, ch) {
-			return errAlreadyInChannel
-		}
 		if !channelExists(ch) {
 			return errChannelNotValid
+		}
+		if inSlice(t.channels, ch) {
+			return errAlreadyInChannel
 		}
 		t.addChannel(ch)
 		err := t.saveChannels()
@@ -185,7 +185,10 @@ func (t *TwitchLogger) msgHandler(chatID int, ch <-chan *common.Message) {
 }
 
 func (t *TwitchLogger) runCommand(chatID int, m *common.Message) {
-	c := t.chats[chatID]
+	c, ok := t.chats[chatID]
+	if !ok {
+		return
+	}
 	if _, ok := t.admins[m.Nick]; !ok && m.Command != "MSG" {
 		return
 	}

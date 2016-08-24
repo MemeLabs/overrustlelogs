@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"regexp"
 	"strings"
 	"time"
 
@@ -24,6 +25,7 @@ func NewLogger(logs *ChatLogs) *Logger {
 // DestinyLog starts logging loop
 func (l *Logger) DestinyLog(mc <-chan *common.Message) {
 	var subTrigger bool
+	giftRegex := regexp.MustCompile("^[a-zA-Z0-9_]+ gifted [a-zA-Z0-9_]+ a Tier (I|II|II|IV) subscription!")
 	for m := range mc {
 		switch m.Command {
 		case "BAN":
@@ -35,13 +37,14 @@ func (l *Logger) DestinyLog(mc <-chan *common.Message) {
 		case "UNMUTE":
 			l.writeLine(m.Time, m.Channel, "Ban", m.Data+" unmuted by "+m.Nick)
 		case "BROADCAST":
-			if strings.Contains(m.Data, "subscriber!") || strings.Contains(m.Data, "subscribed on Twitch!") || strings.Contains(m.Data, "has resubscribed! Active for") {
+			if strings.Contains(m.Data, "subscriber!") || strings.Contains(m.Data, "subscribed on Twitch!") || strings.Contains(m.Data, "has resubscribed! Active for") || giftRegex.MatchString(m.Data) {
 				l.writeLine(m.Time, m.Channel, "Subscriber", m.Data)
-				subTrigger = true
+				subTrigger = !subTrigger
 				continue
 			}
 			if subTrigger {
 				l.writeLine(m.Time, m.Channel, "SubscriberMessage", m.Data)
+				subTrigger = !subTrigger
 				continue
 			}
 			l.writeLine(m.Time, m.Channel, "Broadcast", m.Data)
