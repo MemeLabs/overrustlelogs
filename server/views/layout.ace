@@ -48,7 +48,7 @@ html lang=en
             li
               a class="active" href="/contact" Contact
             li
-              a class="donate" target="_blank" href="https://www.twitchalerts.com/donate/overrustlelogs"
+              a class="donate" target="_blank" href="https://twitch.streamlabs.com/overrustlelogs"
                 i class="fa fa-paypal fa-fw"
                 span Donate
           ul class="side-nav" id="mobile-demo"
@@ -57,7 +57,7 @@ html lang=en
             li
               a class="active" href="/contact" Contact
             li
-              a class="donate" target="_blank" href="https://www.twitchalerts.com/donate/overrustlelogs"
+              a class="donate" target="_blank" href="https://twitch.streamlabs.com/overrustlelogs"
                 i class="fa fa-paypal fa-fw"
                 span Donate
 
