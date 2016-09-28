@@ -1,4 +1,4 @@
-package chat
+package common
 
 import (
 	"bytes"
@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/slugalisk/overrustlelogs/common"
 )
 
 // Destiny destiny.gg chat client
@@ -19,19 +18,19 @@ type Destiny struct {
 	conn     *websocket.Conn
 	dialer   websocket.Dialer
 	headers  http.Header
-	messages chan *common.Message
+	messages chan *Message
 	stopped  bool
 }
 
 // NewDestiny new destiny.gg chat client
 func NewDestiny() *Destiny {
 	c := &Destiny{
-		dialer: websocket.Dialer{HandshakeTimeout: common.HandshakeTimeout},
+		dialer: websocket.Dialer{HandshakeTimeout: HandshakeTimeout},
 		headers: http.Header{
-			"Origin": []string{common.GetConfig().DestinyGG.OriginURL},
-			"Cookie": []string{common.GetConfig().DestinyGG.Cookie},
+			"Origin": []string{GetConfig().DestinyGG.OriginURL},
+			"Cookie": []string{GetConfig().DestinyGG.Cookie},
 		},
-		messages: make(chan *common.Message, common.MessageBufferSize),
+		messages: make(chan *Message, MessageBufferSize),
 	}
 
 	return c
@@ -41,7 +40,7 @@ func NewDestiny() *Destiny {
 func (c *Destiny) connect() {
 	var err error
 	c.connLock.Lock()
-	c.conn, _, err = c.dialer.Dial(common.GetConfig().DestinyGG.SocketURL, c.headers)
+	c.conn, _, err = c.dialer.Dial(GetConfig().DestinyGG.SocketURL, c.headers)
 	c.connLock.Unlock()
 	if err != nil {
 		log.Printf("error connecting to destiny ws %s", err)
@@ -52,13 +51,12 @@ func (c *Destiny) connect() {
 }
 
 func (c *Destiny) reconnect() {
-	c.connLock.Lock()
 	if c.conn != nil {
+		c.connLock.Lock()
 		c.conn.Close()
+		c.connLock.Unlock()
 	}
-	c.connLock.Unlock()
-
-	time.Sleep(common.SocketReconnectDelay)
+	time.Sleep(SocketReconnectDelay)
 	c.connect()
 }
 
@@ -71,7 +69,7 @@ func (c *Destiny) Run() {
 			close(c.messages)
 			return
 		}
-		err := c.conn.SetReadDeadline(time.Now().UTC().Add(common.SocketReadTimeout))
+		err := c.conn.SetReadDeadline(time.Now().UTC().Add(SocketReadTimeout))
 		if err != nil {
 			log.Println("SetReadDeadline triggered, reconnecting")
 			c.reconnect()
@@ -93,7 +91,7 @@ func (c *Destiny) Run() {
 		}
 
 		if strings.Index(string(msg), "PING") == 0 {
-			c.send("PONG", map[string]interface{}{"timestamp": time.Now().UnixNano()})
+			c.send("PONG", map[string]string{"timestamp": "yee"})
 			continue
 		}
 
@@ -108,7 +106,7 @@ func (c *Destiny) Run() {
 		}
 
 		select {
-		case c.messages <- &common.Message{
+		case c.messages <- &Message{
 			Command: string(msg[:index]),
 			Channel: "Destinygg",
 			Nick:    data.Nick,
@@ -123,20 +121,19 @@ func (c *Destiny) Run() {
 // Stop ...
 func (c *Destiny) Stop() {
 	c.stopped = true
-	c.connLock.Lock()
-	defer c.connLock.Unlock()
 	if c.conn != nil {
+		c.connLock.Lock()
 		c.conn.Close()
+		c.connLock.Unlock()
 	}
-	return
 }
 
 // Messages channel accessor
-func (c *Destiny) Messages() <-chan *common.Message {
+func (c *Destiny) Messages() <-chan *Message {
 	return c.messages
 }
 
-func (c *Destiny) send(command string, msg map[string]interface{}) error {
+func (c *Destiny) send(command string, msg map[string]string) error {
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return err
@@ -146,25 +143,24 @@ func (c *Destiny) send(command string, msg map[string]interface{}) error {
 	buf.WriteString(" ")
 	buf.Write(data)
 	c.connLock.RLock()
-	c.conn.SetWriteDeadline(time.Now().Add(common.SocketWriteTimeout))
+	defer c.connLock.RUnlock()
 	if err := c.conn.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
 		log.Printf("error sending message %s", err)
-		c.connLock.RUnlock()
+		log.Println("wut y")
 		c.reconnect()
 		return err
 	}
-	c.connLock.RUnlock()
 	return nil
 }
 
 // Message send message
 func (c *Destiny) Message(ch, payload string) error {
-	return c.send("MSG", map[string]interface{}{"data": payload})
+	return c.send("MSG", map[string]string{"data": payload})
 }
 
 // Whisper send private message
 func (c *Destiny) Whisper(nick, data string) error {
-	return c.send("PRIVMSG", map[string]interface{}{
+	return c.send("PRIVMSG", map[string]string{
 		"nick": nick,
 		"data": data,
 	})

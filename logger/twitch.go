@@ -15,7 +15,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/slugalisk/overrustlelogs/chat"
 	"github.com/slugalisk/overrustlelogs/common"
 )
 
@@ -29,7 +28,7 @@ var (
 // TwitchLogger ...
 type TwitchLogger struct {
 	chatLock       sync.RWMutex
-	chats          map[int]*chat.Twitch
+	chats          map[int]*common.Twitch
 	admins         map[string]struct{}
 	chLock         sync.RWMutex
 	channels       []string
@@ -40,7 +39,7 @@ type TwitchLogger struct {
 // NewTwitchLogger ...
 func NewTwitchLogger(f func(m <-chan *common.Message)) *TwitchLogger {
 	t := &TwitchLogger{
-		chats:      make(map[int]*chat.Twitch, 0),
+		chats:      make(map[int]*common.Twitch, 0),
 		admins:     make(map[string]struct{}),
 		logHandler: f,
 	}
@@ -86,7 +85,7 @@ func (t *TwitchLogger) Stop() {
 	}
 }
 
-func (t *TwitchLogger) getChatToJoin() (int, *chat.Twitch) {
+func (t *TwitchLogger) getChatToJoin() (int, *common.Twitch) {
 	t.chatLock.Lock()
 	for id, c := range t.chats {
 		c.ChLock.Lock()
@@ -152,18 +151,18 @@ func (t *TwitchLogger) leave(ch string) error {
 	return err
 }
 
-func (t *TwitchLogger) startNewChat(id int) (*chat.Twitch, error) {
-	newChat := chat.NewTwitch()
+func (t *TwitchLogger) startNewChat(id int) (*common.Twitch, error) {
+	newChat := common.NewTwitch()
 	newChat.Debug(debug)
 	go newChat.Run()
 	go t.msgHandler(id, newChat.Messages())
 	t.chatLock.Lock()
+	defer t.chatLock.Unlock()
 	if _, ok := t.chats[id]; ok {
 		newChat.Stop()
 		return nil, fmt.Errorf("a chat exists already with the id: %d.\n", id)
 	}
 	t.chats[id] = newChat
-	t.chatLock.Unlock()
 	time.Sleep(5 * time.Second)
 	log.Println("started chat", id)
 	return newChat, nil

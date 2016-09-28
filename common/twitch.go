@@ -1,4 +1,4 @@
-package chat
+package common
 
 import (
 	"errors"
@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/slugalisk/overrustlelogs/common"
 )
 
 // errors
@@ -30,7 +29,7 @@ type Twitch struct {
 	headers        http.Header
 	ChLock         sync.Mutex
 	channels       []string
-	messages       chan *common.Message
+	messages       chan *Message
 	MessagePattern *regexp.Regexp
 	stopped        bool
 	debug          bool
@@ -39,10 +38,10 @@ type Twitch struct {
 // NewTwitch new twitch chat client
 func NewTwitch() *Twitch {
 	c := &Twitch{
-		dialer:   websocket.Dialer{HandshakeTimeout: common.HandshakeTimeout},
-		headers:  http.Header{"Origin": []string{common.GetConfig().Twitch.OriginURL}},
+		dialer:   websocket.Dialer{HandshakeTimeout: HandshakeTimeout},
+		headers:  http.Header{"Origin": []string{GetConfig().Twitch.OriginURL}},
 		channels: make([]string, 0),
-		messages: make(chan *common.Message, common.MessageBufferSize),
+		messages: make(chan *Message, MessageBufferSize),
 	}
 	c.MessagePattern = regexp.MustCompile(`:(.+)\!.+tmi\.twitch\.tv PRIVMSG #([a-z0-9_-]+) :(.+)`)
 	return c
@@ -51,15 +50,15 @@ func NewTwitch() *Twitch {
 func (c *Twitch) connect() {
 	var err error
 	c.connLock.Lock()
-	c.conn, _, err = c.dialer.Dial(common.GetConfig().Twitch.SocketURL, c.headers)
+	c.conn, _, err = c.dialer.Dial(GetConfig().Twitch.SocketURL, c.headers)
 	c.connLock.Unlock()
 	if err != nil {
 		log.Printf("error connecting to twitch ws %s", err)
 		c.reconnect()
 	}
 	log.Println("sending login data")
-	c.send("PASS " + common.GetConfig().Twitch.OAuth)
-	c.send("NICK " + common.GetConfig().Twitch.Nick)
+	c.send("PASS " + GetConfig().Twitch.OAuth)
+	c.send("NICK " + GetConfig().Twitch.Nick)
 	log.Println("finished sending login data")
 	for _, ch := range c.channels {
 		log.Printf("joining %s", ch)
@@ -77,7 +76,7 @@ func (c *Twitch) reconnect() {
 	}
 	c.connLock.Unlock()
 
-	time.Sleep(common.SocketReconnectDelay)
+	time.Sleep(SocketReconnectDelay)
 	c.connect()
 }
 
@@ -96,7 +95,7 @@ func (c *Twitch) Run() {
 			close(c.messages)
 			return
 		}
-		err := c.conn.SetReadDeadline(time.Now().Add(common.SocketReadTimeout))
+		err := c.conn.SetReadDeadline(time.Now().Add(SocketReadTimeout))
 		if err != nil {
 			c.reconnect()
 			continue
@@ -122,7 +121,7 @@ func (c *Twitch) Run() {
 			data := strings.TrimSpace(v[3])
 			data = strings.Replace(data, "ACTION", "/me", -1)
 			data = strings.Replace(data, "", "", -1)
-			m := &common.Message{
+			m := &Message{
 				Command: "MSG",
 				Channel: v[2],
 				Nick:    v[1],
@@ -147,7 +146,7 @@ func (c *Twitch) Channels() []string {
 }
 
 // Messages channel accessor
-func (c *Twitch) Messages() <-chan *common.Message {
+func (c *Twitch) Messages() <-chan *Message {
 	return c.messages
 }
 
@@ -163,14 +162,14 @@ func (c *Twitch) Whisper(nick, payload string) error {
 }
 
 func (c *Twitch) send(m string) error {
-	c.conn.SetWriteDeadline(time.Now().Add(common.SocketWriteTimeout))
+	c.conn.SetWriteDeadline(time.Now().Add(SocketWriteTimeout))
 	c.sendLock.Lock()
 	err := c.conn.WriteMessage(websocket.TextMessage, []byte(m+"\r\n"))
 	c.sendLock.Unlock()
 	if err != nil {
 		return fmt.Errorf("error sending message %s", err)
 	}
-	time.Sleep(common.SocketWriteDebounce)
+	time.Sleep(SocketWriteDebounce)
 	return nil
 }
 
@@ -210,7 +209,7 @@ func (c *Twitch) removeChannel(ch string) error {
 }
 
 func (c *Twitch) rejoinHandler() {
-	tick := time.NewTicker(common.TwitchMessageTimeout)
+	tick := time.NewTicker(TwitchMessageTimeout)
 	for range tick.C {
 		if c.stopped {
 			return

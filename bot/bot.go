@@ -17,7 +17,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/slugalisk/overrustlelogs/chat"
 	"github.com/slugalisk/overrustlelogs/common"
 )
 
@@ -46,7 +45,7 @@ func init() {
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	c := chat.NewDestiny()
+	c := common.NewDestiny()
 	b := NewBot(c)
 	go b.Run()
 	go c.Run()
@@ -65,7 +64,7 @@ type command func(m *common.Message, r *bufio.Reader) (string, error)
 
 // Bot commands
 type Bot struct {
-	c           *chat.Destiny
+	c           *common.Destiny
 	start       time.Time
 	nukeEOL     time.Time
 	nukeText    []byte
@@ -79,7 +78,7 @@ type Bot struct {
 }
 
 // NewBot ...
-func NewBot(c *chat.Destiny) *Bot {
+func NewBot(c *common.Destiny) *Bot {
 	b := &Bot{
 		c:         c,
 		start:     time.Now(),
@@ -100,16 +99,16 @@ func NewBot(c *chat.Destiny) *Bot {
 		"subs":  b.handleSubs,
 	}
 	b.private = map[string]command{
-		"log":         b.handleDestinyLogs,
-		"tlog":        b.handleTwitchLogs,
-		"logs":        b.handleDestinyLogs,
-		"tlogs":       b.handleTwitchLogs,
-		"p":           b.handlePremiumLog,
-		"uptime":      b.handleUptime,
-		"ignore":      b.handleIgnore,
-		"unignore":    b.handleUnignore,
-		"ignorelog":   b.handleIgnoreLog,
-		"unignorelog": b.handleUnignoreLog,
+		"log":       b.handleDestinyLogs,
+		"tlog":      b.handleTwitchLogs,
+		"logs":      b.handleDestinyLogs,
+		"tlogs":     b.handleTwitchLogs,
+		"p":         b.handlePremiumLog,
+		"uptime":    b.handleUptime,
+		"ignore":    b.handleIgnore,
+		"unignore":  b.handleUnignore,
+		"ignrlog":   b.handleIgnoreLog,
+		"unignrlog": b.handleUnignoreLog,
 	}
 	b.ignore = make(map[string]struct{})
 	if d, err := ioutil.ReadFile(common.GetConfig().Bot.IgnoreListPath); err == nil {

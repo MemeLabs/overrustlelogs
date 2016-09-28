@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/slugalisk/overrustlelogs/chat"
 	"github.com/slugalisk/overrustlelogs/common"
 )
 
@@ -22,7 +21,7 @@ func main() {
 
 	logs := NewChatLogs()
 
-	dc := chat.NewDestiny()
+	dc := common.NewDestiny()
 	dl := NewLogger(logs)
 	go dl.DestinyLog(dc.Messages())
 	go dc.Run()
