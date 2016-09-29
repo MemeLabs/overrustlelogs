@@ -143,13 +143,16 @@ func (c *Destiny) send(command string, msg map[string]string) error {
 	buf.WriteString(" ")
 	buf.Write(data)
 	c.connLock.RLock()
-	defer c.connLock.RUnlock()
+	s := time.Now()
 	if err := c.conn.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
 		log.Printf("error sending message %s", err)
 		log.Println("wut y")
+		c.connLock.RUnlock()
 		c.reconnect()
 		return err
 	}
+	log.Println(time.Since(s))
+	c.connLock.RUnlock()
 	return nil
 }
 

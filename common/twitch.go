@@ -214,7 +214,6 @@ func (c *Twitch) rejoinHandler() {
 		if c.stopped {
 			return
 		}
-		log.Println("it's channel rejoin triggered------------------------------------------------------")
 		for _, ch := range c.channels {
 			ch = strings.ToLower(ch)
 			log.Printf("rejoining %s\n", ch)
