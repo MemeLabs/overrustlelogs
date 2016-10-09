@@ -144,7 +144,6 @@ func (c *Destiny) send(command string, msg map[string]string) error {
 	buf.Write(data)
 	if err := c.conn.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
 		log.Printf("error sending message %s", err)
-		c.RUnlock()
 		c.reconnect()
 		return err
 	}
