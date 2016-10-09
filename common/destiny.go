@@ -14,7 +14,7 @@ import (
 
 // Destiny destiny.gg chat client
 type Destiny struct {
-	connLock sync.RWMutex
+	sync.RWMutex
 	conn     *websocket.Conn
 	dialer   websocket.Dialer
 	headers  http.Header
@@ -39,9 +39,9 @@ func NewDestiny() *Destiny {
 // Connect open ws connection
 func (c *Destiny) connect() {
 	var err error
-	c.connLock.Lock()
+	c.Lock()
 	c.conn, _, err = c.dialer.Dial(GetConfig().DestinyGG.SocketURL, c.headers)
-	c.connLock.Unlock()
+	c.Unlock()
 	if err != nil {
 		log.Printf("error connecting to destiny ws %s", err)
 		c.reconnect()
@@ -52,9 +52,9 @@ func (c *Destiny) connect() {
 
 func (c *Destiny) reconnect() {
 	if c.conn != nil {
-		c.connLock.Lock()
+		c.Lock()
 		c.conn.Close()
-		c.connLock.Unlock()
+		c.Unlock()
 	}
 	time.Sleep(SocketReconnectDelay)
 	c.connect()
@@ -75,9 +75,9 @@ func (c *Destiny) Run() {
 			c.reconnect()
 		}
 
-		c.connLock.Lock()
+		c.Lock()
 		_, msg, err := c.conn.ReadMessage()
-		c.connLock.Unlock()
+		c.Unlock()
 		if err != nil {
 			log.Printf("error reading from websocket %s", err)
 			c.reconnect()
@@ -122,9 +122,9 @@ func (c *Destiny) Run() {
 func (c *Destiny) Stop() {
 	c.stopped = true
 	if c.conn != nil {
-		c.connLock.Lock()
+		c.Lock()
 		c.conn.Close()
-		c.connLock.Unlock()
+		c.Unlock()
 	}
 }
 
@@ -142,22 +142,17 @@ func (c *Destiny) send(command string, msg map[string]string) error {
 	buf.WriteString(command)
 	buf.WriteString(" ")
 	buf.Write(data)
-	c.connLock.RLock()
-	s := time.Now()
 	if err := c.conn.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
 		log.Printf("error sending message %s", err)
-		log.Println("wut y")
-		c.connLock.RUnlock()
+		c.RUnlock()
 		c.reconnect()
 		return err
 	}
-	log.Println(time.Since(s))
-	c.connLock.RUnlock()
 	return nil
 }
 
 // Message send message
-func (c *Destiny) Message(ch, payload string) error {
+func (c *Destiny) Message(payload string) error {
 	return c.send("MSG", map[string]string{"data": payload})
 }
 

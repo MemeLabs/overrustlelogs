@@ -153,11 +153,11 @@ func (b *Bot) Run() {
 			if rs == b.lastLine && admin {
 				rs += " ."
 			}
-			// s := time.Now()
-			if err = b.c.Message(m.Channel, rs); err != nil {
+			err = b.c.Message(rs)
+			if err != nil {
 				log.Println(err)
+				continue
 			}
-			// log.Println(time.Since(s))
 			// log.Println(m.Nick, m.Data, "> send:", rs)
 			b.cooldownEOL = time.Now().Add(cooldownDuration)
 			b.lastLine = rs
