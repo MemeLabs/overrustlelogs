@@ -37,14 +37,13 @@ type Twitch struct {
 
 // NewTwitch new twitch chat client
 func NewTwitch() *Twitch {
-	c := &Twitch{
-		dialer:   websocket.Dialer{HandshakeTimeout: HandshakeTimeout},
-		headers:  http.Header{"Origin": []string{GetConfig().Twitch.OriginURL}},
-		channels: make([]string, 0),
-		messages: make(chan *Message, MessageBufferSize),
+	return &Twitch{
+		dialer:         websocket.Dialer{HandshakeTimeout: HandshakeTimeout},
+		headers:        http.Header{"Origin": []string{GetConfig().Twitch.OriginURL}},
+		channels:       make([]string, 0),
+		messages:       make(chan *Message, MessageBufferSize),
+		MessagePattern: regexp.MustCompile(`:(.+)\!.+tmi\.twitch\.tv PRIVMSG #([a-z0-9_-]+) :(.+)`),
 	}
-	c.MessagePattern = regexp.MustCompile(`:(.+)\!.+tmi\.twitch\.tv PRIVMSG #([a-z0-9_-]+) :(.+)`)
-	return c
 }
 
 func (c *Twitch) connect() {
@@ -80,21 +79,13 @@ func (c *Twitch) reconnect() {
 	c.connect()
 }
 
-// Debug ...
-func (c *Twitch) Debug(b bool) {
-	c.debug = b
-}
-
 // Run connect and start message read loop
 func (c *Twitch) Run() {
 	c.connect()
 	go c.rejoinHandler()
+	defer close(c.messages)
 
-	for {
-		if c.stopped {
-			close(c.messages)
-			return
-		}
+	for !c.stopped {
 		err := c.conn.SetReadDeadline(time.Now().Add(SocketReadTimeout))
 		if err != nil {
 			c.reconnect()
@@ -128,9 +119,7 @@ func (c *Twitch) Run() {
 				Data:    data,
 				Time:    time.Now().UTC(),
 			}
-			if c.debug {
-				log.Println(m)
-			}
+
 			select {
 			case c.messages <- m:
 			default:

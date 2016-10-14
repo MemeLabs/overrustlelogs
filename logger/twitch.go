@@ -153,7 +153,6 @@ func (t *TwitchLogger) leave(ch string) error {
 
 func (t *TwitchLogger) startNewChat(id int) (*common.Twitch, error) {
 	newChat := common.NewTwitch()
-	newChat.Debug(debug)
 	go newChat.Run()
 	go t.msgHandler(id, newChat.Messages())
 	t.chatLock.Lock()

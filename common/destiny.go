@@ -24,7 +24,7 @@ type Destiny struct {
 
 // NewDestiny new destiny.gg chat client
 func NewDestiny() *Destiny {
-	c := &Destiny{
+	return &Destiny{
 		dialer: websocket.Dialer{HandshakeTimeout: HandshakeTimeout},
 		headers: http.Header{
 			"Origin": []string{GetConfig().DestinyGG.OriginURL},
@@ -32,8 +32,6 @@ func NewDestiny() *Destiny {
 		},
 		messages: make(chan *Message, MessageBufferSize),
 	}
-
-	return c
 }
 
 // Connect open ws connection
@@ -129,16 +127,14 @@ func (c *Destiny) Stop() {
 }
 
 // Messages channel accessor
-func (c *Destiny) Messages() <-chan *Message {
-	return c.messages
-}
+func (c *Destiny) Messages() <-chan *Message { return c.messages }
 
 func (c *Destiny) send(command string, msg map[string]string) error {
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}
-	buf := bytes.NewBuffer([]byte{})
+	var buf bytes.Buffer
 	buf.WriteString(command)
 	buf.WriteString(" ")
 	buf.Write(data)
