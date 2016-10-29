@@ -1,17 +1,11 @@
 package common
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
-	"os"
 	"regexp"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -19,73 +13,44 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// const ...
-const (
-	TwitchReadTimeout       = 30 * time.Minute
-	TwitchSocketReadTimeout = 30 * time.Second
-)
-
 // errors
 var (
-	ErrAlreadyInChannel = errors.New("already in channel")
-	ErrNotInChannel     = errors.New("not in channel")
-	ErrChannelNotValid  = errors.New("not a valid channel")
+	errAlreadyInChannel = errors.New("already in channel")
+	errNotInChannel     = errors.New("not in channel")
+	errChannelNotValid  = errors.New("not a valid channel")
 )
 
-// TwitchChat twitch chat client
-type TwitchChat struct {
-	sendLock     sync.Mutex
-	connLock     sync.RWMutex
-	conn         *websocket.Conn
-	dialer       websocket.Dialer
-	headers      http.Header
-	messagesLock sync.RWMutex
-	messages     map[string]chan *Message
-	channelsLock sync.Mutex
-	channels     []string
-	joinHandler  TwitchJoinHandler
-	admins       map[string]bool
-	stopped      bool
-	evicted      chan string
+// Twitch twitch chat client
+type Twitch struct {
+	sendLock       sync.Mutex
+	connLock       sync.RWMutex
+	conn           *websocket.Conn
+	dialer         websocket.Dialer
+	headers        http.Header
+	ChLock         sync.Mutex
+	channels       []string
+	messages       chan *Message
+	MessagePattern *regexp.Regexp
+	stopped        bool
+	debug          bool
 }
 
-// TwitchJoinHandler called when joining channels
-type TwitchJoinHandler func(string, chan *Message)
-
-// NewTwitchChat new twitch chat client
-func NewTwitchChat(j TwitchJoinHandler) *TwitchChat {
-	c := &TwitchChat{
-		dialer:      websocket.Dialer{HandshakeTimeout: SocketHandshakeTimeout},
-		headers:     http.Header{"Origin": []string{GetConfig().Twitch.OriginURL}},
-		messages:    make(map[string]chan *Message, 0),
-		channels:    make([]string, 0),
-		joinHandler: j,
-		admins:      make(map[string]bool, len(GetConfig().Twitch.Admins)),
-		evicted:     make(chan string, 0),
+// NewTwitch new twitch chat client
+func NewTwitch() *Twitch {
+	return &Twitch{
+		dialer:         websocket.Dialer{HandshakeTimeout: HandshakeTimeout},
+		headers:        http.Header{"Origin": []string{GetConfig().Twitch.OriginURL}},
+		channels:       make([]string, 0),
+		messages:       make(chan *Message, MessageBufferSize),
+		MessagePattern: regexp.MustCompile(`:(.+)\!.+tmi\.twitch\.tv PRIVMSG #([a-z0-9_-]+) :(.+)`),
 	}
-
-	for _, u := range GetConfig().Twitch.Admins {
-		c.admins[u] = true
-	}
-
-	d, err := ioutil.ReadFile(GetConfig().Twitch.ChannelListPath)
-	if err != nil {
-		log.Fatalf("unable to read channels %s", err)
-	}
-	if err := json.Unmarshal(d, &c.channels); err != nil {
-		log.Fatalf("unable to read channels %s", err)
-	}
-	sort.Strings(c.channels)
-	go c.runEvictHandler()
-	return c
 }
 
-// Connect open ws connection
-func (c *TwitchChat) Connect() {
+func (c *Twitch) connect() {
 	var err error
-	c.connLock.RLock()
+	c.connLock.Lock()
 	c.conn, _, err = c.dialer.Dial(GetConfig().Twitch.SocketURL, c.headers)
-	c.connLock.RUnlock()
+	c.connLock.Unlock()
 	if err != nil {
 		log.Printf("error connecting to twitch ws %s", err)
 		c.reconnect()
@@ -95,60 +60,41 @@ func (c *TwitchChat) Connect() {
 	c.send("NICK " + GetConfig().Twitch.Nick)
 
 	for _, ch := range c.channels {
-		err := c.Join(ch)
+		log.Printf("joining %s", ch)
+		err := c.send("JOIN #" + ch)
 		if err != nil {
-			log.Println(ch, err)
+			log.Println("failed to join", ch, "after freshly re/connecting to the websocket")
 		}
 	}
 }
 
-func (c *TwitchChat) reconnect() {
+func (c *Twitch) reconnect() {
+	c.connLock.Lock()
 	if c.conn != nil {
-		c.connLock.Lock()
 		c.conn.Close()
-		c.connLock.Unlock()
 	}
-	c.cleanupMessages()
+	c.connLock.Unlock()
 
 	time.Sleep(SocketReconnectDelay)
-	c.Connect()
-}
-
-func (c *TwitchChat) cleanupMessages() {
-	c.messagesLock.Lock()
-	defer c.messagesLock.Unlock()
-	if len(c.messages) == 0 {
-		return
-	}
-	for ch, mc := range c.messages {
-		close(mc)
-		delete(c.messages, ch)
-	}
+	c.connect()
 }
 
 // Run connect and start message read loop
-func (c *TwitchChat) Run() {
-	c.Connect()
+func (c *Twitch) Run() {
+	c.connect()
+	go c.rejoinHandler()
+	defer close(c.messages)
 
-	messagePattern := regexp.MustCompile(`:(.+)\!.+tmi\.twitch\.tv PRIVMSG #([a-z0-9_-]+) :(.+)`)
-	w := NewTimeWheel(TwitchReadTimeout, time.Second, c.evict)
-	for _, ch := range c.channels {
-		w.Update(strings.ToLower(ch))
-	}
-
-	for {
-		err := c.conn.SetReadDeadline(time.Now().Add(TwitchSocketReadTimeout))
+	for !c.stopped {
+		err := c.conn.SetReadDeadline(time.Now().Add(SocketReadTimeout))
 		if err != nil {
 			c.reconnect()
 			continue
 		}
 
-		c.connLock.RLock()
+		c.connLock.Lock()
 		_, msg, err := c.conn.ReadMessage()
-		c.connLock.RUnlock()
-		if c.stopped {
-			return
-		}
+		c.connLock.Unlock()
 		if err != nil {
 			log.Printf("error reading message %s", err)
 			c.reconnect()
@@ -160,15 +106,8 @@ func (c *TwitchChat) Run() {
 			continue
 		}
 
-		l := messagePattern.FindAllStringSubmatch(string(msg), -1)
+		l := c.MessagePattern.FindAllStringSubmatch(string(msg), -1)
 		for _, v := range l {
-			w.Update(v[2])
-			c.messagesLock.RLock()
-			mc, ok := c.messages[strings.ToLower(v[2])]
-			c.messagesLock.RUnlock()
-			if !ok {
-				continue
-			}
 
 			data := strings.TrimSpace(v[3])
 			data = strings.Replace(data, "ACTION", "/me", -1)
@@ -181,220 +120,117 @@ func (c *TwitchChat) Run() {
 				Time:    time.Now().UTC(),
 			}
 
-			if strings.EqualFold(v[2], GetConfig().Twitch.CommandChannel) {
-				c.runCommand(m)
-			}
-
 			select {
-			case mc <- m:
+			case c.messages <- m:
 			default:
+				log.Println("discarded message :(")
 			}
 		}
 	}
 }
 
-func (c *TwitchChat) runCommand(m *Message) {
-	if _, ok := c.admins[m.Nick]; !ok && m.Command != "MSG" {
-		return
-	}
-	ld := strings.Split(strings.ToLower(m.Data), " ")
-	switch ld[0] {
-	case "!join":
-		err := c.Join(ld[1])
-		switch err {
-		case nil:
-			c.send(fmt.Sprintf("PRIVMSG #%s :Logging %s", m.Channel, ld[1]))
-		case ErrChannelNotValid:
-			c.send(fmt.Sprintf("PRIVMSG #%s :Channel doesn't exist!", m.Channel))
-		case ErrAlreadyInChannel:
-			c.send(fmt.Sprintf("PRIVMSG #%s :Already logging %s", m.Channel, ld[1]))
-		default:
-		}
-	case "!leave":
-		err := c.Leave(ld[1])
-		switch err {
-		case nil:
-			c.send(fmt.Sprintf("PRIVMSG #%s :Leaving %s", m.Channel, ld[1]))
-		case ErrNotInChannel:
-			c.send(fmt.Sprintf("PRIVMSG #%s :Not logging %s", m.Channel, ld[1]))
-		default:
-		}
-	case "!channels":
-		c.send(fmt.Sprintf("PRIVMSG #%s :Logging %d channels.", m.Channel, len(c.channels)))
-	}
+// Channels ...
+func (c *Twitch) Channels() []string {
+	return c.channels
 }
 
-func (c *TwitchChat) send(m string) {
-	c.connLock.RLock()
+// Messages channel accessor
+func (c *Twitch) Messages() <-chan *Message {
+	return c.messages
+}
+
+// Message send a message to a channel
+func (c *Twitch) Message(ch, payload string) error {
+	return c.send(fmt.Sprintf("PRIVMSG #%s :%s", ch, payload))
+}
+
+// Whisper ...
+func (c *Twitch) Whisper(nick, payload string) error {
+	// NOTE: implement (maybe)
+	return nil
+}
+
+func (c *Twitch) send(m string) error {
+	c.conn.SetWriteDeadline(time.Now().Add(SocketWriteTimeout))
 	c.sendLock.Lock()
 	err := c.conn.WriteMessage(websocket.TextMessage, []byte(m+"\r\n"))
 	c.sendLock.Unlock()
-	c.connLock.RUnlock()
-	if err == nil {
-		time.Sleep(SocketWriteDebounce)
-	}
 	if err != nil {
-		log.Printf("error sending message %s", err)
-		c.reconnect()
+		return fmt.Errorf("error sending message %s", err)
 	}
+	time.Sleep(SocketWriteDebounce)
+	return nil
 }
 
 // Join channel
-func (c *TwitchChat) Join(ch string) error {
+func (c *Twitch) Join(ch string) error {
 	ch = strings.ToLower(ch)
-	if !channelExists(ch) {
-		c.removeChannel(ch)
-		return ErrChannelNotValid
+	err := c.send("JOIN #" + ch)
+	if err != nil {
+		return fmt.Errorf("failed to join %s", ch)
 	}
-	c.messagesLock.Lock()
-	if _, ok := c.messages[ch]; ok {
-		c.messagesLock.Unlock()
-		log.Println("already in channel", ch)
-		return ErrAlreadyInChannel
+	if inSlice(c.channels, ch) {
+		return nil
 	}
-	c.messages[ch] = make(chan *Message, MessageBufferSize)
-	c.messagesLock.Unlock()
-	c.send("JOIN #" + ch)
-	if messages, ok := c.messages[ch]; ok {
-		go c.joinHandler(ch, messages)
-	}
-	// if the channel is already in the list then there is no need to save the channels again
-	c.channelsLock.Lock()
-	for _, channel := range c.channels {
-		if strings.EqualFold(channel, ch) {
-			c.channelsLock.Unlock()
-			return nil
-		}
-	}
+	c.ChLock.Lock()
 	c.channels = append(c.channels, ch)
-	c.channelsLock.Unlock()
-	return c.saveChannels()
+	c.ChLock.Unlock()
+	return nil
 }
 
 // Leave channel
-func (c *TwitchChat) Leave(ch string) error {
+func (c *Twitch) Leave(ch string) error {
 	ch = strings.ToLower(ch)
-	c.messagesLock.Lock()
-	m, ok := c.messages[ch]
-	c.messagesLock.Unlock()
-	if !ok {
-		return ErrNotInChannel
-	}
 	c.send("PART #" + ch)
-	c.messagesLock.Lock()
-	delete(c.messages, ch)
-	close(m)
-	c.messagesLock.Unlock()
-	if err := c.removeChannel(ch); err != nil {
-		return nil
-	}
-	return c.saveChannels()
+	return c.removeChannel(ch)
 }
 
-func (c *TwitchChat) removeChannel(ch string) error {
-	c.channelsLock.Lock()
-	defer c.channelsLock.Unlock()
+func (c *Twitch) removeChannel(ch string) error {
+	c.ChLock.Lock()
+	defer c.ChLock.Unlock()
 	for i, channel := range c.channels {
-		if strings.EqualFold(channel, ch) {
+		if strings.EqualFold(ch, channel) {
 			c.channels = append(c.channels[:i], c.channels[i+1:]...)
 			return nil
 		}
 	}
-	return errors.New("didn't find " + ch)
+	return errNotInChannel
 }
 
-func (c *TwitchChat) evict(ch string) {
-	ch = strings.ToLower(ch)
-	c.messagesLock.RLock()
-	_, ok := c.messages[ch]
-	c.messagesLock.RUnlock()
-	if ok {
-		log.Printf("evicted %s\n", ch)
-		err := c.Leave(ch)
-		if err != nil {
-			log.Println(err)
+func (c *Twitch) rejoinHandler() {
+	tick := time.NewTicker(TwitchMessageTimeout)
+	for range tick.C {
+		if c.stopped {
+			return
 		}
-		c.evicted <- ch
+		for _, ch := range c.channels {
+			ch = strings.ToLower(ch)
+			log.Printf("rejoining %s\n", ch)
+			err := c.send("JOIN #" + ch)
+			if err != nil {
+				log.Println(err)
+			}
+		}
 	}
-}
-
-func (c *TwitchChat) runEvictHandler() {
-	for {
-		ch := <-c.evicted
-		c.Join(ch)
-	}
-}
-
-// Empty ...
-func (c *TwitchChat) Empty(ch string) bool {
-	c.messagesLock.RLock()
-	defer c.messagesLock.RUnlock()
-	return len(c.messages[ch]) == 0
 }
 
 // Stop ...
-func (c *TwitchChat) Stop() {
-	c.connLock.Lock()
-	if c.stopped {
-		c.connLock.Unlock()
-		return
-	}
+func (c *Twitch) Stop() {
 	c.stopped = true
-	c.connLock.Unlock()
-
-	c.messagesLock.RLock()
-	m := make([]string, 0, len(c.messages))
-	for ch := range c.messages {
-		m = append(m, ch)
-	}
-	c.messagesLock.RUnlock()
-	for _, ch := range m {
-		c.evict(ch)
-	}
-	close(c.evicted)
-
+	c.sendLock.Lock()
 	c.connLock.Lock()
-	c.conn.Close()
+	if c.conn != nil {
+		c.conn.Close()
+	}
 	c.connLock.Unlock()
-	c.saveChannels()
+	c.sendLock.Unlock()
 }
 
-// channelExists
-func channelExists(ch string) bool {
-	u, err := url.Parse("https://api.twitch.tv/kraken/users/" + ch)
-	if err != nil {
-		log.Panicf("error parsing twitch metadata endpoint url %s", err)
+func inSlice(s []string, v string) bool {
+	for _, sv := range s {
+		if strings.EqualFold(sv, v) {
+			return true
+		}
 	}
-	req := &http.Request{
-		Header: http.Header{
-			"Client-ID": []string{GetConfig().Twitch.ClientID},
-		},
-		URL: u,
-	}
-	client := http.Client{}
-	res, _ := client.Do(req)
-	defer res.Body.Close()
-	return res.StatusCode == http.StatusOK
-}
-
-func (c *TwitchChat) saveChannels() error {
-	f, err := os.Create(GetConfig().Twitch.ChannelListPath)
-	if err != nil {
-		log.Printf("error saving channel list %s", err)
-		return err
-	}
-	defer f.Close()
-	sort.Strings(c.channels)
-	data, err := json.Marshal(c.channels)
-	if err != nil {
-		log.Printf("error saving channel list %s", err)
-		return err
-	}
-	var buf bytes.Buffer
-	if err := json.Indent(&buf, data, "", "\t"); err != nil {
-		log.Printf("error saving channel list %s", err)
-		return err
-	}
-	f.Write(buf.Bytes())
-	return nil
+	return false
 }

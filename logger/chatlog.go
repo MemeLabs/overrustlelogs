@@ -11,7 +11,7 @@ import (
 	"github.com/slugalisk/overrustlelogs/common"
 )
 
-var empty struct{}
+// var empty struct{}
 
 // ChatLog handles single log file
 type ChatLog struct {
@@ -109,8 +109,7 @@ func NewChatLogs() *ChatLogs {
 func (l *ChatLogs) housekeeping() {
 	const interval = 10 * time.Minute
 	tick := time.NewTicker(interval)
-	for {
-		now := <-tick.C
+	for now := range tick.C {
 		for _, k := range l.logs.Keys() {
 			if v, ok := l.logs.Peek(k); ok {
 				c := v.(*ChatLog)

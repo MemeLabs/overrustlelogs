@@ -5,3 +5,4 @@ logger/logger.exe
 *.sublime-project
 orl.sublime-workspace
 *.json
+.ftpconfig
