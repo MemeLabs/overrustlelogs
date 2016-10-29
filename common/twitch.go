@@ -55,10 +55,10 @@ func (c *Twitch) connect() {
 		log.Printf("error connecting to twitch ws %s", err)
 		c.reconnect()
 	}
-	log.Println("sending login data")
+
 	c.send("PASS " + GetConfig().Twitch.OAuth)
 	c.send("NICK " + GetConfig().Twitch.Nick)
-	log.Println("finished sending login data")
+
 	for _, ch := range c.channels {
 		log.Printf("joining %s", ch)
 		err := c.send("JOIN #" + ch)
