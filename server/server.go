@@ -703,7 +703,7 @@ func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
 func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) bool) {
 	logs, err := readLogDir(path)
 	if err != nil {
-		http.Error(w, http.StatusNotFound, http.StatusNotFound)
+		http.Error(w, ErrNotFound.Error(), http.StatusNotFound)
 		return
 	}
 
