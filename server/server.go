@@ -87,6 +87,7 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("Subscriber", SubscriberHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", d.WatchHandle("Subscriber", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+ chatlog}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Queries("limit", "{limit:[0-9]+}").Methods("GET")
+	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+ chatlog}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/status.json", d.WatchHandle("Debug", d.HTTPHandle))
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
 	// r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
@@ -438,6 +439,9 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-type", "application/json")
 	vars := mux.Vars(r)
+	if _, ok := vars["limit"]; !ok {
+		vars["limit"] = "3"
+	}
 	limit, err := strconv.ParseUint(vars["limit"], 10, 32)
 	if err != nil {
 		d, _ := json.Marshal(Error{err.Error()})
@@ -447,7 +451,7 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 	if limit > uint64(common.GetConfig().Server.MaxStalkLines) {
 		limit = uint64(common.GetConfig().Server.MaxStalkLines)
 	} else if limit < 1 {
-		limit = 1
+		limit = 3
 	}
 	buf := make([]string, limit)
 	index := limit
@@ -623,18 +627,12 @@ func searchKey(nick, filter string) func([]byte) bool {
 				return false
 			}
 		}
-		if bytes.Contains(bytes.ToLower(line[len(nick)+LogLinePrefixLength:]), bytes.ToLower([]byte(filter))) {
-			return true
-		}
-		return false
+		return bytes.Contains(bytes.ToLower(line[len(nick)+LogLinePrefixLength:]), bytes.ToLower([]byte(filter)))
 	}
 }
 
 func filterKey(line []byte, f string) bool {
-	if bytes.Contains(bytes.ToLower(line), bytes.ToLower([]byte(f))) {
-		return true
-	}
-	return false
+	return bytes.Contains(bytes.ToLower(line), bytes.ToLower([]byte(f)))
 }
 
 // serveError ...
