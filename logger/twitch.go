@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"sort"
 	"strings"
@@ -27,12 +26,14 @@ var (
 
 // TwitchLogger ...
 type TwitchLogger struct {
-	chatLock       sync.RWMutex
-	chats          map[int]*common.Twitch
-	admins         map[string]struct{}
-	chLock         sync.RWMutex
-	channels       []string
+	chatLock sync.RWMutex
+	chats    map[int]*common.Twitch
+
+	chLock   sync.RWMutex
+	channels []string
+
 	logHandler     func(m <-chan *common.Message)
+	admins         map[string]struct{}
 	commandChannel string
 }
 
@@ -85,21 +86,19 @@ func (t *TwitchLogger) Stop() {
 	}
 }
 
-func (t *TwitchLogger) getChatToJoin() (int, *common.Twitch) {
+func (t *TwitchLogger) getChatToJoin() *common.Twitch {
 	t.chatLock.Lock()
-	for id, c := range t.chats {
+	for _, c := range t.chats {
 		c.ChLock.Lock()
 		if len(c.Channels()) < common.MaxChannelsPerChat {
 			c.ChLock.Unlock()
 			t.chatLock.Unlock()
-			return id, c
+			return c
 		}
 		c.ChLock.Unlock()
 	}
-	id := len(t.chats) + 1
 	t.chatLock.Unlock()
-	c, _ := t.startNewChat(id)
-	return id, c
+	return t.startNewChat()
 }
 
 func (t *TwitchLogger) join(ch string, init bool) error {
@@ -116,11 +115,11 @@ func (t *TwitchLogger) join(ch string, init bool) error {
 			log.Println(err)
 		}
 	}
-	id, c := t.getChatToJoin()
+	c := t.getChatToJoin()
 	for try := 1; try <= 3; try++ {
 		err := c.Join(ch)
 		if err == nil {
-			log.Printf("joining %s on chat %d.", ch, id)
+			log.Printf("joining %s", ch)
 			return nil
 		}
 		if err != nil && try == 3 {
@@ -151,20 +150,18 @@ func (t *TwitchLogger) leave(ch string) error {
 	return err
 }
 
-func (t *TwitchLogger) startNewChat(id int) (*common.Twitch, error) {
+func (t *TwitchLogger) startNewChat() *common.Twitch {
 	newChat := common.NewTwitch()
-	go newChat.Run()
-	go t.msgHandler(id, newChat.Messages())
+	newChat.Run()
+
 	t.chatLock.Lock()
 	defer t.chatLock.Unlock()
-	if _, ok := t.chats[id]; ok {
-		newChat.Stop()
-		return nil, fmt.Errorf("a chat exists already with the id: %d.\n", id)
-	}
+	id := len(t.chats) + 1
 	t.chats[id] = newChat
-	time.Sleep(5 * time.Second)
+	go t.msgHandler(id, newChat.Messages())
+
 	log.Println("started chat", id)
-	return newChat, nil
+	return newChat
 }
 
 func (t *TwitchLogger) msgHandler(chatID int, ch <-chan *common.Message) {
@@ -178,6 +175,7 @@ func (t *TwitchLogger) msgHandler(chatID int, ch <-chan *common.Message) {
 		select {
 		case logCh <- m:
 		default:
+			log.Println("ERROR: buffer is full")
 		}
 	}
 }
@@ -217,7 +215,6 @@ func (t *TwitchLogger) addChannel(ch string) {
 	t.chLock.Lock()
 	defer t.chLock.Unlock()
 	t.channels = append(t.channels, ch)
-	log.Println("added", ch, "to list")
 }
 
 func (t *TwitchLogger) removeChannel(ch string) error {
@@ -256,17 +253,11 @@ func (t *TwitchLogger) saveChannels() error {
 
 // channelExists
 func channelExists(ch string) bool {
-	u, err := url.Parse("https://api.twitch.tv/kraken/users/" + ch)
+	req, err := http.NewRequest("GET", "https://api.twitch.tv/kraken/users/"+strings.ToLower(ch), nil)
 	if err != nil {
-		log.Printf("error parsing twitch metadata endpoint url %s", err)
 		return false
 	}
-	req := &http.Request{
-		Header: http.Header{
-			"Client-ID": []string{common.GetConfig().Twitch.ClientID},
-		},
-		URL: u,
-	}
+	req.Header.Add("Client-ID", common.GetConfig().Twitch.ClientID)
 	client := http.Client{
 		Timeout: 10 * time.Second,
 	}

@@ -56,8 +56,15 @@ func (c *Twitch) connect() {
 		c.reconnect()
 	}
 
-	c.send("PASS " + GetConfig().Twitch.OAuth)
-	c.send("NICK " + GetConfig().Twitch.Nick)
+	conf := GetConfig()
+	if conf.Twitch.OAuth == "" || conf.Twitch.Nick == "" {
+		log.Println("using justinfan654 as login data")
+		conf.Twitch.OAuth = "justinfan659"
+		conf.Twitch.Nick = "justinfan659"
+	}
+
+	c.send("PASS " + conf.Twitch.OAuth)
+	c.send("NICK " + conf.Twitch.Nick)
 
 	for _, ch := range c.channels {
 		log.Printf("joining %s", ch)
@@ -83,50 +90,51 @@ func (c *Twitch) reconnect() {
 func (c *Twitch) Run() {
 	c.connect()
 	go c.rejoinHandler()
-	defer close(c.messages)
-
-	for !c.stopped {
-		err := c.conn.SetReadDeadline(time.Now().Add(SocketReadTimeout))
-		if err != nil {
-			c.reconnect()
-			continue
-		}
-
-		c.connLock.Lock()
-		_, msg, err := c.conn.ReadMessage()
-		c.connLock.Unlock()
-		if err != nil {
-			log.Printf("error reading message %s", err)
-			c.reconnect()
-			continue
-		}
-
-		if strings.Index(string(msg), "PING") == 0 {
-			c.send(strings.Replace(string(msg), "PING", "PONG", -1))
-			continue
-		}
-
-		l := c.MessagePattern.FindAllStringSubmatch(string(msg), -1)
-		for _, v := range l {
-
-			data := strings.TrimSpace(v[3])
-			data = strings.Replace(data, "ACTION", "/me", -1)
-			data = strings.Replace(data, "", "", -1)
-			m := &Message{
-				Command: "MSG",
-				Channel: v[2],
-				Nick:    v[1],
-				Data:    data,
-				Time:    time.Now().UTC(),
+	go func() {
+		defer close(c.messages)
+		for !c.stopped {
+			err := c.conn.SetReadDeadline(time.Now().Add(SocketReadTimeout))
+			if err != nil {
+				c.reconnect()
+				continue
 			}
 
-			select {
-			case c.messages <- m:
-			default:
-				log.Println("discarded message :(")
+			c.connLock.Lock()
+			_, msg, err := c.conn.ReadMessage()
+			c.connLock.Unlock()
+			if err != nil {
+				log.Printf("error reading message %s", err)
+				c.reconnect()
+				continue
+			}
+
+			if strings.Index(string(msg), "PING") == 0 {
+				c.send(strings.Replace(string(msg), "PING", "PONG", -1))
+				continue
+			}
+
+			l := c.MessagePattern.FindAllStringSubmatch(string(msg), -1)
+			for _, v := range l {
+
+				data := strings.TrimSpace(v[3])
+				data = strings.Replace(data, "ACTION", "/me", -1)
+				data = strings.Replace(data, "", "", -1)
+				m := &Message{
+					Command: "MSG",
+					Channel: v[2],
+					Nick:    v[1],
+					Data:    data,
+					Time:    time.Now().UTC(),
+				}
+
+				select {
+				case c.messages <- m:
+				default:
+					log.Println("discarded message :(")
+				}
 			}
 		}
-	}
+	}()
 }
 
 // Channels ...
