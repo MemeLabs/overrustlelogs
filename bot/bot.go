@@ -132,7 +132,9 @@ func NewBot(c *common.Destiny) *Bot {
 
 // Run start bot
 func (b *Bot) Run() {
+	var messageCount int
 	for m := range b.c.Messages() {
+		messageCount++
 		admin := b.isAdmin(m.Nick)
 		ignoredNick := b.isIgnored(m.Nick)
 		switch m.Command {
@@ -145,7 +147,15 @@ func (b *Bot) Run() {
 				continue
 			}
 			if rs == b.lastLine && !admin {
-				continue
+				if rs+" ." == b.lastLine && messageCount < 16 {
+					continue
+				}
+				if messageCount > 15 {
+					rs += " ."
+					messageCount = 0
+				} else {
+					continue
+				}
 			}
 			if admin {
 				rs += " SWEATSTINY"
@@ -321,7 +331,7 @@ func (b *Bot) handleDestinyLogs(m *common.Message, r *bufio.Reader) (string, err
 	if rs != nil {
 		return rs.Month() + " logs. " + b.toURL(common.GetConfig().DestinyGG.LogHost, "/"+rs.Nick()), nil
 	}
-	return b.toURL(common.GetConfig().DestinyGG.LogHost, "/"), nil
+	return b.toURL(common.GetConfig().DestinyGG.LogHost, ""), nil
 }
 
 func (b *Bot) handleTwitchLogs(m *common.Message, r *bufio.Reader) (string, error) {
@@ -345,7 +355,7 @@ func (b *Bot) searchNickFromLine(path string, r *bufio.Reader) (*common.NickSear
 	if !validNick.Match([]byte(nick)) {
 		return nil, "", ErrInvalidNick
 	}
-	s, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+path, string(nick))
+	s, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+path, nick)
 	if err != nil {
 		return nil, "", err
 	}
