@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"regexp"
+	"strings"
+	"time"
 
 	"github.com/slugalisk/overrustlelogs/common"
 )
@@ -20,9 +23,11 @@ var commands = map[string]command{
 	"readnicks":  readNicks,
 	"nicks":      nicks,
 	"migrate":    migrate,
+	"namechange": namechange,
 }
 
 func main() {
+	log.SetFlags(log.Lshortfile | log.LstdFlags)
 	if len(os.Args) < 2 {
 		os.Exit(1)
 	}
@@ -136,5 +141,70 @@ func readNicks() error {
 	} else {
 		return errors.New("invalid file")
 	}
+	return nil
+}
+
+func namechange() error {
+	if len(os.Args) < 5 {
+		return errors.New("not enough args")
+	}
+	validNick := regexp.MustCompile("^[a-zA-Z0-9_]+$")
+	log := os.Args[2]
+	oldName := os.Args[3]
+	if !validNick.Match([]byte(oldName)) {
+		return errors.New("the old name is not a valid nick")
+	}
+	newName := os.Args[4]
+
+	replacer := strings.NewReplacer(
+		"] "+oldName+":", "] "+newName+":",
+		" "+oldName+" ", " "+newName+" ",
+		" "+oldName+"\n", " "+newName+"\n",
+	)
+
+	log = strings.Replace(log, "txt", "nicks", 1)
+
+	if strings.Contains(log, time.Now().UTC().Format("2006-01-02")) {
+		return errors.New("can't modify todays log file")
+	}
+	fmt.Println(log)
+
+	n := common.NickList{}
+	err := common.ReadNickList(n, log)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	if _, ok := n[newName]; ok {
+		return errors.New("nick already used, choose another one")
+	}
+	if _, ok := n[oldName]; !ok {
+		return errors.New("nick not found")
+	}
+	n.Remove(oldName)
+	n.Add(newName)
+	err = n.WriteTo(log[:len(log)-4])
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	log = strings.Replace(log, "nicks", "txt", 1)
+
+	d, err := common.ReadCompressedFile(log)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	newData := []byte(replacer.Replace(string(d)))
+	f, err := common.WriteCompressedFile(log, newData)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	fmt.Println("replaced nicks in", f.Name())
+	f.Close()
 	return nil
 }

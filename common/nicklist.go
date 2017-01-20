@@ -13,6 +13,7 @@ var empty struct{}
 // NickStore nick list data
 type NickStore interface {
 	Add(string)
+	Remove(string)
 }
 
 // ReadNickList adds nicks from the disk
@@ -37,6 +38,11 @@ type NickList map[string]struct{}
 // Add append nick to list
 func (n NickList) Add(nick string) {
 	n[nick] = empty
+}
+
+// Remove deletes a nick from the list
+func (n NickList) Remove(nick string) {
+	delete(n, nick)
 }
 
 // WriteTo writes nicks to the disk
@@ -64,12 +70,22 @@ func (n NickListLower) Add(nick string) {
 	n[strings.ToLower(nick)] = empty
 }
 
+// Remove deletes a nick from the list
+func (n NickListLower) Remove(nick string) {
+	delete(n, strings.ToLower(nick))
+}
+
 // NickCaseMap map from lower case nicks
 type NickCaseMap map[string]string
 
 // Add implement NickStore
 func (n NickCaseMap) Add(nick string) {
 	n[strings.ToLower(nick)] = nick
+}
+
+// Remove deletes a nick from the list
+func (n NickCaseMap) Remove(nick string) {
+	delete(n, strings.ToLower(nick))
 }
 
 // NickSearch scans nick indexes in reverse chronological order
