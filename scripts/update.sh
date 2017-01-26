@@ -62,9 +62,9 @@ updateLogger(){
 
 updatePack(){
 	cp -r $GOPATH/src/$src/package/* /
-	if [ -f "$GOPATH/src/$src/package/etc/overrustlelogs/overrustlelogs.local.conf" ]; then
+	if [ -f "/etc/overrustlelogs/overrustlelogs.local.conf" ]; then
 		echo "NOTICE: found overrustlelogs.local.conf, overwriting default file..."
-		cp -p "$GOPATH/src/$src/package/etc/overrustlelogs/overrustlelogs.local.conf" /etc/overrustlelogs/overrustlelogs.conf
+		cp -p "/etc/overrustlelogs/overrustlelogs.local.conf" /etc/overrustlelogs/overrustlelogs.conf
 	fi
 	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
 	systemctl daemon-reload
@@ -85,16 +85,9 @@ elif [[ $TODO == "pack" ]]; then
 	updatePack
 else
 	echo "updating everything..."
-	if [[ $MODE == "local" ]]; then
-		echo
-		echo "NOTE, local mode will replace etc with the pack!!!"
-		sleep 3
-		echo "..."
-		sleep 2
-		updatePack
-	fi
 	updateBot
 	updateLogger
 	updateServer
+	updatePack
 	echo "updating complete"
 fi
