@@ -8,11 +8,11 @@ html lang=en
     = javascript
       try{if (!window.CloudFlare) {var CloudFlare=[{verbose:0,p:0,byc:0,owlid:"cf",bag2:1,mirage2:0,oracle:0,paths:{cloudflare:"/cdn-cgi/nexp/dok3v=1613a3a185/"},atok:"55f506b8c93b95856ec102f6bc31d73f",petok:"cba3878429ac864995af99d4c3de9c5053d91350-1439773029-1800",betok:"090fb43b0743cfa5ae19b5f1871084b269ee8fb6-1439773029-120",zone:"overrustlelogs.net",rocket:"a",apps:{"ga_key":{"ua":"UA-46946005-1","ga_bs":"2"}}}];document.write('<script type="text/javascript" src="//ajax.cloudflare.com/cdn-cgi/nexp/dok3v=e9627cd26a/cloudflare.min.js"><'+'\/script>');}}catch(e){};
     link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico"
-    link rel="stylesheet" href="/assets/css/materialize.css" media="screen,projection"
-    link rel="stylesheet" href="/assets/css/font-awesome.min.css"
+    link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/materialize/0.97.8/css/materialize.min.css" media="screen,projection"
     link rel="stylesheet" href="/assets/css/orl.css"
-    script src="//code.jquery.com/jquery-1.12.0.min.js"
-    script src="/assets/js/materialize.min.js"
+    script src="//use.fontawesome.com/5fd85f0c6d.js"
+    script src="//code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"
+    script src="//cdnjs.cloudflare.com/ajax/libs/materialize/0.97.8/js/materialize.min.js"
     script src="/assets/js/orl.js?_v=1"
     = javascript
       var _gaq = _gaq || [];
@@ -39,19 +39,8 @@ html lang=en
       nav
         div class="nav-wrapper container"
           span
-            a class="brand-logo" href="http://overrustlelogs.net/" OverRustle Logs
-          a href="#" data-activates="mobile-demo" class="button-collapse"
-            i class="fa fa-bars"
+            a class="brand-logo" href="/" OverRustle Logs
           ul id="nav-mobile" class="right hide-on-med-and-down"
-            li
-              a class="active" href="/changelog" Changelog
-            li
-              a class="active" href="/contact" Contact
-            li
-              a class="donate" target="_blank" href="https://twitch.streamlabs.com/overrustlelogs"
-                i class="fa fa-paypal fa-fw"
-                span Donate
-          ul class="side-nav" id="mobile-demo"
             li
               a class="active" href="/changelog" Changelog
             li

@@ -32,10 +32,11 @@ nav ul a:hover {
 	opacity: 0.8;
 }
 .collection {
-	background-color: #212121
+	border: 0px #212121;
 }
 .collection .collection-item {
 	background: #212121;
+	border-bottom: 1px solid #424242;
 	padding: 10px 20px
 }
 .collection a.collection-item {
@@ -63,15 +64,6 @@ nav ul a:hover {
 }
 .card .card-action a:not(.btn):not(.btn-large):not(.btn-floating):hover {
 	color: #ff5722;
-}
-.side-nav {
-	background-color: #212121
-}
-.side-nav li:hover, .side-nav li.active {
-	background: rgba(0, 0, 0, 5)
-}
-.side-nav a {
-	color: #fff
 }
 .selection {
 	background: rgba(0, 0, 0, 0.1);

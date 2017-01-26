@@ -6,3 +6,5 @@ logger/logger.exe
 orl.sublime-workspace
 *.json
 .ftpconfig
+*.exe
+.vscode
