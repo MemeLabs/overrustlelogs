@@ -34,7 +34,7 @@
       if (req.readyState === 4) {
         if (selection) {
           var span = $('.selection');
-          if (span.size()) {
+          if (span.length) {
             $('body').scrollTop(span.offset().top - HEADER_HEIGHT);
           }
         }
