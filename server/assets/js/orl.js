@@ -1,5 +1,5 @@
-(function() {
-	var HEADER_HEIGHT = 64;
+(function () {
+  var HEADER_HEIGHT = 64;
 
   function load(path, selection) {
     var offset = 0;
@@ -21,8 +21,7 @@
           if (length >= selection[1]) {
             appendChunk(text.substring(selection[0], selection[1]), 'selection');
             offset = selection[1];
-          }
-          else {
+          } else {
             offset = length;
           }
         }
@@ -54,11 +53,15 @@
     var left = getOffset(selection.baseNode) + selection.baseOffset;
     var right = getOffset(selection.extentNode) + selection.extentOffset;
     var hash = left === right ? '' : '#' + Math.min(left, right) + '-' + Math.max(left, right);
-    history.replaceState('', document.title, window.location.pathname + hash);
+    var path = window.location.pathname
+    if (window.location.search !== '') {
+      path += window.location.search
+    }
+    history.replaceState('', document.title, path + hash);
   }
 
   function getOffset(node) {
-    return $(node.parentElement).prevAll().toArray().reduce(function(length, node) {
+    return $(node.parentElement).prevAll().toArray().reduce(function (length, node) {
       return length + node.innerText.length;
     }, 0);
   }
