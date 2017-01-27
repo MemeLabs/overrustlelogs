@@ -53,9 +53,9 @@
     var left = getOffset(selection.baseNode) + selection.baseOffset;
     var right = getOffset(selection.extentNode) + selection.extentOffset;
     var hash = left === right ? '' : '#' + Math.min(left, right) + '-' + Math.max(left, right);
-    var path = window.location.pathname
+    var path = window.location.pathname;
     if (window.location.search !== '') {
-      path += window.location.search
+      path += window.location.search;
     }
     history.replaceState('', document.title, path + hash);
   }
