@@ -37,4 +37,4 @@ fi
 
 echo "next steps:"
 echo "1.) add creds to /etc/overrustlelogs/overrustlelogs.conf"
-echo "2.) run $ ${SSS}start logger && ${SSS}start server"
+echo "2.) run $ ${SSS}start orl-logger && ${SSS}start orl-server"

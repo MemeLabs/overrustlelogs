@@ -6,7 +6,7 @@ fi
 
 if [ -z `which go` ]; then
   apt-get update
-  apt-get install build-essential --assume-yes
+  apt-get install build-essential git wget --assume-yes
 
   pushd . > /dev/null
   cd /tmp
