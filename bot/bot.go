@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -68,6 +69,7 @@ type Bot struct {
 	start       time.Time
 	nukeEOL     time.Time
 	nukeText    []byte
+	autoMutes   []string
 	lastLine    string
 	cooldownEOL time.Time
 	public      map[string]command
@@ -82,6 +84,7 @@ func NewBot(c *common.Destiny) *Bot {
 	b := &Bot{
 		c:         c,
 		start:     time.Now(),
+		autoMutes: make([]string, 0),
 		admins:    make(map[string]struct{}, len(common.GetConfig().Bot.Admins)),
 		ignoreLog: make(map[string]struct{}),
 	}
@@ -89,6 +92,8 @@ func NewBot(c *common.Destiny) *Bot {
 		b.admins[admin] = struct{}{}
 	}
 	b.public = map[string]command{
+		"add":   b.handleMute,
+		"del":   b.handleMuteRemove,
 		"log":   b.handleDestinyLogs,
 		"tlog":  b.handleTwitchLogs,
 		"logs":  b.handleDestinyLogs,
@@ -103,7 +108,6 @@ func NewBot(c *common.Destiny) *Bot {
 		"tlog":      b.handleTwitchLogs,
 		"logs":      b.handleDestinyLogs,
 		"tlogs":     b.handleTwitchLogs,
-		"p":         b.handlePremiumLog,
 		"uptime":    b.handleUptime,
 		"ignore":    b.handleIgnore,
 		"unignore":  b.handleUnignore,
@@ -144,6 +148,11 @@ func (b *Bot) Run() {
 			}
 			rs, err := b.runCommand(b.public, m)
 			if err != nil || rs == "" {
+				continue
+			}
+			if b.isNuked(rs) || b.isInAutoMute(rs) {
+				b.c.Message(fmt.Sprintf("Ignoring %s from now on. SOTRIGGERED", m.Nick))
+				b.addIgnore(m.Nick)
 				continue
 			}
 			if rs == b.lastLine && !admin {
@@ -226,7 +235,11 @@ func (b *Bot) runCommand(commands map[string]command, m *common.Message) (string
 }
 
 func (b *Bot) isNuked(text string) bool {
-	return b.nukeEOL.After(time.Now()) && bytes.Contains(bytes.ToLower([]byte(text)), b.nukeText)
+	r, err := regexp.Compile(string(b.nukeText))
+	if err != nil {
+		return false
+	}
+	return b.nukeEOL.After(time.Now()) && r.Match([]byte(text))
 }
 
 func (b *Bot) isAdmin(nick string) bool {
@@ -268,10 +281,6 @@ func (b *Bot) toURL(host string, path string) string {
 	u.Scheme = ""
 	u.Path = path
 	return u.String()[2:]
-}
-
-func (b *Bot) handlePremiumLog(m *common.Message, r *bufio.Reader) (string, error) {
-	return b.toURL(common.GetConfig().LogHost, "/"+destinyPath+"/premium/"+m.Nick+"/"+time.Now().UTC().Format("January 2006")+".txt"), nil
 }
 
 func (b *Bot) handleIgnoreLog(m *common.Message, r *bufio.Reader) (string, error) {
@@ -369,6 +378,42 @@ func (b *Bot) searchNickFromLine(path string, r *bufio.Reader) (*common.NickSear
 
 func (b *Bot) handleSimpleNuke(m *common.Message, r *bufio.Reader) (string, error) {
 	return b.handleNuke(m, defaultNukeDuration, r)
+}
+
+func (b *Bot) handleMute(m *common.Message, r *bufio.Reader) (string, error) {
+	if b.isAdmin(m.Nick) {
+		text, err := ioutil.ReadAll(r)
+		if err != nil {
+			return "", err
+		}
+		b.autoMutes = append(b.autoMutes, string(text))
+	}
+	return "", nil
+}
+
+func (b *Bot) handleMuteRemove(m *common.Message, r *bufio.Reader) (string, error) {
+	if b.isAdmin(m.Nick) {
+		text, err := ioutil.ReadAll(r)
+		if err != nil {
+			return "", err
+		}
+		for i, v := range b.autoMutes {
+			if v == string(text) {
+				b.autoMutes = append(b.autoMutes[:i], b.autoMutes[i+1:]...)
+				return "", nil
+			}
+		}
+	}
+	return "", nil
+}
+
+func (b *Bot) isInAutoMute(text string) bool {
+	for _, v := range b.autoMutes {
+		if strings.Contains(text, v) {
+			return true
+		}
+	}
+	return false
 }
 
 func (b *Bot) handleNuke(m *common.Message, d time.Duration, r *bufio.Reader) (string, error) {
