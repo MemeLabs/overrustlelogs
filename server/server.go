@@ -29,7 +29,7 @@ import (
 
 // temp ish.. move to config
 const (
-	LogLinePrefixLength = 26
+	LogLinePrefixLength = len("[2017-01-10 08:57:47 UTC] ")
 )
 
 // errors
@@ -62,6 +62,9 @@ func main() {
 	r.HandleFunc("/contact", d.WatchHandle("Contact", ContactHandle)).Methods("GET")
 	r.HandleFunc("/changelog", d.WatchHandle("Changelog", ChangelogHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}", d.WatchHandle("Channel", ChannelHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", d.WatchHandle("MentionsHandle", MentionsHandle)).Methods("GET").Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", d.WatchHandle("MentionsHandle", MentionsHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/mentions/{nick:[a-zA-Z0-9_-]{1,25}}", d.WatchHandle("MentionsHandle", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}", d.WatchHandle("Month", MonthHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", d.WatchHandle("Day", DayHandle)).Queries("search", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", d.WatchHandle("Day", DayHandle)).Methods("GET")
@@ -90,7 +93,7 @@ func main() {
 	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+ chatlog}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/status.json", d.WatchHandle("Debug", d.HTTPHandle))
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
-	// r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
+	r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 
 	srv := &http.Server{
 		Addr:         common.GetConfig().Server.Address,
@@ -104,6 +107,7 @@ func main() {
 	signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
 	select {
 	case <-sigint:
+		// srv.Close()
 		log.Println("i love you guys, be careful")
 		os.Exit(0)
 	}
@@ -266,29 +270,31 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
 	w.Header().Set("Cache-control", "max-age=60")
-	if _, ok := vars["filter"]; ok {
-		reader := bufio.NewReaderSize(bytes.NewReader(data), len(data))
-		var lineCount int
-		for {
-			line, err := reader.ReadSlice('\n')
-			if err != nil {
-				if err != io.EOF {
-					log.Printf("error reading bytes %s", err)
-				}
-				break
-			}
-			if filterKey(line, vars["filter"]) {
-				w.Write(line)
-				lineCount++
-			}
-		}
-		if lineCount == 0 {
-			http.Error(w, ErrSearchKeyNotFound.Error(), http.StatusNotFound)
-			return
-		}
-		return
+	var ok bool
+	var filter func([]byte, string) bool
+	if _, ok = vars["filter"]; ok {
+		filter = filterKey
+	} else {
+		filter = func(l []byte, f string) bool { return true }
 	}
-	w.Write(data)
+	var lineCount int
+	reader := bufio.NewReaderSize(bytes.NewReader(data), len(data))
+	for {
+		line, err := reader.ReadSlice('\n')
+		if err != nil {
+			if err != io.EOF {
+				log.Printf("error reading bytes %s", err)
+			}
+			break
+		}
+		if filter(line, vars["filter"]) {
+			w.Write(line)
+			lineCount++
+		}
+	}
+	if lineCount == 0 && ok {
+		http.Error(w, ErrSearchKeyNotFound.Error(), http.StatusNotFound)
+	}
 }
 
 // UsersHandle channel index
@@ -431,6 +437,43 @@ func NickHandle(w http.ResponseWriter, r *http.Request) {
 	UserHandle(w, r)
 }
 
+// MentionsHandle shows each line where a specific nick gets mentioned
+func MentionsHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	if _, ok := vars["date"]; !ok {
+		vars["date"] = time.Now().UTC().Format("2006-01-02")
+	}
+	t, err := time.Parse("2006-01-02", vars["date"])
+	if err != nil {
+		http.Error(w, "invalid date format", http.StatusNotFound)
+		return
+	}
+	data, err := readLogFile(common.GetConfig().LogPath + "/" + vars["channel"] + "/" + t.Format("January 2006") + "/" + t.Format("2006-01-02"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
+	var lineCount int
+	reader := bufio.NewReaderSize(bytes.NewReader(data), len(data))
+	for {
+		line, err := reader.ReadSlice('\n')
+		if err != nil {
+			if err != io.EOF {
+				log.Printf("error reading bytes %s", err)
+			}
+			break
+		}
+		if bytes.Contains(line[bytes.Index(line[LogLinePrefixLength:], []byte(":"))+LogLinePrefixLength:], []byte(" "+vars["nick"])) {
+			w.Write(line)
+			lineCount++
+		}
+	}
+	if lineCount == 0 {
+		http.Error(w, "no mentions :(", http.StatusNotFound)
+	}
+}
+
 // StalkHandle return n most recent lines of chat for user
 func StalkHandle(w http.ResponseWriter, r *http.Request) {
 	type Error struct {
@@ -453,7 +496,7 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 	} else if limit < 1 {
 		limit = 3
 	}
-	buf := make([]string, limit)
+	buf := make([]string, 0, limit)
 	index := limit
 	search, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+vars["channel"], vars["nick"])
 	if err != nil {
