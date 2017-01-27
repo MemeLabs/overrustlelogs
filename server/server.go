@@ -496,7 +496,7 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 	} else if limit < 1 {
 		limit = 3
 	}
-	buf := make([]string, 0, limit)
+	buf := make([]string, limit)
 	index := limit
 	search, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+vars["channel"], vars["nick"])
 	if err != nil {
