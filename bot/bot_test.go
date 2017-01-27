@@ -41,6 +41,23 @@ func TestLogs(t *testing.T) {
 	}
 }
 
+func TestTlogs(t *testing.T) {
+	m := &common.Message{
+		Command: "MSG",
+		Nick:    "Destiny",
+		Data:    "!tlog Destiny",
+		Time:    time.Now(),
+	}
+
+	if rs, err := b.runCommand(b.public, m); err != nil {
+		log.Println("error running tlogs", err)
+		t.Fail()
+	} else if !strings.Contains(rs, "ttv") {
+		log.Printf("invalid log response \"%s\"", rs)
+		t.Fail()
+	}
+}
+
 func TestIgnore(t *testing.T) {
 	m := &common.Message{
 		Command: "PRIVMSG",
@@ -73,6 +90,42 @@ func TestUnignore(t *testing.T) {
 	}
 	if b.isIgnored("CriminalCutie") {
 		log.Println("user still ignored")
+		t.Fail()
+	}
+}
+
+func TestIgnoreLog(t *testing.T) {
+	m := &common.Message{
+		Command: "PRIVMSG",
+		Nick:    "dbc",
+		Data:    "!ignrlog CriminalCutie",
+		Time:    time.Now(),
+	}
+
+	if _, err := b.runCommand(b.private, m); err != nil {
+		log.Println("error running ignore")
+		t.Fail()
+	}
+	if !b.isLogIgnored("CriminalCutie") {
+		log.Println("userlog not ignored")
+		t.Fail()
+	}
+}
+
+func TestUnignoreLog(t *testing.T) {
+	m := &common.Message{
+		Command: "PRIVMSG",
+		Nick:    "dbc",
+		Data:    "!unignrlog CriminalCutie",
+		Time:    time.Now(),
+	}
+
+	if _, err := b.runCommand(b.private, m); err != nil {
+		log.Println("error running unignore")
+		t.Fail()
+	}
+	if b.isIgnored("CriminalCutie") {
+		log.Println("userlog still ignored")
 		t.Fail()
 	}
 }

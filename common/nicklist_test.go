@@ -44,3 +44,45 @@ func TestRead(t *testing.T) {
 		}
 	}
 }
+
+func TestRemove(t *testing.T) {
+	n := NickList{}
+	n.Add("foo")
+	n.Add("bar")
+	n.Add("baz")
+	n.Add("qux")
+	if err := n.WriteTo("/tmp/nicks"); err != nil {
+		log.Printf("error writing nick list %s", err)
+		t.Fail()
+		return
+	}
+
+	r := NickList{}
+	if err := ReadNickList(r, "/tmp/nicks"); err != nil {
+		log.Printf("error reading nick list %s", err)
+		t.Fail()
+		return
+	}
+
+	r.Remove("foo")
+	if err := r.WriteTo("/tmp/nicks"); err != nil {
+		log.Printf("error writing nick list %s", err)
+		t.Fail()
+		return
+	}
+
+	rn := NickList{}
+	if err := ReadNickList(rn, "/tmp/nicks"); err != nil {
+		log.Printf("error reading nick list %s", err)
+		t.Fail()
+		return
+	}
+
+	for _, k := range []string{"bar", "baz", "qux"} {
+		if _, ok := r[k]; !ok {
+			log.Printf("nick not found %s", k)
+			t.Fail()
+			return
+		}
+	}
+}
