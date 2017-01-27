@@ -58,6 +58,77 @@ func TestTlogs(t *testing.T) {
 	}
 }
 
+func TestMentions(t *testing.T) {
+	tests := []*common.Message{
+		&common.Message{
+			Command: "MSG",
+			Nick:    "Destiny",
+			Data:    "!mentions",
+			Time:    time.Now(),
+		},
+		&common.Message{
+			Command: "MSG",
+			Nick:    "Destiny",
+			Data:    "!mentions 2017-01-10",
+			Time:    time.Now(),
+		},
+	}
+	expected := []string{
+		"Destiny dgg.overrustlelogs.net/mentions/Destiny",
+		"Destiny dgg.overrustlelogs.net/mentions/Destiny?date=2017-01-10",
+	}
+
+	for i, test := range tests {
+		if got, err := b.runCommand(b.public, test); err != nil {
+			log.Println("error running tlogs", err)
+			t.Fail()
+		} else if got != expected[i] {
+			log.Printf("invalid log response \"%s\"", got)
+			t.Fail()
+		}
+	}
+}
+
+func TestMentionsFail(t *testing.T) {
+	tests := []*common.Message{
+		&common.Message{
+			Command: "MSG",
+			Nick:    "Destiny",
+			Data:    "!mentions 2018-24-10",
+			Time:    time.Now(),
+		},
+		&common.Message{
+			Command: "MSG",
+			Nick:    "Destiny",
+			Data:    time.Now().Add(24 * time.Hour).Format("!mentions 2006-01-02"),
+			Time:    time.Now(),
+		},
+		&common.Message{
+			Command: "MSG",
+			Nick:    "Destiny",
+			Data:    "!mentions YEE",
+			Time:    time.Now(),
+		},
+	}
+	expected := []string{
+		"Wrong date format. It's !mentions 2006-01-02 (Year-Month-Day)",
+		"Destiny BASEDWATM8 i can't look into the future.",
+		"Wrong date format. It's !mentions 2006-01-02 (Year-Month-Day)",
+	}
+	for i, test := range tests {
+		got, err := b.runCommand(b.public, test)
+		if err != nil {
+			log.Println("error running tlogs", err)
+			t.Fail()
+		}
+		if got != expected[i] {
+			log.Printf("got %s - expected %s", got, expected[i])
+			t.Fail()
+		}
+		// log.Printf("invalid log response \"%s\"", rs)
+	}
+}
+
 func TestIgnore(t *testing.T) {
 	m := &common.Message{
 		Command: "PRIVMSG",

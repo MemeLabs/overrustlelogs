@@ -92,16 +92,17 @@ func NewBot(c *common.Destiny) *Bot {
 		b.admins[admin] = struct{}{}
 	}
 	b.public = map[string]command{
-		"add":   b.handleMute,
-		"del":   b.handleMuteRemove,
-		"log":   b.handleDestinyLogs,
-		"tlog":  b.handleTwitchLogs,
-		"logs":  b.handleDestinyLogs,
-		"tlogs": b.handleTwitchLogs,
-		"nuke":  b.handleSimpleNuke,
-		"aegis": b.handleAegis,
-		"bans":  b.handleBans,
-		"subs":  b.handleSubs,
+		"add":      b.handleMute,
+		"del":      b.handleMuteRemove,
+		"log":      b.handleDestinyLogs,
+		"tlog":     b.handleTwitchLogs,
+		"logs":     b.handleDestinyLogs,
+		"tlogs":    b.handleTwitchLogs,
+		"mentions": b.handleMentions,
+		"nuke":     b.handleSimpleNuke,
+		"aegis":    b.handleAegis,
+		"bans":     b.handleBans,
+		"subs":     b.handleSubs,
 	}
 	b.private = map[string]command{
 		"log":       b.handleDestinyLogs,
@@ -426,6 +427,24 @@ func (b *Bot) handleNuke(m *common.Message, d time.Duration, r *bufio.Reader) (s
 		b.nukeText = bytes.ToLower(text)
 	}
 	return "", nil
+}
+
+func (b *Bot) handleMentions(m *common.Message, r *bufio.Reader) (string, error) {
+	if r.Buffered() < 1 {
+		return fmt.Sprintf("%s dgg.overrustlelogs.net/mentions/%s", m.Nick, m.Nick), nil
+	}
+	d, err := ioutil.ReadAll(r)
+	if err != nil {
+		return "", err
+	}
+	date, err := time.Parse("2006-01-02", string(d))
+	if err != nil {
+		return "Wrong date format. It's !mentions 2006-01-02 (Year-Month-Day)", nil
+	}
+	if date.UTC().After(time.Now().UTC()) {
+		return fmt.Sprintf("%s BASEDWATM8 i can't look into the future.", m.Nick), nil
+	}
+	return fmt.Sprintf("%s dgg.overrustlelogs.net/mentions/%s?date=%s", m.Nick, m.Nick, date.Format("2006-01-02")), nil
 }
 
 func (b *Bot) handleAegis(m *common.Message, r *bufio.Reader) (string, error) {
