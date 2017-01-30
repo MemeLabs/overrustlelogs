@@ -36,11 +36,11 @@ if [ -z `which go` ]; then
   popd > /dev/null
 fi
 
-go get "github.com/cloudflare/golz4"
-go get "github.com/gorilla/websocket"
-go get "github.com/gorilla/mux"
-go get "github.com/hashicorp/golang-lru"
-go get "github.com/xlab/handysort"
-go get "github.com/yosssi/ace"
+go get -u "github.com/cloudflare/golz4"
+go get -u "github.com/gorilla/websocket"
+go get -u "github.com/gorilla/mux"
+go get -u "github.com/hashicorp/golang-lru"
+go get -u "github.com/xlab/handysort"
+go get -u "github.com/yosssi/ace"
 
 useradd overrustlelogs

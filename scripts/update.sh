@@ -21,6 +21,13 @@ fi
 
 source /etc/profile
 
+go get -u "github.com/cloudflare/golz4"
+go get -u "github.com/gorilla/websocket"
+go get -u "github.com/gorilla/mux"
+go get -u "github.com/hashicorp/golang-lru"
+go get -u "github.com/xlab/handysort"
+go get -u "github.com/yosssi/ace"
+
 updateBot(){
 	go install $src/bot
 
@@ -61,11 +68,9 @@ updateLogger(){
 }
 
 updatePack(){
+	cp -p /etc/overrustlelogs/overrustlelogs.conf /etc/overrustlelogs/overrustlelogs.local.conf
 	cp -r $GOPATH/src/$src/package/* /
-	if [ -f "/etc/overrustlelogs/overrustlelogs.local.conf" ]; then
-		echo "NOTICE: found overrustlelogs.local.conf, overwriting default file..."
-		cp -p "/etc/overrustlelogs/overrustlelogs.local.conf" /etc/overrustlelogs/overrustlelogs.conf
-	fi
+	cp -p "/etc/overrustlelogs/overrustlelogs.local.conf" /etc/overrustlelogs/overrustlelogs.conf
 	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
 	systemctl daemon-reload
 	echo "updated package etc & var"

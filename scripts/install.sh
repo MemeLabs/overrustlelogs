@@ -22,7 +22,6 @@ cp -r $GOPATH/src/$src/server/assets /var/overrustlelogs/public/assets
 chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/views
 chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/public/assets
 cp -r $GOPATH/src/$src/package/* /
-cp -p /etc/overrustlelogs/overrustlelogs.conf /etc/overrustlelogs/overrustlelogs.local.conf
 chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
 
 mkdir -p /var/nginx/cache
