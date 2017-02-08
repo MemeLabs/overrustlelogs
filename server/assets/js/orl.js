@@ -50,8 +50,8 @@
 
   function updateHash() {
     var selection = document.getSelection();
-    var left = getOffset(selection.baseNode) + selection.baseOffset;
-    var right = getOffset(selection.extentNode) + selection.extentOffset;
+    var left = getOffset(selection.anchorNode) + selection.anchorOffset;
+    var right = getOffset(selection.focusNode) + selection.focusOffset;
     var hash = left === right ? '' : '#' + Math.min(left, right) + '-' + Math.max(left, right);
     var path = window.location.pathname;
     if (window.location.search !== '') {
@@ -62,7 +62,7 @@
 
   function getOffset(node) {
     return $(node.parentElement).prevAll().toArray().reduce(function (length, node) {
-      return length + node.innerText.length;
+      return length + node.textContent.length;
     }, 0);
   }
 
