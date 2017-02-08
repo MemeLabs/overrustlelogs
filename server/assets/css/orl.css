@@ -1,29 +1,37 @@
 a {
 	color: #fff
 }
+
 a:hover {
 	color: #ff5722
 }
+
 .donate {
 	background-color: #ff5722
 }
+
 .donate:hover {
 	background-color: #ff5722;
 	color: #fff
 }
+
 body {
 	background: #212121;
 	color: #fff
 }
+
 nav {
 	background-color: #212121
 }
+
 nav ul li.active {
 	background-color: #212121
 }
+
 nav ul a:hover {
 	background-color: rgba(0, 0, 0, 0.1);
 }
+
 .text {
 	white-space: pre-line;
 	word-wrap: break-word;
@@ -31,43 +39,55 @@ nav ul a:hover {
 	color: #fff;
 	opacity: 0.8;
 }
+
 .collection {
 	border: 0px #212121;
 }
+
 .collection .collection-item {
 	background: #212121;
 	border-bottom: 1px solid #424242;
 	padding: 10px 20px
 }
+
 .collection a.collection-item {
 	color: #fff
 }
+
 .collection a.collection-item:not(.active):hover {
 	background-color: rgba(0, 0, 0, 0.1);
 	color: #ff5722;
 	opacity: 1;
 }
+
 .collection.with-header .collection-header {
 	background: #212121;
 	border-bottom: 1px solid #424242;
 	padding: 10px 20px
 }
+
 .collection.with-header .collection-item {
 	padding-left: 20px
 }
+
 .card {
 	background-color: #212121;
 	color: #fff
 }
+
 .card .card-action a:not(.btn):not(.btn-large):not(.btn-floating) {
 	color: #fff
 }
+
 .card .card-action a:not(.btn):not(.btn-large):not(.btn-floating):hover {
 	color: #ff5722;
 }
+
 .selection {
 	background: rgba(0, 0, 0, 0.1);
 	border-radius: 3px;
+	color: #ff5722;
+	font-style: italic;
 	padding: 3px;
 	margin: -3px;
 }
