@@ -51,12 +51,10 @@ func main() {
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
-	select {
-	case <-sigint:
-		b.Stop()
-		log.Println("i love you guys, be careful")
-		os.Exit(0)
-	}
+	<-sigint
+	b.Stop()
+	log.Println("i love you guys, be careful")
+	os.Exit(0)
 }
 
 type command func(m *common.Message, r *bufio.Reader) (string, error)

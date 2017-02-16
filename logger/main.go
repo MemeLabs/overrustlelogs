@@ -35,12 +35,10 @@ func main() {
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
-	select {
-	case <-sigint:
-		logs.Close()
-		dc.Stop()
-		orl.Stop()
-		log.Println("i love you guys, be careful")
-		os.Exit(0)
-	}
+	<-sigint
+	logs.Close()
+	dc.Stop()
+	orl.Stop()
+	log.Println("i love you guys, be careful")
+	os.Exit(0)
 }
