@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -61,10 +62,13 @@ func main() {
 	r.HandleFunc("/", d.WatchHandle("Base", BaseHandle)).Methods("GET")
 	r.HandleFunc("/contact", d.WatchHandle("Contact", ContactHandle)).Methods("GET")
 	r.HandleFunc("/changelog", d.WatchHandle("Changelog", ChangelogHandle)).Methods("GET")
+	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", d.WatchHandle("MentionsHandle", MentionsHandle)).Methods("GET").Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
+	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", d.WatchHandle("MentionsHandle", MentionsHandle)).Methods("GET")
+	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}", d.WatchHandle("MentionsHandle", WrapperHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", d.WatchHandle("MentionsHandle", MentionsHandle)).Methods("GET").Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", d.WatchHandle("MentionsHandle", MentionsHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/mentions/{nick:[a-zA-Z0-9_-]{1,25}}", d.WatchHandle("MentionsHandle", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}", d.WatchHandle("Channel", ChannelHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", d.WatchHandle("MentionsHandle", MentionsHandle)).Methods("GET").Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", d.WatchHandle("MentionsHandle", MentionsHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/mentions/{nick:[a-zA-Z0-9_-]{1,25}}", d.WatchHandle("MentionsHandle", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}", d.WatchHandle("Month", MonthHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", d.WatchHandle("Day", DayHandle)).Queries("search", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", d.WatchHandle("Day", DayHandle)).Methods("GET")
@@ -105,22 +109,20 @@ func main() {
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
-	select {
-	case <-sigint:
-		// srv.Close()
-		log.Println("i love you guys, be careful")
-		os.Exit(0)
-	}
+	<-sigint
+	log.Println("i love you guys, be careful")
+	os.Exit(0)
 }
 
 // Debugger logging...
 type Debugger struct {
+	mu       sync.Mutex
 	counters map[string]*int64
 }
 
 // NewDebugger ...
 func NewDebugger() *Debugger {
-	d := &Debugger{make(map[string]*int64)}
+	d := &Debugger{counters: make(map[string]*int64)}
 	go func() {
 		for {
 			time.Sleep(time.Minute)
@@ -134,10 +136,12 @@ func NewDebugger() *Debugger {
 func (d *Debugger) WatchHandle(name string, f http.HandlerFunc) http.HandlerFunc {
 	var c *int64
 	var ok bool
+	d.mu.Lock()
 	if c, ok = d.counters[name]; !ok {
 		c = new(int64)
 		d.counters[name] = c
 	}
+	d.mu.Unlock()
 	return func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt64(c, 1)
 		start := time.Now()
@@ -149,9 +153,11 @@ func (d *Debugger) WatchHandle(name string, f http.HandlerFunc) http.HandlerFunc
 
 func (d *Debugger) counts() map[string]int64 {
 	counts := make(map[string]int64)
+	d.mu.Lock()
 	for name, c := range d.counters {
 		counts[name] = atomic.LoadInt64(c)
 	}
+	d.mu.Unlock()
 	return counts
 }
 
@@ -229,7 +235,7 @@ func ChangelogHandle(w http.ResponseWriter, r *http.Request) {
 // ChannelHandle channel index
 func ChannelHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	paths, err := readDirIndex(common.GetConfig().LogPath + "/" + vars["channel"])
+	paths, err := readDirIndex(filepath.Join(common.GetConfig().LogPath, vars["channel"]))
 	if err != nil {
 		serveError(w, err)
 		return
@@ -241,7 +247,7 @@ func ChannelHandle(w http.ResponseWriter, r *http.Request) {
 // MonthHandle channel index
 func MonthHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	paths, err := readLogDir(common.GetConfig().LogPath + "/" + vars["channel"] + "/" + vars["month"])
+	paths, err := readLogDir(filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]))
 	if err != nil {
 		serveError(w, err)
 		return
@@ -250,6 +256,7 @@ func MonthHandle(w http.ResponseWriter, r *http.Request) {
 	if vars["channel"] == "Destinygg chatlog" {
 		metaPaths = append(metaPaths, "bans.txt")
 	}
+	sort.Sort(dirsByDay(paths))
 	paths = append(paths, metaPaths...)
 	copy(paths[len(metaPaths):], paths)
 	copy(paths, metaPaths)
@@ -262,7 +269,7 @@ func MonthHandle(w http.ResponseWriter, r *http.Request) {
 // DayHandle channel index
 func DayHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	data, err := readLogFile(common.GetConfig().LogPath + "/" + vars["channel"] + "/" + vars["month"] + "/" + vars["date"])
+	data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"], vars["date"]))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -297,10 +304,10 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// UsersHandle channel index
+// UsersHandle channel index .
 func UsersHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	f, err := os.Open(common.GetConfig().LogPath + "/" + vars["channel"] + "/" + vars["month"])
+	f, err := os.Open(filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]))
 	if err != nil {
 		serveError(w, ErrNotFound)
 		return
@@ -313,7 +320,7 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 	nicks := common.NickList{}
 	for _, file := range files {
 		if NicksExtension.MatchString(file.Name()) {
-			common.ReadNickList(nicks, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"]+"/"+file.Name())
+			common.ReadNickList(nicks, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"], file.Name()))
 		}
 	}
 	names := make([]string, 0, len(nicks))
@@ -328,16 +335,16 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 func UserHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	if _, ok := vars["filter"]; ok {
-		serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], searchKey(vars["nick"], vars["filter"]))
+		serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), searchKey(vars["nick"], vars["filter"]))
 		return
 	}
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter(vars["nick"]))
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(vars["nick"]))
 }
 
 // PremiumHandle premium user log index
 func PremiumHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	paths, err := readDirIndex(common.GetConfig().LogPath + "/" + vars["channel"])
+	paths, err := readDirIndex(filepath.Join(common.GetConfig().LogPath, vars["channel"]))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -355,14 +362,14 @@ func PremiumUserHandle(w http.ResponseWriter, r *http.Request) {
 	filter := func(line []byte) bool {
 		return bytes.Contains(bytes.ToLower(line), nick)
 	}
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], filter)
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), filter)
 }
 
 // BroadcasterHandle channel index
 func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	nick := vars["channel"][:len(vars["channel"])-8]
-	search, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+vars["channel"], nick)
+	search, err := common.NewNickSearch(filepath.Join(common.GetConfig().LogPath, vars["channel"]), nick)
 	if err != nil {
 		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
 		return
@@ -374,31 +381,31 @@ func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter(rs.Nick()))
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(rs.Nick()))
 }
 
 // SubscriberHandle channel index
 func SubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/"+vars["channel"]+"/"+vars["month"], nickFilter("twitchnotify"))
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter("twitchnotify"))
 }
 
 // DestinyBroadcasterHandle destiny logs
 func DestinyBroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("Destiny"))
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, "Destinygg chatlog", vars["month"]), nickFilter("Destiny"))
 }
 
 // DestinySubscriberHandle destiny subscriber logs
 func DestinySubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("Subscriber"))
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, "Destinygg chatlog", vars["month"]), nickFilter("Subscriber"))
 }
 
 // DestinyBanHandle channel ban list
 func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveFilteredLogs(w, common.GetConfig().LogPath+"/Destinygg chatlog/"+vars["month"], nickFilter("Ban"))
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, "Destinygg chatlog", vars["month"]), nickFilter("Ban"))
 }
 
 // CurrentBaseHandle shows the most recent months logs directly on the subdomain
@@ -419,7 +426,7 @@ func convertChannelCase(ch string) string {
 func NickHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	vars["channel"] = convertChannelCase(vars["channel"])
-	search, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+vars["channel"], vars["nick"])
+	search, err := common.NewNickSearch(filepath.Join(common.GetConfig().LogPath, vars["channel"]), vars["nick"])
 	if err != nil {
 		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
 		return
@@ -439,7 +446,17 @@ func NickHandle(w http.ResponseWriter, r *http.Request) {
 
 // MentionsHandle shows each line where a specific nick gets mentioned
 func MentionsHandle(w http.ResponseWriter, r *http.Request) {
+	if r.Host[:4] != "dgg." && r.Host[:4] != "ttv." {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		// serveError(w, errors.New("yee"))
+		return
+	}
 	vars := mux.Vars(r)
+	if _, ok := vars["channel"]; ok {
+		vars["channel"] = strings.Title(vars["channel"]) + " chatlog"
+	} else {
+		vars["channel"] = "Destinygg chatlog"
+	}
 	if _, ok := vars["date"]; !ok {
 		vars["date"] = time.Now().UTC().Format("2006-01-02")
 	}
@@ -448,9 +465,13 @@ func MentionsHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid date format", http.StatusNotFound)
 		return
 	}
-	data, err := readLogFile(common.GetConfig().LogPath + "/" + vars["channel"] + "/" + t.Format("January 2006") + "/" + t.Format("2006-01-02"))
+	if t.After(time.Now().UTC()) {
+		http.Error(w, "can't look into the future D:", http.StatusNotFound)
+		return
+	}
+	data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, vars["channel"], t.Format("January 2006"), t.Format("2006-01-02")))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, "no logs found :(", http.StatusNotFound)
 		return
 	}
 	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
@@ -498,7 +519,7 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 	}
 	buf := make([]string, limit)
 	index := limit
-	search, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+vars["channel"], vars["nick"])
+	search, err := common.NewNickSearch(filepath.Join(common.GetConfig().LogPath, vars["channel"]), vars["nick"])
 	if err != nil {
 		d, _ := json.Marshal(Error{err.Error()})
 		http.Error(w, string(d), http.StatusNotFound)
@@ -515,7 +536,7 @@ ScanLogs:
 			http.Error(w, string(d), http.StatusInternalServerError)
 			return
 		}
-		data, err := readLogFile(common.GetConfig().LogPath + "/" + vars["channel"] + "/" + rs.Month() + "/" + rs.Day())
+		data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, vars["channel"], rs.Month(), rs.Day()))
 		if err != nil {
 			d, _ := json.Marshal(Error{err.Error()})
 			http.Error(w, string(d), http.StatusInternalServerError)
@@ -596,7 +617,39 @@ func (l dirsByMonth) Less(i, j int) bool {
 	if err != nil {
 		return false
 	}
-	return b.After(a)
+	return !b.After(a)
+}
+
+type dirsByDay []string
+
+func (l dirsByDay) Len() int {
+	return len(l)
+}
+
+func (l dirsByDay) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
+}
+
+func (l dirsByDay) Less(i, j int) bool {
+	format := "2006-01-02.txt.lz4"
+	a, err := time.Parse(format, lz4Path(l[i]))
+	if err != nil {
+		log.Println(l[i])
+		return true
+	}
+	b, err := time.Parse(format, lz4Path(l[j]))
+	if err != nil {
+		log.Println(l[j])
+		return false
+	}
+	return !b.After(a)
+}
+
+func lz4Path(path string) string {
+	if path[len(path)-4:] != ".lz4" {
+		path += ".lz4"
+	}
+	return path
 }
 
 func readDirIndex(path string) ([]string, error) {
@@ -680,7 +733,7 @@ func filterKey(line []byte, f string) bool {
 
 // serveError ...
 func serveError(w http.ResponseWriter, e error) {
-	tpl, err := ace.Load(common.GetConfig().Server.ViewPath+"/layout", common.GetConfig().Server.ViewPath+"/error", nil)
+	tpl, err := ace.Load(filepath.Join(common.GetConfig().Server.ViewPath, "layout"), filepath.Join(common.GetConfig().Server.ViewPath, "error"), nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -705,7 +758,7 @@ func serveError(w http.ResponseWriter, e error) {
 
 // serveDirIndex ...
 func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
-	tpl, err := ace.Load(common.GetConfig().Server.ViewPath+"/layout", common.GetConfig().Server.ViewPath+"/directory", nil)
+	tpl, err := ace.Load(filepath.Join(common.GetConfig().Server.ViewPath, "layout"), filepath.Join(common.GetConfig().Server.ViewPath, "directory"), nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -751,7 +804,7 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
 	var lineCount int
 	for _, name := range logs {
-		data, err := readLogFile(path + "/" + name)
+		data, err := readLogFile(filepath.Join(path, name))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

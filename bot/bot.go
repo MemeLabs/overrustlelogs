@@ -31,8 +31,6 @@ const (
 
 // errors
 var (
-	ErrIgnored     = errors.New("user ignored")
-	ErrNukeTimeout = errors.New("overrustle nuked")
 	ErrInvalidNick = errors.New("invalid nick")
 )
 
@@ -105,15 +103,15 @@ func NewBot(c *common.Destiny) *Bot {
 		"subs":     b.handleSubs,
 	}
 	b.private = map[string]command{
-		"log":       b.handleDestinyLogs,
-		"tlog":      b.handleTwitchLogs,
-		"logs":      b.handleDestinyLogs,
-		"tlogs":     b.handleTwitchLogs,
-		"uptime":    b.handleUptime,
-		"ignore":    b.handleIgnore,
-		"unignore":  b.handleUnignore,
-		"ignrlog":   b.handleIgnoreLog,
-		"unignrlog": b.handleUnignoreLog,
+		"log":         b.handleDestinyLogs,
+		"tlog":        b.handleTwitchLogs,
+		"logs":        b.handleDestinyLogs,
+		"tlogs":       b.handleTwitchLogs,
+		"uptime":      b.handleUptime,
+		"ignore":      b.handleIgnore,
+		"unignore":    b.handleUnignore,
+		"ignorelog":   b.handleIgnoreLog,
+		"unignorelog": b.handleUnignoreLog,
 	}
 	b.ignore = make(map[string]struct{})
 	if d, err := ioutil.ReadFile(common.GetConfig().Bot.IgnoreListPath); err == nil {
@@ -135,16 +133,15 @@ func NewBot(c *common.Destiny) *Bot {
 	return b
 }
 
-// Run start bot
+// Run starts bot
 func (b *Bot) Run() {
 	var messageCount int
 	for m := range b.c.Messages() {
-		messageCount++
 		admin := b.isAdmin(m.Nick)
-		ignoredNick := b.isIgnored(m.Nick)
-		switch m.Command {
+		switch m.Type {
 		case "MSG":
-			if (!time.Now().After(b.cooldownEOL) && !admin) || ignoredNick {
+			messageCount++
+			if (!time.Now().After(b.cooldownEOL) && !admin) || b.isIgnored(m.Nick) {
 				continue
 			}
 			rs, err := b.runCommand(b.public, m)
@@ -152,19 +149,19 @@ func (b *Bot) Run() {
 				continue
 			}
 			if b.isNuked(rs) || b.isInAutoMute(rs) {
-				b.c.Message(fmt.Sprintf("Ignoring %s from now on. SOTRIGGERED", m.Nick))
+				err := b.c.Message(fmt.Sprintf("Ignoring %s from now on. SOTRIGGERED", m.Nick))
+				if err != nil {
+					log.Println("error sending message: ", err)
+				}
 				b.addIgnore(m.Nick)
 				continue
 			}
 			if rs == b.lastLine && !admin {
-				if rs+" ." == b.lastLine && messageCount < 16 {
+				if messageCount < 16 {
 					continue
-				}
-				if messageCount > 15 {
+				} else {
 					rs += " ."
 					messageCount = 0
-				} else {
-					continue
 				}
 			}
 			if admin {
@@ -263,7 +260,7 @@ func (b *Bot) addIgnore(nick string) {
 }
 
 func (b *Bot) removeIgnore(nick string) {
-	delete(b.ignore, strings.ToLower(string(nick)))
+	delete(b.ignore, strings.ToLower(nick))
 }
 
 func (b *Bot) addIgnoreLog(nick string) {
@@ -271,7 +268,7 @@ func (b *Bot) addIgnoreLog(nick string) {
 }
 
 func (b *Bot) removeIgnoreLog(nick string) {
-	delete(b.ignoreLog, strings.ToLower(string(nick)))
+	delete(b.ignoreLog, strings.ToLower(nick))
 }
 
 func (b *Bot) toURL(host string, path string) string {
@@ -417,7 +414,7 @@ func (b *Bot) isInAutoMute(text string) bool {
 	return false
 }
 
-func (b *Bot) handleNuke(m *common.Message, d time.Duration, r *bufio.Reader) (string, error) {
+func (b *Bot) handleNuke(m *common.Message, d time.Duration, r io.Reader) (string, error) {
 	if b.isAdmin(m.Nick) {
 		text, err := ioutil.ReadAll(r)
 		if err != nil {

@@ -18,10 +18,9 @@ import (
 )
 
 var (
-	debug               bool
-	errNotInChannel     = errors.New("not in channel")
-	errAlreadyInChannel = errors.New("already in channel")
-	errChannelNotValid  = errors.New("channel not valid")
+	ErrNotInChannel     = errors.New("not in channel")
+	ErrAlreadyInChannel = errors.New("already in channel")
+	ErrChannelNotValid  = errors.New("channel not valid")
 )
 
 // TwitchLogger ...
@@ -70,7 +69,6 @@ func (t *TwitchLogger) Start() {
 		err := t.join(channel, false)
 		if err != nil {
 			log.Printf("failed to join %s err: %s", channel, err.Error())
-			continue
 		}
 	}
 	log.Println("joined", len(t.channels), "chats, wew lad :^)")
@@ -86,32 +84,16 @@ func (t *TwitchLogger) Stop() {
 	}
 }
 
-func (t *TwitchLogger) getChatToJoin() *common.Twitch {
-	t.chatLock.Lock()
-	for _, c := range t.chats {
-		c.ChLock.Lock()
-		if len(c.Channels()) < common.MaxChannelsPerChat {
-			c.ChLock.Unlock()
-			t.chatLock.Unlock()
-			return c
-		}
-		c.ChLock.Unlock()
-	}
-	t.chatLock.Unlock()
-	return t.startNewChat()
-}
-
 func (t *TwitchLogger) join(ch string, init bool) error {
 	if init {
 		if !channelExists(ch) {
-			return errChannelNotValid
+			return ErrChannelNotValid
 		}
 		if inSlice(t.channels, ch) {
-			return errAlreadyInChannel
+			return ErrAlreadyInChannel
 		}
 		t.addChannel(ch)
-		err := t.saveChannels()
-		if err != nil {
+		if err := t.saveChannels(); err != nil {
 			log.Println(err)
 		}
 	}
@@ -123,7 +105,7 @@ func (t *TwitchLogger) join(ch string, init bool) error {
 			return nil
 		}
 		if err != nil && try == 3 {
-			return errors.New("failed to join " + ch + " :(")
+			return fmt.Errorf("failed to join %s :( %v", ch, err)
 		}
 		log.Println("retrying to join", ch)
 	}
@@ -131,9 +113,15 @@ func (t *TwitchLogger) join(ch string, init bool) error {
 }
 
 func (t *TwitchLogger) leave(ch string) error {
+	t.chLock.Lock()
 	if !inSlice(t.channels, ch) {
-		return errNotInChannel
+		t.chLock.Unlock()
+		return ErrNotInChannel
 	}
+	t.chLock.Unlock()
+
+	t.chatLock.Lock()
+	defer t.chatLock.Unlock()
 	for i, c := range t.chats {
 		if inSlice(c.Channels(), ch) {
 			c.Leave(ch)
@@ -150,83 +138,84 @@ func (t *TwitchLogger) leave(ch string) error {
 	return err
 }
 
-func (t *TwitchLogger) startNewChat() *common.Twitch {
-	newChat := common.NewTwitch()
-	newChat.Run()
-
+func (t *TwitchLogger) getChatToJoin() *common.Twitch {
 	t.chatLock.Lock()
-	defer t.chatLock.Unlock()
-	id := len(t.chats) + 1
-	t.chats[id] = newChat
-	go t.msgHandler(id, newChat.Messages())
-
-	log.Println("started chat", id)
-	return newChat
+	for _, c := range t.chats {
+		c.ChLock.Lock()
+		if len(c.Channels()) < common.MaxChannelsPerChat {
+			c.ChLock.Unlock()
+			t.chatLock.Unlock()
+			return c
+		}
+		c.ChLock.Unlock()
+	}
+	c := common.NewTwitch()
+	c.Run()
+	i := len(t.chats) + 1
+	t.chats[i] = c
+	go t.msgHandler(i, c.Messages())
+	t.chatLock.Unlock()
+	return c
 }
 
-func (t *TwitchLogger) msgHandler(chatID int, ch <-chan *common.Message) {
+func (t *TwitchLogger) msgHandler(i int, ch <-chan *common.Message) {
 	logCh := make(chan *common.Message, common.MessageBufferSize)
 	defer close(logCh)
 	go t.logHandler(logCh)
 	for m := range ch {
 		if t.commandChannel == m.Channel {
-			go t.runCommand(chatID, m)
+			go t.runCommand(i, m)
 		}
 		select {
 		case logCh <- m:
 		default:
-			log.Println("ERROR: buffer is full")
+			log.Println("error buffer is full")
 		}
 	}
 }
 
-func (t *TwitchLogger) runCommand(chatID int, m *common.Message) {
-	c, ok := t.chats[chatID]
+func (t *TwitchLogger) runCommand(i int, m *common.Message) {
+	c, ok := t.chats[i]
 	if !ok {
 		return
 	}
-	if _, ok := t.admins[m.Nick]; !ok && m.Command != "MSG" {
+	if _, ok := t.admins[m.Nick]; !ok && m.Type != "MSG" {
 		return
 	}
-	ld := strings.Split(strings.ToLower(m.Data), " ")
-	switch ld[0] {
+	parts := strings.Split(strings.ToLower(m.Data), " ")
+	switch parts[0] {
 	case "!join":
-		err := t.join(ld[1], true)
-		switch err {
-		case nil:
-			c.Message(m.Channel, fmt.Sprintf("Logging %s", ld[1]))
-		case errChannelNotValid:
-			c.Message(m.Channel, "Channel doesn't exist!")
-		case errAlreadyInChannel:
-			c.Message(m.Channel, fmt.Sprintf("Already logging %s", ld[1]))
-		default:
-		}
-	case "!leave":
-		err := t.leave(ld[1])
+		err := t.join(parts[1], true)
 		if err != nil {
-			c.Message(m.Channel, fmt.Sprintf("Not logging %s", ld[1]))
+			c.Message(m.Channel, err.Error())
+		}
+		c.Message(m.Channel, fmt.Sprintf("Logging %s", parts[1]))
+	case "!leave":
+		err := t.leave(parts[1])
+		if err != nil {
+			c.Message(m.Channel, fmt.Sprintf("Not logging %s", parts[1]))
 			return
 		}
-		c.Message(m.Channel, fmt.Sprintf("Leaving %s", ld[1]))
+		c.Message(m.Channel, fmt.Sprintf("Leaving %s", parts[1]))
 	}
 }
 
 func (t *TwitchLogger) addChannel(ch string) {
 	t.chLock.Lock()
-	defer t.chLock.Unlock()
 	t.channels = append(t.channels, ch)
+	t.chLock.Unlock()
 }
 
 func (t *TwitchLogger) removeChannel(ch string) error {
 	t.chLock.Lock()
 	defer t.chLock.Unlock()
-	for i, channel := range t.channels {
-		if strings.EqualFold(channel, ch) {
-			t.channels = append(t.channels[:i], t.channels[i+1:]...)
-			return nil
-		}
+	sort.Strings(t.channels)
+	i := sort.SearchStrings(t.channels, ch)
+	if i < len(t.channels) && t.channels[i] == ch {
+		t.channels = append(t.channels[:i], t.channels[i+1:]...)
+		return nil
 	}
-	return errors.New("didn't find " + ch)
+	return errors.New("didn't find " + ch + " in the channels list")
 }
 
 func (t *TwitchLogger) saveChannels() error {
@@ -270,9 +259,9 @@ func channelExists(ch string) bool {
 	return res.StatusCode == http.StatusOK
 }
 
-func inSlice(s []string, v string) bool {
-	for _, sv := range s {
-		if strings.EqualFold(v, sv) {
+func inSlice(slice []string, s string) bool {
+	for _, v := range slice {
+		if strings.EqualFold(s, v) {
 			return true
 		}
 	}

@@ -11,18 +11,17 @@ const (
 	HandshakeTimeout     = 10 * time.Second
 	MaxChannelsPerChat   = 50
 	MessageBufferSize    = 1000
-	SocketReadTimeout    = 15 * time.Minute
+	SocketReadTimeout    = 10 * time.Minute
 	SocketReconnectDelay = 20 * time.Second
 	SocketWriteDebounce  = 500 * time.Millisecond
 	SocketWriteTimeout   = 5 * time.Second
-	TwitchMessageTimeout = 2 * time.Hour
 )
 
 var messageNickPathUnsafe = regexp.MustCompile("[^a-zA-Z0-9_-]")
 
 // Message data
 type Message struct {
-	Command string
+	Type    string
 	Channel string
 	Nick    string
 	Data    string

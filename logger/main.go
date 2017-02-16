@@ -27,8 +27,7 @@ func main() {
 	go dc.Run()
 
 	twitchLogHandler := func(m <-chan *common.Message) {
-		tLogs := NewChatLogs()
-		NewLogger(tLogs).TwitchLog(m)
+		NewLogger(NewChatLogs()).TwitchLog(m)
 	}
 
 	orl := NewTwitchLogger(twitchLogHandler)

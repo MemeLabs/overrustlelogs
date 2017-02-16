@@ -14,7 +14,7 @@ import (
 
 // Destiny destiny.gg chat client
 type Destiny struct {
-	sync.RWMutex
+	connLock sync.RWMutex
 	conn     *websocket.Conn
 	dialer   websocket.Dialer
 	headers  http.Header
@@ -37,9 +37,9 @@ func NewDestiny() *Destiny {
 // Connect open ws connection
 func (c *Destiny) connect() {
 	var err error
-	c.Lock()
+	c.connLock.Lock()
 	c.conn, _, err = c.dialer.Dial(GetConfig().DestinyGG.SocketURL, c.headers)
-	c.Unlock()
+	c.connLock.Unlock()
 	if err != nil {
 		log.Printf("error connecting to destiny ws %s", err)
 		c.reconnect()
@@ -49,11 +49,11 @@ func (c *Destiny) connect() {
 }
 
 func (c *Destiny) reconnect() {
+	c.connLock.Lock()
 	if c.conn != nil {
-		c.Lock()
 		c.conn.Close()
-		c.Unlock()
 	}
+	c.connLock.Unlock()
 	time.Sleep(SocketReconnectDelay)
 	c.connect()
 }
@@ -61,21 +61,18 @@ func (c *Destiny) reconnect() {
 // Run connect and start message read loop
 func (c *Destiny) Run() {
 	c.connect()
-
-	for {
-		if c.stopped {
-			close(c.messages)
-			return
-		}
+	defer close(c.messages)
+	for !c.stopped {
 		err := c.conn.SetReadDeadline(time.Now().UTC().Add(SocketReadTimeout))
 		if err != nil {
 			log.Println("SetReadDeadline triggered, reconnecting")
 			c.reconnect()
+			continue
 		}
 
-		c.Lock()
+		c.connLock.Lock()
 		_, msg, err := c.conn.ReadMessage()
-		c.Unlock()
+		c.connLock.Unlock()
 		if err != nil {
 			log.Printf("error reading from websocket %s", err)
 			c.reconnect()
@@ -89,7 +86,10 @@ func (c *Destiny) Run() {
 		}
 
 		if strings.Index(string(msg), "PING") == 0 {
-			c.send("PONG", map[string]string{"timestamp": "yee"})
+			err := c.send("PONG", map[string]string{"timestamp": "yee"})
+			if err != nil {
+				c.reconnect()
+			}
 			continue
 		}
 
@@ -105,7 +105,7 @@ func (c *Destiny) Run() {
 
 		select {
 		case c.messages <- &Message{
-			Command: string(msg[:index]),
+			Type:    string(msg[:index]),
 			Channel: "Destinygg",
 			Nick:    data.Nick,
 			Data:    strings.Replace(data.Data, "\n", " ", -1),
@@ -119,11 +119,11 @@ func (c *Destiny) Run() {
 // Stop ...
 func (c *Destiny) Stop() {
 	c.stopped = true
+	c.connLock.Lock()
 	if c.conn != nil {
-		c.Lock()
 		c.conn.Close()
-		c.Unlock()
 	}
+	c.connLock.Unlock()
 }
 
 // Messages channel accessor
