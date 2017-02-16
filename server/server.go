@@ -97,7 +97,7 @@ func main() {
 	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+ chatlog}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/status.json", d.WatchHandle("Debug", d.HTTPHandle))
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
-	r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
+	// r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 
 	srv := &http.Server{
 		Addr:         common.GetConfig().Server.Address,
