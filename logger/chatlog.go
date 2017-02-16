@@ -107,7 +107,7 @@ func NewChatLogs() *ChatLogs {
 }
 
 func (l *ChatLogs) housekeeping() {
-	const interval = 10 * time.Minute
+	const interval = 2 * time.Minute
 	tick := time.NewTicker(interval)
 	for now := range tick.C {
 		for _, k := range l.logs.Keys() {
