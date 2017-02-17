@@ -88,17 +88,17 @@ func NewBot(c *common.Destiny) *Bot {
 		b.admins[admin] = struct{}{}
 	}
 	b.public = map[string]command{
-		"add":   b.handleMute,
-		"del":   b.handleMuteRemove,
-		"log":   b.handleDestinyLogs,
-		"tlog":  b.handleTwitchLogs,
-		"logs":  b.handleDestinyLogs,
-		"tlogs": b.handleTwitchLogs,
-		// "mentions": b.handleMentions,
-		"nuke":  b.handleSimpleNuke,
-		"aegis": b.handleAegis,
-		"bans":  b.handleBans,
-		"subs":  b.handleSubs,
+		"add":      b.handleMute,
+		"del":      b.handleMuteRemove,
+		"log":      b.handleDestinyLogs,
+		"tlog":     b.handleTwitchLogs,
+		"logs":     b.handleDestinyLogs,
+		"tlogs":    b.handleTwitchLogs,
+		"mentions": b.handleMentions,
+		"nuke":     b.handleSimpleNuke,
+		"aegis":    b.handleAegis,
+		"bans":     b.handleBans,
+		"subs":     b.handleSubs,
 	}
 	b.private = map[string]command{
 		"log":         b.handleDestinyLogs,
