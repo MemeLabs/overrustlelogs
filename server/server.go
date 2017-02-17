@@ -446,11 +446,6 @@ func NickHandle(w http.ResponseWriter, r *http.Request) {
 
 // MentionsHandle shows each line where a specific nick gets mentioned
 func MentionsHandle(w http.ResponseWriter, r *http.Request) {
-	if r.Host[:4] != "dgg." && r.Host[:4] != "ttv." {
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-		// serveError(w, errors.New("yee"))
-		return
-	}
 	vars := mux.Vars(r)
 	if _, ok := vars["channel"]; ok {
 		vars["channel"] = strings.Title(vars["channel"]) + " chatlog"
