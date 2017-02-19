@@ -63,7 +63,7 @@ func TestMentions(t *testing.T) {
 	expected := []string{
 		"Destiny dgg.overrustlelogs.net/mentions/Destiny",
 		"Destiny dgg.overrustlelogs.net/mentions/Destiny?date=2017-01-10",
-		"Wrong date format. It's !mentions 2006-01-02 (Year-Month-Day)",
+		"Destiny dgg.overrustlelogs.net/mentions/Destiny",
 		"Destiny BASEDWATM8 i can't look into the future.",
 	}
 
@@ -78,14 +78,10 @@ func TestMentions(t *testing.T) {
 
 func TestMentionsFail(t *testing.T) {
 	tests := []*common.Message{
-		{"MSG", "", "Destiny", "!mentions 2018-24-10", time.Now()},
 		{"MSG", "", "Destiny", time.Now().Add(24 * time.Hour).Format("!mentions 2006-01-02"), time.Now()},
-		{"MSG", "", "Destiny", "!mentions YEE", time.Now()},
 	}
 	expected := []string{
-		"Wrong date format. It's !mentions 2006-01-02 (Year-Month-Day)",
 		"Destiny BASEDWATM8 i can't look into the future.",
-		"Wrong date format. It's !mentions 2006-01-02 (Year-Month-Day)",
 	}
 	for i, test := range tests {
 		got, err := b.runCommand(b.public, test)

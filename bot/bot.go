@@ -434,7 +434,7 @@ func (b *Bot) handleMentions(m *common.Message, r *bufio.Reader) (string, error)
 	}
 	date, err := time.Parse("2006-01-02", string(d))
 	if err != nil {
-		return "Wrong date format. It's !mentions 2006-01-02 (Year-Month-Day)", nil
+		return fmt.Sprintf("%s dgg.overrustlelogs.net/mentions/%s", m.Nick, m.Nick), nil
 	}
 	if date.UTC().After(time.Now().UTC()) {
 		return fmt.Sprintf("%s BASEDWATM8 i can't look into the future.", m.Nick), nil
