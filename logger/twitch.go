@@ -188,6 +188,7 @@ func (t *TwitchLogger) runCommand(i int, m *common.Message) {
 		err := t.join(parts[1], true)
 		if err != nil {
 			c.Message(m.Channel, err.Error())
+			return
 		}
 		c.Message(m.Channel, fmt.Sprintf("Logging %s", parts[1]))
 	case "!leave":
