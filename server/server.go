@@ -93,6 +93,7 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", d.WatchHandle("Broadcaster", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("Subscriber", SubscriberHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", d.WatchHandle("Subscriber", WrapperHandle)).Methods("GET")
+	r.HandleFunc("/api/v1/channels.json", d.WatchHandle("Channels", ChannelsHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+ chatlog}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Queries("limit", "{limit:[0-9]+}").Methods("GET")
 	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+ chatlog}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/status.json", d.WatchHandle("Debug", d.HTTPHandle))
@@ -488,6 +489,26 @@ func MentionsHandle(w http.ResponseWriter, r *http.Request) {
 	if lineCount == 0 {
 		http.Error(w, "no mentions :(", http.StatusNotFound)
 	}
+}
+
+func ChannelsHandle(w http.ResponseWriter, r *http.Request) {
+	type Error struct {
+		Error string `json:"error"`
+	}
+
+	w.Header().Set("Content-type", "application/json")
+	dirs, err := filepath.Glob(filepath.Join(common.GetConfig().LogPath, "*"))
+	if err != nil {
+		d, _ := json.Marshal(Error{err.Error()})
+		http.Error(w, string(d), http.StatusInternalServerError)
+		return
+	}
+
+	for i, v := range dirs {
+		dirs[i] = v[len(common.GetConfig().LogPath)+1 : len(v)-8]
+	}
+	d, _ := json.MarshalIndent(dirs, "", "\t")
+	w.Write(d)
 }
 
 // StalkHandle return n most recent lines of chat for user
