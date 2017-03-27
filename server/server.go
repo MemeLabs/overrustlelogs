@@ -481,7 +481,8 @@ func MentionsHandle(w http.ResponseWriter, r *http.Request) {
 			}
 			break
 		}
-		if bytes.Contains(line[bytes.Index(line[LogLinePrefixLength:], []byte(":"))+LogLinePrefixLength:], []byte(" "+vars["nick"])) {
+		lowerLine := bytes.ToLower(line)
+		if bytes.Contains(lowerLine[bytes.Index(lowerLine[LogLinePrefixLength:], []byte(":"))+LogLinePrefixLength:], bytes.ToLower([]byte(" "+vars["nick"]))) {
 			w.Write(line)
 			lineCount++
 		}
