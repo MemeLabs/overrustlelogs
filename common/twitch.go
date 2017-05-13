@@ -60,7 +60,7 @@ func (c *Twitch) connect() {
 
 	conf := GetConfig()
 	if conf.Twitch.OAuth == "" || conf.Twitch.Nick == "" {
-		log.Println("missing OAuth or Nick, using justinfan654 as login data")
+		log.Println("missing OAuth or Nick, using justinfan659 as login data")
 		conf.Twitch.OAuth = "justinfan659"
 		conf.Twitch.Nick = "justinfan659"
 	}
