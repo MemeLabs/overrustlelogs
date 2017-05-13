@@ -42,8 +42,8 @@ var (
 
 // log file extension pattern
 var (
-	LogExtension   = regexp.MustCompile(`\.txt(\.lz4)?$`)
-	NicksExtension = regexp.MustCompile(`\.nicks\.lz4$`)
+	LogExtension   = regexp.MustCompile(`\.txt(\.gz)?$`)
+	NicksExtension = regexp.MustCompile(`\.nicks\.gz$`)
 )
 
 func init() {
@@ -648,23 +648,21 @@ func (l dirsByDay) Swap(i, j int) {
 }
 
 func (l dirsByDay) Less(i, j int) bool {
-	format := "2006-01-02.txt.lz4"
-	a, err := time.Parse(format, lz4Path(l[i]))
+	format := "2006-01-02.txt.gz"
+	a, err := time.Parse(format, gzPath(l[i]))
 	if err != nil {
-		log.Println(l[i])
 		return true
 	}
-	b, err := time.Parse(format, lz4Path(l[j]))
+	b, err := time.Parse(format, gzPath(l[j]))
 	if err != nil {
-		log.Println(l[j])
 		return false
 	}
 	return !b.After(a)
 }
 
-func lz4Path(path string) string {
-	if path[len(path)-4:] != ".lz4" {
-		path += ".lz4"
+func gzPath(path string) string {
+	if path[len(path)-3:] != ".gz" {
+		path += ".gz"
 	}
 	return path
 }
