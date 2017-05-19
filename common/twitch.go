@@ -149,7 +149,7 @@ func (c *Twitch) Run() {
 						Data:    data,
 						Time:    time.Now().UTC(),
 					}
-					log.Println(m)
+
 					select {
 					case c.messages <- m:
 					default:
