@@ -5,27 +5,23 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cloudflare/golz4"
+	"github.com/datadog/zstd"
 )
 
 // WriteCompressedFile write compressed file
 func WriteCompressedFile(path string, data []byte) (*os.File, error) {
-	c := make([]byte, lz4.CompressBound(data)+4)
-	size, err := lz4.CompressHC(data, c[4:])
-	c[0] = byte(len(data) >> 24)
-	c[1] = byte(len(data) >> 16)
-	c[2] = byte(len(data) >> 8)
-	c[3] = byte(len(data))
-	size += 4
+	cData, err := zstd.Compress(nil, data)
 	if err != nil {
 		return nil, err
 	}
-	f, err := os.OpenFile(lz4Path(path), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+
+	f, err := os.OpenFile(gzPath(path), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	if _, err := f.Write(c[:size]); err != nil {
+
+	if _, err := f.Write(cData); err != nil {
 		return nil, err
 	}
 	return f, nil
@@ -33,25 +29,22 @@ func WriteCompressedFile(path string, data []byte) (*os.File, error) {
 
 // ReadCompressedFile read compressed file
 func ReadCompressedFile(path string) ([]byte, error) {
-	f, err := os.Open(lz4Path(path))
+	f, err := os.Open(gzPath(path))
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	c, err := ioutil.ReadAll(f)
+
+	data, err := ioutil.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
-	size := uint32(0)
-	size |= uint32(c[0]) << 24
-	size |= uint32(c[1]) << 16
-	size |= uint32(c[2]) << 8
-	size |= uint32(c[3])
-	data := make([]byte, size)
-	if err := lz4.Uncompress(c[4:], data); err != nil {
+
+	dData, err := zstd.Decompress(nil, data)
+	if err != nil {
 		return nil, err
 	}
-	return data, nil
+	return dData, nil
 }
 
 // CompressFile compress an existing file
@@ -81,7 +74,7 @@ func UncompressFile(path string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	f, err := os.OpenFile(strings.Replace(path, ".lz4", "", -1), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(strings.Replace(path, ".gz", "", -1), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -89,15 +82,15 @@ func UncompressFile(path string) (*os.File, error) {
 	if _, err := f.Write(d); err != nil {
 		return nil, err
 	}
-	if err := os.Remove(lz4Path(path)); err != nil {
+	if err := os.Remove(gzPath(path)); err != nil {
 		return nil, err
 	}
 	return f, nil
 }
 
-func lz4Path(path string) string {
-	if path[len(path)-4:] != ".lz4" {
-		path += ".lz4"
+func gzPath(path string) string {
+	if path[len(path)-3:] != ".gz" {
+		path += ".gz"
 	}
 	return path
 }

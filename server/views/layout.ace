@@ -37,17 +37,19 @@ html lang=en
   body
     div class="navbar-fixed"
       nav
-        div class="nav-wrapper container"
-          span
-            a class="brand-logo" href="/" OverRustle Logs
-          ul id="nav-mobile" class="right hide-on-med-and-down"
-            li
-              a class="active" href="/changelog" Changelog
-            li
-              a class="active" href="/contact" Contact
-            li
-              a style="width: 97px;" class="donate" target="_blank" href="https://twitch.streamlabs.com/overrustlelogs"
-                i class="fa fa-paypal fa-fw"
-                span Donate
-
+        div class="row"
+          div class="col m1 l2 hide-on-med-and-down"
+          div class="nav-wrapper col s12 m10 l8"
+            span
+              a class="brand-logo" href="/" OverRustle Logs
+            ul id="nav-mobile" class="right hide-on-med-and-down"
+              li
+                a class="active" href="/changelog" Changelog
+              li
+                a class="active" href="/contact" Contact
+              li
+                a style="width: 97px;" class="donate" target="_blank" href="https://twitch.streamlabs.com/overrustlelogs"
+                  i class="fa fa-paypal fa-fw"
+                  span Donate
+          div class="col m1 l2 hide-on-med-and-down"
     = yield body

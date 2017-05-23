@@ -39,7 +39,7 @@ type TwitchLogger struct {
 // NewTwitchLogger ...
 func NewTwitchLogger(f func(m <-chan *common.Message)) *TwitchLogger {
 	t := &TwitchLogger{
-		chats:      make(map[int]*common.Twitch, 0),
+		chats:      make(map[int]*common.Twitch),
 		admins:     make(map[string]struct{}),
 		logHandler: f,
 	}
@@ -65,23 +65,28 @@ func NewTwitchLogger(f func(m <-chan *common.Message)) *TwitchLogger {
 
 // Start ...
 func (t *TwitchLogger) Start() {
+	t.join(common.GetConfig().Twitch.CommandChannel, false)
+	var c int
 	for _, channel := range t.channels {
 		err := t.join(channel, false)
 		if err != nil {
 			log.Printf("failed to join %s err: %s", channel, err.Error())
+			continue
 		}
+		c++
 	}
-	log.Println("joined", len(t.channels), "chats, wew lad :^)")
+	log.Println("joined", c, "chats, wew lad :^)")
 }
 
 // Stop ...
 func (t *TwitchLogger) Stop() {
+	t.saveChannels()
 	t.chatLock.Lock()
-	defer t.chatLock.Unlock()
 	for id, c := range t.chats {
 		log.Printf("stopping chat: %d\n", id)
 		c.Stop()
 	}
+	t.chatLock.Unlock()
 }
 
 func (t *TwitchLogger) join(ch string, init bool) error {
@@ -121,7 +126,6 @@ func (t *TwitchLogger) leave(ch string) error {
 	t.chLock.Unlock()
 
 	t.chatLock.Lock()
-	defer t.chatLock.Unlock()
 	for i, c := range t.chats {
 		if inSlice(c.Channels(), ch) {
 			c.Leave(ch)
@@ -129,6 +133,7 @@ func (t *TwitchLogger) leave(ch string) error {
 			break
 		}
 	}
+	t.chatLock.Unlock()
 	t.removeChannel(ch)
 	err := t.saveChannels()
 	if err != nil {
@@ -140,11 +145,11 @@ func (t *TwitchLogger) leave(ch string) error {
 
 func (t *TwitchLogger) getChatToJoin() *common.Twitch {
 	t.chatLock.Lock()
+	defer t.chatLock.Unlock()
 	for _, c := range t.chats {
 		c.ChLock.Lock()
 		if len(c.Channels()) < common.MaxChannelsPerChat {
 			c.ChLock.Unlock()
-			t.chatLock.Unlock()
 			return c
 		}
 		c.ChLock.Unlock()
@@ -154,7 +159,6 @@ func (t *TwitchLogger) getChatToJoin() *common.Twitch {
 	i := len(t.chats) + 1
 	t.chats[i] = c
 	go t.msgHandler(i, c.Messages())
-	t.chatLock.Unlock()
 	return c
 }
 

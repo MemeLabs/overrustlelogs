@@ -32,6 +32,7 @@ type Twitch struct {
 	channels       []string
 	messages       chan *Message
 	MessagePattern *regexp.Regexp
+	SubPattern     *regexp.Regexp
 	stopped        bool
 	debug          bool
 }
@@ -39,11 +40,17 @@ type Twitch struct {
 // NewTwitch new twitch chat client
 func NewTwitch() *Twitch {
 	return &Twitch{
-		dialer:         websocket.Dialer{HandshakeTimeout: HandshakeTimeout},
-		headers:        http.Header{"Origin": []string{GetConfig().Twitch.OriginURL}},
-		channels:       make([]string, 0),
-		messages:       make(chan *Message, MessageBufferSize),
-		MessagePattern: regexp.MustCompile(`:(.+)\!.+tmi\.twitch\.tv PRIVMSG #([a-z0-9_-]+) :(.+)`),
+		dialer:   websocket.Dialer{HandshakeTimeout: HandshakeTimeout},
+		headers:  http.Header{"Origin": []string{GetConfig().Twitch.OriginURL}},
+		channels: make([]string, 0),
+		messages: make(chan *Message, MessageBufferSize),
+		// > @badges=global_mod/1,turbo/1;color=#0D4200;display-name=dallas;emotes=25:0-4,12-16/1902:6-10;mod=0;room-id=1337;
+		//subscriber=0;turbo=1;user-id=1337;user-type=global_mod :ronni!ronni@ronni.tmi.twitch.tv PRIVMSG #dallas :Kappa Keepo Kappa
+		MessagePattern: regexp.MustCompile(`user-type=.+:([a-z0-9_-]+)\!.+\.tmi\.twitch\.tv PRIVMSG #([a-z0-9_-]+) :(.+)`),
+		// > @badges=staff/1,broadcaster/1,turbo/1;color=#008000;display-name=ronni;emotes=;mod=0;msg-id=resub;msg-param-months=6;
+		// msg-param-sub-plan=Prime;msg-param-sub-plan-name=Prime;room-id=1337;subscriber=1;system-msg=ronni\shas\ssubscribed\sfor\s6\smonths!;
+		// login=ronni;turbo=1;user-id=1337;user-type=staff :tmi.twitch.tv USERNOTICE #dallas :Great stream -- keep it up!
+		SubPattern: regexp.MustCompile(`system-msg=(.+);tmi-sent-ts.+ \:tmi\.twitch\.tv USERNOTICE #([a-z0-9_-]+)( :.+)?`),
 	}
 }
 
@@ -67,8 +74,13 @@ func (c *Twitch) connect() {
 
 	c.send("PASS " + conf.Twitch.OAuth)
 	c.send("NICK " + conf.Twitch.Nick)
+	c.send("CAP REQ :twitch.tv/tags")
+	c.send("CAP REQ :twitch.tv/commands")
 
 	for _, ch := range c.channels {
+		if c.stopped {
+			return
+		}
 		ch = strings.ToLower(ch)
 		log.Printf("joining %s", ch)
 		err := c.send("JOIN #" + ch)
@@ -100,7 +112,7 @@ func (c *Twitch) Run() {
 			err := c.conn.SetReadDeadline(time.Now().Add(SocketReadTimeout))
 			c.connLock.Unlock()
 			if err != nil {
-				log.Printf("error setting the ReadDeadline %s", err)
+				log.Printf("error setting the ReadDeadline: %v", err)
 				c.reconnect()
 				continue
 			}
@@ -109,7 +121,7 @@ func (c *Twitch) Run() {
 			_, msg, err := c.conn.ReadMessage()
 			c.connLock.Unlock()
 			if err != nil {
-				log.Printf("error reading message %s", err)
+				log.Printf("error reading message: %v", err)
 				c.reconnect()
 				continue
 			}
@@ -117,8 +129,32 @@ func (c *Twitch) Run() {
 			if strings.Index(string(msg), "PING") == 0 {
 				err := c.send(strings.Replace(string(msg), "PING", "PONG", -1))
 				if err != nil {
-					log.Println("error sending PONG")
+					log.Printf("error sending PONG: %v", err)
 					c.reconnect()
+				}
+				continue
+			}
+
+			s := c.SubPattern.FindAllStringSubmatch(string(msg), -1)
+			if c.SubPattern.Match(msg) {
+				for _, v := range s {
+					data := strings.Replace(v[1], "\\s", " ", -1)
+					if v[3] != "" {
+						data += " [SubMessage]: " + v[3][2:]
+					}
+					m := &Message{
+						Type:    "MSG",
+						Channel: v[2],
+						Nick:    "twitchnotify",
+						Data:    data,
+						Time:    time.Now().UTC(),
+					}
+
+					select {
+					case c.messages <- m:
+					default:
+						log.Println("error messages channel full :(")
+					}
 				}
 				continue
 			}

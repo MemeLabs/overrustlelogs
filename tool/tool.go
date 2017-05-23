@@ -9,10 +9,12 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
+	lz4 "github.com/cloudflare/golz4"
 	"github.com/slugalisk/overrustlelogs/common"
 )
 
@@ -24,6 +26,8 @@ var commands = map[string]command{
 	"nicks":      nicks,
 	"migrate":    migrate,
 	"namechange": namechange,
+	"cleanup":    cleanup,
+	"convert":    convertToZSTD,
 }
 
 func main() {
@@ -50,10 +54,8 @@ func compress() error {
 		return errors.New("not enough args")
 	}
 	path := os.Args[2]
-	if _, err := common.CompressFile(path); err != nil {
-		return err
-	}
-	return nil
+	_, err := common.CompressFile(path)
+	return err
 }
 
 func uncompress() error {
@@ -61,10 +63,8 @@ func uncompress() error {
 		return errors.New("not enough args")
 	}
 	path := os.Args[2]
-	if _, err := common.UncompressFile(path); err != nil {
-		return err
-	}
-	return nil
+	_, err := common.UncompressFile(path)
+	return err
 }
 
 func nicks() error {
@@ -102,7 +102,7 @@ func nicks() error {
 			nicks.Add(string(match[1]))
 		}
 	}
-	if err := nicks.WriteTo(regexp.MustCompile("\\.txt(\\.lz4)?$").ReplaceAllString(path, ".nicks")); err != nil {
+	if err := nicks.WriteTo(regexp.MustCompile("\\.txt(\\.gz)?$").ReplaceAllString(path, ".nicks")); err != nil {
 		return err
 	}
 	return nil
@@ -113,7 +113,7 @@ func read() error {
 		return errors.New("not enough args")
 	}
 	path := os.Args[2]
-	if regexp.MustCompile("\\.txt\\.lz4$").MatchString(path) {
+	if regexp.MustCompile("\\.txt\\.gz$").MatchString(path) {
 		buf, err := common.ReadCompressedFile(path)
 		if err != nil {
 			return err
@@ -130,7 +130,7 @@ func readNicks() error {
 		return errors.New("not enough args")
 	}
 	path := os.Args[2]
-	if regexp.MustCompile("\\.nicks\\.lz4$").MatchString(path) {
+	if regexp.MustCompile("\\.nicks\\.gz$").MatchString(path) {
 		nicks := common.NickList{}
 		if err := common.ReadNickList(nicks, path); err != nil {
 			return err
@@ -207,4 +207,113 @@ func namechange() error {
 	fmt.Println("replaced nicks in", f.Name())
 	f.Close()
 	return nil
+}
+
+func cleanup() error {
+	now := time.Now()
+
+	logsPath := os.Args[2]
+
+	filepaths, err := filepath.Glob(filepath.Join(logsPath, "/*/*/*"))
+	if err != nil {
+		log.Printf("error getting filepaths: %v", err)
+		return err
+	}
+	log.Printf("found %d files, starting cleanup...", len(filepaths))
+
+	r := regexp.MustCompile(`\.gz$`)
+
+	for _, fp := range filepaths {
+		if r.MatchString(fp) || strings.Contains(fp, now.Format("2006-01-02")) {
+			continue
+		}
+		_, err := common.CompressFile(fp)
+		if err != nil {
+			log.Panicf("error writing compressed file: %v", err)
+		}
+		log.Println("compressed", fp)
+	}
+	return nil
+}
+
+func convertToZSTD() error {
+	logsPath := os.Args[2]
+
+	filepaths, err := filepath.Glob(filepath.Join(logsPath, "/*/*/*"))
+	if err != nil {
+		log.Printf("error getting filepaths: %v", err)
+		return err
+	}
+	log.Printf("found %d files, starting cleanup...", len(filepaths))
+	// now := time.Now().UTC()
+	for _, fp := range filepaths {
+		if strings.HasSuffix(fp, ".lz4") { //!strings.Contains(fp, now.Format("2006-01-02")) {
+			data, err := UncompressFile(fp)
+			if err != nil {
+				log.Printf("error reading compressed file: %v", err)
+			}
+			data.Close()
+			fp = fp[:len(fp)-4]
+		}
+		if strings.HasSuffix(fp, ".txt") || strings.HasSuffix(fp, ".nicks") {
+			_, err = common.CompressFile(fp)
+			if err != nil {
+				log.Println(err)
+			}
+			// log.Println("compressed", fp)
+			continue
+		}
+		// log.Println("error:", fp)
+	}
+	return nil
+}
+
+// ReadCompressedFile read compressed file
+func ReadCompressedFile(path string) ([]byte, error) {
+	f, err := os.Open(lz4Path(path))
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	c, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	size := uint32(0)
+	size |= uint32(c[0]) << 24
+	size |= uint32(c[1]) << 16
+	size |= uint32(c[2]) << 8
+	size |= uint32(c[3])
+	data := make([]byte, size)
+	if err := lz4.Uncompress(c[4:], data); err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+// UncompressFile uncompress an existing file
+func UncompressFile(path string) (*os.File, error) {
+	d, err := ReadCompressedFile(path)
+	if err != nil {
+		return nil, err
+	}
+	f, err := os.OpenFile(strings.Replace(path, ".lz4", "", -1), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	if _, err := f.Write(d); err != nil {
+		return nil, err
+	}
+	if err := os.Remove(lz4Path(path)); err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
+func lz4Path(path string) string {
+	if path[len(path)-4:] != ".lz4" {
+		path += ".lz4"
+	}
+	return path
 }
