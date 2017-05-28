@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -96,6 +97,9 @@ func main() {
 	r.HandleFunc("/api/v1/channels.json", d.WatchHandle("Channels", ChannelsHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+ chatlog}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Queries("limit", "{limit:[0-9]+}").Methods("GET")
 	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+ chatlog}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Methods("GET")
+	r.HandleFunc("/api/v1/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", MentionsAPIHandle)).Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}", "limit", "{limit:[0-9]+}")
+	r.HandleFunc("/api/v1/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", MentionsAPIHandle)).Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
+	r.HandleFunc("/api/v1/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", MentionsAPIHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/status.json", d.WatchHandle("Debug", d.HTTPHandle))
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
 	// r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
@@ -490,6 +494,98 @@ func MentionsHandle(w http.ResponseWriter, r *http.Request) {
 	if lineCount == 0 {
 		http.Error(w, "no mentions :(", http.StatusNotFound)
 	}
+}
+
+func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	if _, ok := vars["channel"]; ok {
+		vars["channel"] = strings.Title(vars["channel"]) + " chatlog"
+	} else {
+		vars["channel"] = "Destinygg chatlog"
+	}
+	var limit int
+	_, ok := vars["limit"]
+	if !ok {
+		limit = math.MaxInt32
+	} else {
+		l, err := strconv.Atoi(vars["limit"])
+		if err != nil {
+			http.Error(w, "limit query is not a integer", http.StatusBadRequest)
+			return
+		}
+		limit = l
+	}
+	if _, ok := vars["date"]; !ok {
+		vars["date"] = time.Now().UTC().Format("2006-01-02")
+	}
+	t, err := time.Parse("2006-01-02", vars["date"])
+	if err != nil {
+		http.Error(w, "invalid date format", http.StatusNotFound)
+		return
+	}
+	if t.After(time.Now().UTC()) {
+		http.Error(w, "can't look into the future D:", http.StatusNotFound)
+		return
+	}
+	data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, vars["channel"], t.Format("January 2006"), t.Format("2006-01-02")))
+	if err != nil {
+		http.Error(w, "no logs found :( "+filepath.Join(common.GetConfig().LogPath, vars["channel"], t.Format("January 2006"), t.Format("2006-01-02")), http.StatusNotFound)
+		return
+	}
+	buf := make([]string, 0)
+	lines := [][]byte{}
+	w.Header().Set("Content-type", "application/json")
+	reader := bufio.NewReaderSize(bytes.NewReader(data), len(data))
+	for {
+		line, err := reader.ReadSlice('\n')
+		if err != nil {
+			if err != io.EOF {
+				log.Printf("error reading bytes %s", err)
+			}
+			break
+		}
+		lowerLine := bytes.ToLower(line)
+		if bytes.Contains(lowerLine[bytes.Index(lowerLine[LogLinePrefixLength:], []byte(":"))+LogLinePrefixLength:], bytes.ToLower([]byte(vars["nick"]))) {
+			lines = append(lines, line)
+		}
+	}
+	if len(lines) == 0 {
+		d, _ := json.Marshal(struct{ Error string }{"User not found"})
+		http.Error(w, string(d), http.StatusInternalServerError)
+		return
+	}
+	for i := 0; i < len(lines); i++ {
+		if len(buf) == limit {
+			break
+		}
+		if limit < len(lines) {
+			buf = append(buf, string(lines[len(lines)-limit+i]))
+		} else {
+			buf = append(buf, string(lines[i]))
+		}
+	}
+
+	type m struct {
+		Date int64  `json:"date"`
+		Text string `json:"text"`
+		Nick string `json:"nick"`
+	}
+	mentions := make([]m, 0)
+	for _, line := range buf {
+		t, err := time.Parse("2006-01-02 15:04:05 MST", string(line[1:24]))
+		if err != nil {
+			continue
+		}
+		ci := strings.Index(line[LogLinePrefixLength:], ":")
+		data := m{}
+		data.Date = t.Unix()
+		data.Nick = string(line[LogLinePrefixLength : LogLinePrefixLength+ci])
+		data.Text = strings.TrimSpace(line[ci+LogLinePrefixLength+2:])
+		mentions = append(mentions, data)
+	}
+
+	d, _ := json.Marshal(mentions)
+	w.Write(d)
 }
 
 func ChannelsHandle(w http.ResponseWriter, r *http.Request) {
