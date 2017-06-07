@@ -76,12 +76,30 @@ updatePack(){
 	echo "updated package etc & var"
 }
 
+updateServerPack(){
+	$SSS stop orl-server
+
+	rm -rf /var/overrustlelogs/views
+	rm -rf /var/overrustlelogs/public/assets
+
+	cp -r $GOPATH/src/$src/server/views /var/overrustlelogs/
+	cp -r $GOPATH/src/$src/server/assets /var/overrustlelogs/public/
+	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/views
+	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/public/assets
+
+	$SSS start orl-server
+	echo "updated the server assets"
+}
+
 if [[ $TODO == "bot" ]]; then
 	echo "updating the orl-bot..."
 	updateBot
 elif [[ $TODO == "server" ]]; then
 	echo "updating the orl-server..."
 	updateServer
+elif [[ $TODO == "serverpack" ]]; then
+	echo "updating the orl-server assets..."
+	updateServerPack
 elif [[ $TODO == "logger" ]]; then
 	echo "updating the orl-logger"
 	updateLogger
