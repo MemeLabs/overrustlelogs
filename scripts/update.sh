@@ -42,12 +42,6 @@ updateBot(){
 updateServer(){
 	go install $src/server
 	$SSS stop orl-server
-
-	cp -r $GOPATH/src/$src/server/views /var/overrustlelogs/
-	cp -r $GOPATH/src/$src/server/assets /var/overrustlelogs/public/
-	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/views
-	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/public/assets
-
 	cp $GOPATH/bin/server /usr/bin/orl-server
 
 	$SSS start orl-server
@@ -70,7 +64,12 @@ updateLogger(){
 updatePack(){
 	cp -p /etc/overrustlelogs/overrustlelogs.conf /etc/overrustlelogs/overrustlelogs.local.conf
 	cp -r $GOPATH/src/$src/package/* /
-	cp -p "/etc/overrustlelogs/overrustlelogs.local.conf" /etc/overrustlelogs/overrustlelogs.conf
+	cp -p /etc/overrustlelogs/overrustlelogs.local.conf /etc/overrustlelogs/overrustlelogs.conf
+
+	echo "pulling channels.json from server"
+	rm /var/overrustlelogs/channels.json
+	curl https://overrustlelogs.net/api/v1/channels.json >> /var/overrustlelogs/channels.json
+
 	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
 	systemctl daemon-reload
 	echo "updated package etc & var"
@@ -111,6 +110,7 @@ else
 	updateBot
 	updateLogger
 	updateServer
+	updateServerPack
 	updatePack
 	echo "updating complete"
 fi
