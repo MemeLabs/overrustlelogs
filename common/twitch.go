@@ -136,27 +136,24 @@ func (c *Twitch) Run() {
 			}
 
 			s := c.SubPattern.FindAllStringSubmatch(string(msg), -1)
-			if c.SubPattern.Match(msg) {
-				for _, v := range s {
-					data := strings.Replace(v[1], "\\s", " ", -1)
-					if v[3] != "" {
-						data += " [SubMessage]: " + v[3][2:]
-					}
-					m := &Message{
-						Type:    "MSG",
-						Channel: v[2],
-						Nick:    "twitchnotify",
-						Data:    data,
-						Time:    time.Now().UTC(),
-					}
-
-					select {
-					case c.messages <- m:
-					default:
-						log.Println("error messages channel full :(")
-					}
+			for _, v := range s {
+				data := strings.Replace(v[1], "\\s", " ", -1)
+				if v[3] != "" {
+					data += " [SubMessage]: " + v[3][2:]
 				}
-				continue
+				m := &Message{
+					Type:    "MSG",
+					Channel: v[2],
+					Nick:    "twitchnotify",
+					Data:    data,
+					Time:    time.Now().UTC(),
+				}
+
+				select {
+				case c.messages <- m:
+				default:
+					log.Println("error messages channel full :(")
+				}
 			}
 
 			l := c.MessagePattern.FindAllStringSubmatch(string(msg), -1)
@@ -263,12 +260,14 @@ func (c *Twitch) rejoinHandler() {
 		}
 		c.ChLock.Lock()
 		for _, ch := range c.channels {
+			if c.stopped {
+				c.ChLock.Unlock()
+				return
+			}
 			ch = strings.ToLower(ch)
 			log.Printf("rejoining %s\n", ch)
-			err := c.send("JOIN #" + ch)
-			if err != nil {
+			if err := c.send("JOIN #" + ch); err != nil {
 				log.Println(err)
-				break
 			}
 		}
 		c.ChLock.Unlock()
