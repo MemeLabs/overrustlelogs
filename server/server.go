@@ -620,6 +620,7 @@ func ChannelsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		channel :=v.Name()
 		temp = append(temp, channel[: len(channel)-8])
 	}
+	sort.Strings(temp)
 	d, _ := json.MarshalIndent(temp, "", "\t")
 	w.Write(d)
 }
