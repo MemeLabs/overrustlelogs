@@ -99,7 +99,7 @@ func main() {
 	r.HandleFunc("/api/v1/channels.json", d.WatchHandle("Channels", ChannelsAPIHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/{channel:[a-zA-Z0-9_-]+}/months.json", d.WatchHandle("Months", MonthsAPIHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/{channel:[a-zA-Z0-9_-]+}/{month:[a-zA-Z]+ [0-9]{4}}/days.json", d.WatchHandle("Months", DaysAPIHandle)).Methods("GET")
-	r.HandleFunc("/api/v1/{channel:[a-zA-Z0-9_-]+}/{month:[a-zA-Z]+ [0-9]{4}}/users.json", d.WatchHandle("Users", UsersAPIHandle)).Methods("GET")	
+	r.HandleFunc("/api/v1/{channel:[a-zA-Z0-9_-]+}/{month:[a-zA-Z]+ [0-9]{4}}/users.json", d.WatchHandle("Users", UsersAPIHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Queries("limit", "{limit:[0-9]+}").Methods("GET")
 	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Methods("GET")
 	r.HandleFunc("/api/v1/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}", "limit", "{limit:[0-9]+}")
@@ -608,20 +608,18 @@ func ChannelsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, string(d), http.StatusInternalServerError)
 		return
 	}
-	files, err := f.Readdir(0)
+	files, err := f.Readdirnames(0)
 	if err != nil {
 		d, _ := json.Marshal(Error{err.Error()})
 		http.Error(w, string(d), http.StatusInternalServerError)
 		return
 	}
 
-	var temp []string
-	for _, v := range files {
-		channel :=v.Name()
-		temp = append(temp, channel[: len(channel)-8])
+	for i, v := range files {
+		files[i] = v[:len(v)-8]
 	}
-	sort.Strings(temp)
-	d, _ := json.MarshalIndent(temp, "", "\t")
+	sort.Strings(files)
+	d, _ := json.Marshal(files)
 	w.Write(d)
 }
 
@@ -639,19 +637,15 @@ func MonthsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, string(d), http.StatusInternalServerError)
 		return
 	}
-	files, err := f.Readdir(0)
+	files, err := f.Readdirnames(0)
 	if err != nil {
 		d, _ := json.Marshal(Error{err.Error()})
 		http.Error(w, string(d), http.StatusInternalServerError)
 		return
 	}
-	temp:=[]string{}
-	for _, v := range files {
-		temp=append(temp, v.Name())
-	}
-	sort.Sort(dirsByMonth(temp))
 
-	d, _ := json.MarshalIndent(temp, "", "\t")
+	sort.Sort(dirsByMonth(files))
+	d, _ := json.Marshal(files)
 	w.Write(d)
 }
 
@@ -662,7 +656,6 @@ func DaysAPIHandle(w http.ResponseWriter, r *http.Request) {
 		Error string `json:"error"`
 	}
 
-
 	w.Header().Set("Content-type", "application/json")
 	f, err := os.Open(filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"]))
 	if err != nil {
@@ -670,7 +663,7 @@ func DaysAPIHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, string(d), http.StatusInternalServerError)
 		return
 	}
-	files, err := f.Readdir(0)
+	files, err := f.Readdirnames(0)
 	if err != nil {
 		d, _ := json.Marshal(Error{err.Error()})
 		http.Error(w, string(d), http.StatusInternalServerError)
@@ -681,17 +674,15 @@ func DaysAPIHandle(w http.ResponseWriter, r *http.Request) {
 	if strings.EqualFold(vars["channel"], "destinygg") {
 		metaLogs = append(metaLogs, "bans.txt")
 	}
-	
-	temp:=[]string{}
+
+	var temp []string
 	for _, v := range files {
-		if strings.Contains(v.Name(), ".nicks") {
+		if strings.Contains(v, ".nicks") {
 			continue
 		}
-		var day =v.Name()
-		if strings.Contains(day, ".gz") {
-			day = day[:len(day)-3]
+		if strings.Contains(v, ".gz") {
+			temp = append(temp, v[:len(v)-3])
 		}
-		temp=append(temp, day)
 	}
 	var filteredDirs []string
 	filteredDirs = append(filteredDirs, metaLogs...)
@@ -699,27 +690,26 @@ func DaysAPIHandle(w http.ResponseWriter, r *http.Request) {
 	sort.Sort(dirsByDay(temp))
 	filteredDirs = append(filteredDirs, temp...)
 
-	d, _ := json.MarshalIndent(filteredDirs, "", "\t")
+	d, _ := json.Marshal(filteredDirs)
 	w.Write(d)
 }
 
 func UsersAPIHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	log.Println(strings.Title(strings.ToLower(vars["channel"]))+" chatlog")
 	f, err := os.Open(filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"]))
 	if err != nil {
 		serveError(w, ErrNotFound)
 		return
 	}
-	files, err := f.Readdir(0)
+	files, err := f.Readdirnames(0)
 	if err != nil {
 		serveError(w, err)
 		return
 	}
 	nicks := common.NickList{}
 	for _, file := range files {
-		if NicksExtension.MatchString(file.Name()) {
-			common.ReadNickList(nicks, filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"], file.Name()))
+		if NicksExtension.MatchString(file) {
+			common.ReadNickList(nicks, filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"], file))
 		}
 	}
 	names := make([]string, 0, len(nicks))
@@ -727,7 +717,7 @@ func UsersAPIHandle(w http.ResponseWriter, r *http.Request) {
 		names = append(names, nick+".txt")
 	}
 	sort.Strings(names)
-	d, _ := json.MarshalIndent(names, "", "\t")
+	d, _ := json.Marshal(names)
 	w.Write(d)
 }
 
