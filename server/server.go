@@ -504,6 +504,7 @@ func MentionsHandle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// MentionsAPIHandle returns mentions from a nick in json format
 func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	if _, ok := vars["channel"]; ok {
@@ -579,14 +580,14 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 	}
 	mentions := make([]m, 0)
 	for _, line := range buf {
-		t, err := time.Parse("2006-01-02 15:04:05 MST", string(line[1:24]))
+		t, err := time.Parse("2006-01-02 15:04:05 MST", line[1:24])
 		if err != nil {
 			continue
 		}
 		ci := strings.Index(line[LogLinePrefixLength:], ":")
 		data := m{}
 		data.Date = t.Unix()
-		data.Nick = string(line[LogLinePrefixLength : LogLinePrefixLength+ci])
+		data.Nick = line[LogLinePrefixLength : LogLinePrefixLength+ci]
 		data.Text = strings.TrimSpace(line[ci+LogLinePrefixLength+2:])
 		mentions = append(mentions, data)
 	}
@@ -694,6 +695,7 @@ func DaysAPIHandle(w http.ResponseWriter, r *http.Request) {
 	w.Write(d)
 }
 
+// UsersAPIHandle returns the */userlogs directory in json format
 func UsersAPIHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	f, err := os.Open(filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"]))

@@ -11,7 +11,7 @@ const (
 	HandshakeTimeout     = 10 * time.Second
 	MaxChannelsPerChat   = 40
 	MessageBufferSize    = 1000
-	SocketReadTimeout    = 10 * time.Minute
+	SocketReadTimeout    = 6 * time.Minute
 	SocketReconnectDelay = 20 * time.Second
 	SocketWriteDebounce  = 500 * time.Millisecond
 	SocketWriteTimeout   = 5 * time.Second
