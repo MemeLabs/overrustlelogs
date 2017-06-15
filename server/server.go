@@ -78,9 +78,6 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{nick:[a-zA-Z0-9_-]{1,25}}.txt", d.WatchHandle("User", UserHandle)).Queries("search", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{nick:[a-zA-Z0-9_-]{1,25}}.txt", d.WatchHandle("User", UserHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{nick:[a-zA-Z0-9_-]{1,25}}", d.WatchHandle("User", WrapperHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}", d.WatchHandle("Premium", PremiumHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}/{month:[a-zA-Z]+ [0-9]{4}}.txt", d.WatchHandle("PremiumUser", PremiumUserHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/premium/{nick:[a-zA-Z0-9_-]{1,25}}/{month:[a-zA-Z]+ [0-9]{4}}", d.WatchHandle("PremiumUser", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current", d.WatchHandle("CurrentBase", CurrentBaseHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current/{nick:[a-zA-Z0-9_]+}.txt", d.WatchHandle("NickHandle", NickHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current/{nick:[a-zA-Z0-9_]+}", d.WatchHandle("NickHandle", WrapperHandle)).Methods("GET")
@@ -129,7 +126,7 @@ func main() {
 
 // Debugger logging...
 type Debugger struct {
-	mu       sync.Mutex
+	sync.RWMutex
 	counters map[string]*int64
 }
 
@@ -149,12 +146,12 @@ func NewDebugger() *Debugger {
 func (d *Debugger) WatchHandle(name string, f http.HandlerFunc) http.HandlerFunc {
 	var c *int64
 	var ok bool
-	d.mu.Lock()
+	d.Lock()
 	if c, ok = d.counters[name]; !ok {
 		c = new(int64)
 		d.counters[name] = c
 	}
-	d.mu.Unlock()
+	d.Unlock()
 	return func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt64(c, 1)
 		start := time.Now()
@@ -166,11 +163,11 @@ func (d *Debugger) WatchHandle(name string, f http.HandlerFunc) http.HandlerFunc
 
 func (d *Debugger) counts() map[string]int64 {
 	counts := make(map[string]int64)
-	d.mu.Lock()
+	d.RLock()
 	for name, c := range d.counters {
 		counts[name] = atomic.LoadInt64(c)
 	}
-	d.mu.Unlock()
+	d.RUnlock()
 	return counts
 }
 
@@ -354,30 +351,6 @@ func UserHandle(w http.ResponseWriter, r *http.Request) {
 	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(vars["nick"]))
 }
 
-// PremiumHandle premium user log index
-func PremiumHandle(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	paths, err := readDirIndex(filepath.Join(common.GetConfig().LogPath, vars["channel"]))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-	for i := range paths {
-		paths[i] += ".txt"
-	}
-	serveDirIndex(w, []string{vars["channel"], "premium", vars["nick"]}, paths)
-}
-
-// PremiumUserHandle user logs + replies
-func PremiumUserHandle(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	nick := bytes.ToLower([]byte(vars["nick"]))
-	filter := func(line []byte) bool {
-		return bytes.Contains(bytes.ToLower(line), nick)
-	}
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), filter)
-}
-
 // BroadcasterHandle channel index
 func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -429,10 +402,8 @@ func CurrentBaseHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func convertChannelCase(ch string) string {
-	ch = strings.ToLower(ch)
-	p := strings.Split(ch, " ")
-	p[0] = strings.Title(p[0])
-	return strings.Join(p, " ")
+	ch = strings.Trim(ch, " chatlog")
+	return strings.Title(strings.ToLower(ch)) + " chatlog"
 }
 
 // NickHandle shows the users most recent available log
