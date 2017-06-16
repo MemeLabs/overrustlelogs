@@ -23,15 +23,8 @@ import (
 
 // log paths
 const (
-	destinyPath         = "Destinygg chatlog"
-	twitchPath          = "Destiny chatlog"
-	defaultNukeDuration = 10 * time.Minute
-	cooldownDuration    = 10 * time.Second
-)
-
-// errors
-var (
-	ErrInvalidNick = errors.New("invalid nick")
+	destinyPath = "Destinygg chatlog"
+	twitchPath  = "Destiny chatlog"
 )
 
 var validNick = regexp.MustCompile("^[a-zA-Z0-9_]+$")
@@ -174,7 +167,7 @@ func (b *Bot) Run() {
 				continue
 			}
 			// log.Println(m.Nick, m.Data, "> send:", rs)
-			b.cooldownEOL = time.Now().Add(cooldownDuration)
+			b.cooldownEOL = time.Now().Add(10 * time.Second)
 			b.lastLine = rs
 		case "PRIVMSG":
 			rs, err := b.runCommand(b.private, m)
@@ -281,48 +274,52 @@ func (b *Bot) toURL(host string, path string) string {
 
 func (b *Bot) handleIgnoreLog(m *common.Message, r *bufio.Reader) (string, error) {
 	if b.isAdmin(m.Nick) {
-		nick, err := ioutil.ReadAll(r)
-		if err != nil || !validNick.Match(nick) {
-			return "Invalid nick", err
-		}
-		b.addIgnoreLog(string(nick))
+		return "", fmt.Errorf("%s is not a admin", m.Nick)
 	}
+	nick, err := ioutil.ReadAll(r)
+	if err != nil || !validNick.Match(nick) {
+		return "Invalid nick", err
+	}
+	b.addIgnoreLog(string(nick))
 	return "", nil
 }
 
 func (b *Bot) handleUnignoreLog(m *common.Message, r *bufio.Reader) (string, error) {
 	if b.isAdmin(m.Nick) {
-		nick, err := ioutil.ReadAll(r)
-		if err != nil || !validNick.Match(nick) {
-			return "Invalid nick", err
-		}
-		if b.isLogIgnored(string(nick)) {
-			b.removeIgnoreLog(string(nick))
-		}
+		return "", fmt.Errorf("%s is not a admin", m.Nick)
+	}
+	nick, err := ioutil.ReadAll(r)
+	if err != nil || !validNick.Match(nick) {
+		return "Invalid nick", err
+	}
+	if b.isLogIgnored(string(nick)) {
+		b.removeIgnoreLog(string(nick))
 	}
 	return "", nil
 }
 
 func (b *Bot) handleIgnore(m *common.Message, r *bufio.Reader) (string, error) {
 	if b.isAdmin(m.Nick) {
-		nick, err := ioutil.ReadAll(r)
-		if err != nil || !validNick.Match(nick) {
-			return "Invalid nick", err
-		}
-		b.addIgnore(string(nick))
+		return "", fmt.Errorf("%s is not a admin", m.Nick)
 	}
+	nick, err := ioutil.ReadAll(r)
+	if err != nil || !validNick.Match(nick) {
+		return "Invalid nick", err
+	}
+	b.addIgnore(string(nick))
 	return "", nil
 }
 
 func (b *Bot) handleUnignore(m *common.Message, r *bufio.Reader) (string, error) {
 	if b.isAdmin(m.Nick) {
-		nick, err := ioutil.ReadAll(r)
-		if err != nil || !validNick.Match(nick) {
-			return "Invalid nick", err
-		}
-		if b.isIgnored(string(nick)) {
-			b.removeIgnore(string(nick))
-		}
+		return "", fmt.Errorf("%s is not a admin", m.Nick)
+	}
+	nick, err := ioutil.ReadAll(r)
+	if err != nil || !validNick.Match(nick) {
+		return "Invalid nick", err
+	}
+	if b.isIgnored(string(nick)) {
+		b.removeIgnore(string(nick))
 	}
 	return "", nil
 }
@@ -358,7 +355,7 @@ func (b *Bot) searchNickFromLine(path string, r *bufio.Reader) (*common.NickSear
 		return nil, "", nil
 	}
 	if !validNick.Match([]byte(nick)) {
-		return nil, "", ErrInvalidNick
+		return nil, "", errors.New("invalid nick")
 	}
 	s, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+path, nick)
 	if err != nil {
@@ -373,31 +370,33 @@ func (b *Bot) searchNickFromLine(path string, r *bufio.Reader) (*common.NickSear
 }
 
 func (b *Bot) handleSimpleNuke(m *common.Message, r *bufio.Reader) (string, error) {
-	return b.handleNuke(m, defaultNukeDuration, r)
+	return b.handleNuke(m, 10*time.Minute, r)
 }
 
 func (b *Bot) handleMute(m *common.Message, r *bufio.Reader) (string, error) {
 	if b.isAdmin(m.Nick) {
-		text, err := ioutil.ReadAll(r)
-		if err != nil {
-			return "", err
-		}
-		b.autoMutes = append(b.autoMutes, string(text))
+		return "", fmt.Errorf("%s is not a admin", m.Nick)
 	}
+	text, err := ioutil.ReadAll(r)
+	if err != nil {
+		return "", err
+	}
+	b.autoMutes = append(b.autoMutes, string(text))
 	return "", nil
 }
 
 func (b *Bot) handleMuteRemove(m *common.Message, r *bufio.Reader) (string, error) {
 	if b.isAdmin(m.Nick) {
-		text, err := ioutil.ReadAll(r)
-		if err != nil {
-			return "", err
-		}
-		for i, v := range b.autoMutes {
-			if v == string(text) {
-				b.autoMutes = append(b.autoMutes[:i], b.autoMutes[i+1:]...)
-				return "", nil
-			}
+		return "", fmt.Errorf("%s is not a admin", m.Nick)
+	}
+	text, err := ioutil.ReadAll(r)
+	if err != nil {
+		return "", err
+	}
+	for i, v := range b.autoMutes {
+		if v == string(text) {
+			b.autoMutes = append(b.autoMutes[:i], b.autoMutes[i+1:]...)
+			return "", nil
 		}
 	}
 	return "", nil
@@ -414,13 +413,14 @@ func (b *Bot) isInAutoMute(text string) bool {
 
 func (b *Bot) handleNuke(m *common.Message, d time.Duration, r io.Reader) (string, error) {
 	if b.isAdmin(m.Nick) {
-		text, err := ioutil.ReadAll(r)
-		if err != nil {
-			return "", err
-		}
-		b.nukeEOL = time.Now().Add(d)
-		b.nukeText = bytes.ToLower(text)
+		return "", fmt.Errorf("%s is not a admin", m.Nick)
 	}
+	text, err := ioutil.ReadAll(r)
+	if err != nil {
+		return "", err
+	}
+	b.nukeEOL = time.Now().Add(d)
+	b.nukeText = bytes.ToLower(text)
 	return "", nil
 }
 
@@ -444,8 +444,9 @@ func (b *Bot) handleMentions(m *common.Message, r *bufio.Reader) (string, error)
 
 func (b *Bot) handleAegis(m *common.Message, r *bufio.Reader) (string, error) {
 	if b.isAdmin(m.Nick) {
-		b.nukeEOL = time.Now()
+		return "", fmt.Errorf("%s is not a admin", m.Nick)
 	}
+	b.nukeEOL = time.Now()
 	return "", nil
 }
 

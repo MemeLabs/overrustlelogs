@@ -16,8 +16,6 @@ import (
 type Destiny struct {
 	connLock sync.RWMutex
 	conn     *websocket.Conn
-	dialer   websocket.Dialer
-	headers  http.Header
 	messages chan *Message
 	stopped  bool
 }
@@ -25,20 +23,20 @@ type Destiny struct {
 // NewDestiny new destiny.gg chat client
 func NewDestiny() *Destiny {
 	return &Destiny{
-		dialer: websocket.Dialer{HandshakeTimeout: HandshakeTimeout},
-		headers: http.Header{
-			"Origin": []string{GetConfig().DestinyGG.OriginURL},
-			"Cookie": []string{GetConfig().DestinyGG.Cookie},
-		},
 		messages: make(chan *Message, MessageBufferSize),
 	}
 }
 
 // Connect open ws connection
 func (c *Destiny) connect() {
+	dialer := websocket.Dialer{HandshakeTimeout: HandshakeTimeout}
+	header := http.Header{
+		"Origin": []string{GetConfig().DestinyGG.OriginURL},
+		"Cookie": []string{GetConfig().DestinyGG.Cookie},
+	}
 	var err error
 	c.connLock.Lock()
-	c.conn, _, err = c.dialer.Dial(GetConfig().DestinyGG.SocketURL, c.headers)
+	c.conn, _, err = dialer.Dial(GetConfig().DestinyGG.SocketURL, header)
 	c.connLock.Unlock()
 	if err != nil {
 		log.Printf("error connecting to destiny ws %s", err)
