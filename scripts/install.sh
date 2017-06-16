@@ -22,6 +22,11 @@ cp -r $GOPATH/src/$src/server/assets /var/overrustlelogs/public/assets
 chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/views
 chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/public/assets
 cp -r $GOPATH/src/$src/package/* /
+
+echo "pulling channels.json from server"
+rm /var/overrustlelogs/channels.json
+curl https://overrustlelogs.net/api/v1/channels.json >> /var/overrustlelogs/channels.json
+
 chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
 
 mkdir -p /var/nginx/cache

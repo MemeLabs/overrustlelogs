@@ -10,6 +10,13 @@ else
 	TODO=$1
 	MODE=default
 	git pull
+	go get -u "github.com/cloudflare/golz4"
+	go get -u "github.com/datadog/zstd"
+	go get -u "github.com/gorilla/websocket"
+	go get -u "github.com/gorilla/mux"
+	go get -u "github.com/gorilla/handlers"
+	go get -u "github.com/hashicorp/golang-lru"
+	go get -u "github.com/yosssi/ace"
 fi
 
 ## systemd support
@@ -20,13 +27,6 @@ else
 fi
 
 source /etc/profile
-
-go get -u "github.com/cloudflare/golz4"
-go get -u "github.com/gorilla/websocket"
-go get -u "github.com/gorilla/mux"
-go get -u "github.com/hashicorp/golang-lru"
-go get -u "github.com/xlab/handysort"
-go get -u "github.com/yosssi/ace"
 
 updateBot(){
 	go install $src/bot
@@ -77,6 +77,10 @@ updatePack(){
 
 updateServerPack(){
 	$SSS stop orl-server
+
+	echo "pulling channels.json from server"
+	rm /var/overrustlelogs/channels.json
+	curl https://overrustlelogs.net/api/v1/channels.json >> /var/overrustlelogs/channels.json
 
 	rm -rf /var/overrustlelogs/views
 	rm -rf /var/overrustlelogs/public/assets
