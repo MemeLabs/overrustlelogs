@@ -14,34 +14,22 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// errors
-var (
-	ErrAlreadyInChannel = errors.New("already in channel")
-	ErrNotInChannel     = errors.New("not in channel")
-	ErrChannelNotValid  = errors.New("not a valid channel")
-)
-
 // Twitch twitch chat client
 type Twitch struct {
+	connLock       sync.Mutex
 	sendLock       sync.Mutex
-	connLock       sync.RWMutex
 	conn           *websocket.Conn
-	dialer         websocket.Dialer
-	headers        http.Header
 	ChLock         sync.Mutex
 	channels       []string
 	messages       chan *Message
 	MessagePattern *regexp.Regexp
 	SubPattern     *regexp.Regexp
-	stopped        bool
-	debug          bool
+	quit           chan struct{}
 }
 
 // NewTwitch new twitch chat client
 func NewTwitch() *Twitch {
 	return &Twitch{
-		dialer:   websocket.Dialer{HandshakeTimeout: HandshakeTimeout},
-		headers:  http.Header{"Origin": []string{GetConfig().Twitch.OriginURL}},
 		channels: make([]string, 0),
 		messages: make(chan *Message, MessageBufferSize),
 		// > @badges=global_mod/1,turbo/1;color=#0D4200;display-name=dallas;emotes=25:0-4,12-16/1902:6-10;mod=0;room-id=1337;
@@ -51,13 +39,18 @@ func NewTwitch() *Twitch {
 		// msg-param-sub-plan=Prime;msg-param-sub-plan-name=Prime;room-id=1337;subscriber=1;system-msg=ronni\shas\ssubscribed\sfor\s6\smonths!;
 		// login=ronni;turbo=1;user-id=1337;user-type=staff :tmi.twitch.tv USERNOTICE #dallas :Great stream -- keep it up!
 		SubPattern: regexp.MustCompile(`system-msg=(.+);tmi-sent-ts.+ \:tmi\.twitch\.tv USERNOTICE #([a-z0-9_-]+)( :.+)?`),
+		quit:       make(chan struct{}, 2),
 	}
 }
 
 func (c *Twitch) connect() {
+	conf := GetConfig()
+	dialer := websocket.Dialer{HandshakeTimeout: HandshakeTimeout}
+	headers := http.Header{"Origin": []string{conf.Twitch.OriginURL}}
+
 	var err error
 	c.connLock.Lock()
-	c.conn, _, err = c.dialer.Dial(GetConfig().Twitch.SocketURL, c.headers)
+	c.conn, _, err = dialer.Dial(GetConfig().Twitch.SocketURL, headers)
 	c.connLock.Unlock()
 	if err != nil {
 		log.Printf("error connecting to twitch ws %s", err)
@@ -65,7 +58,6 @@ func (c *Twitch) connect() {
 		return
 	}
 
-	conf := GetConfig()
 	if conf.Twitch.OAuth == "" || conf.Twitch.Nick == "" {
 		log.Println("missing OAuth or Nick, using justinfan659 as login data")
 		conf.Twitch.OAuth = "justinfan659"
@@ -78,8 +70,10 @@ func (c *Twitch) connect() {
 	c.send("CAP REQ :twitch.tv/commands")
 
 	for _, ch := range c.channels {
-		if c.stopped {
+		select {
+		case <-c.quit:
 			return
+		default:
 		}
 		ch = strings.ToLower(ch)
 		log.Printf("joining %s", ch)
@@ -106,8 +100,13 @@ func (c *Twitch) Run() {
 	c.connect()
 	go c.rejoinHandler()
 	go func() {
-		defer close(c.messages)
-		for !c.stopped {
+		for {
+			select {
+			case <-c.quit:
+				close(c.messages)
+				return
+			default:
+			}
 			c.connLock.Lock()
 			err := c.conn.SetReadDeadline(time.Now().Add(SocketReadTimeout))
 			c.connLock.Unlock()
@@ -201,7 +200,6 @@ func (c *Twitch) send(m string) error {
 	if err != nil {
 		return fmt.Errorf("error setting SetWriteDeadline %s", err)
 	}
-
 	c.sendLock.Lock()
 	err = c.conn.WriteMessage(websocket.TextMessage, []byte(m+"\r\n"))
 	c.sendLock.Unlock()
@@ -221,11 +219,11 @@ func (c *Twitch) Join(ch string) error {
 		return err
 	}
 	c.ChLock.Lock()
-	defer c.ChLock.Unlock()
 	if inSlice(c.channels, ch) {
-		return ErrAlreadyInChannel
+		return errors.New("already in channel")
 	}
 	c.channels = append(c.channels, ch)
+	c.ChLock.Unlock()
 	return nil
 }
 
@@ -249,43 +247,40 @@ func (c *Twitch) removeChannel(ch string) error {
 		c.channels = append(c.channels[:i], c.channels[i+1:]...)
 		return nil
 	}
-	return ErrNotInChannel
+	return errors.New("not in channel")
 }
 
 func (c *Twitch) rejoinHandler() {
 	const interval = 1 * time.Hour
-	for range time.Tick(interval) {
-		if c.stopped {
+	ticker := time.NewTicker(interval)
+	for {
+		select {
+		case <-c.quit:
 			return
-		}
-		c.ChLock.Lock()
-		for _, ch := range c.channels {
-			if c.stopped {
-				c.ChLock.Unlock()
-				return
+		case <-ticker.C:
+			c.ChLock.Lock()
+			for _, ch := range c.channels {
+				ch = strings.ToLower(ch)
+				log.Printf("rejoining %s\n", ch)
+				if err := c.send("JOIN #" + ch); err != nil {
+					log.Println(err)
+					continue
+				}
 			}
-			ch = strings.ToLower(ch)
-			log.Printf("rejoining %s\n", ch)
-			if err := c.send("JOIN #" + ch); err != nil {
-				log.Println(err)
-			}
+			c.ChLock.Unlock()
 		}
-		c.ChLock.Unlock()
 	}
 }
 
 // Stop stops the chats
-func (c *Twitch) Stop() {
-	c.stopped = true
-	c.sendLock.Lock()
-	c.ChLock.Lock()
+func (c *Twitch) Stop(wg *sync.WaitGroup) {
+	close(c.quit)
 	c.connLock.Lock()
 	if c.conn != nil {
 		c.conn.Close()
 	}
 	c.connLock.Unlock()
-	c.ChLock.Unlock()
-	c.sendLock.Unlock()
+	wg.Done()
 }
 
 func inSlice(s []string, v string) bool {

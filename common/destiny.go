@@ -17,13 +17,14 @@ type Destiny struct {
 	connLock sync.RWMutex
 	conn     *websocket.Conn
 	messages chan *Message
-	stopped  bool
+	quit     chan struct{}
 }
 
 // NewDestiny new destiny.gg chat client
 func NewDestiny() *Destiny {
 	return &Destiny{
 		messages: make(chan *Message, MessageBufferSize),
+		quit:     make(chan struct{}, 2),
 	}
 }
 
@@ -60,7 +61,12 @@ func (c *Destiny) reconnect() {
 func (c *Destiny) Run() {
 	c.connect()
 	defer close(c.messages)
-	for !c.stopped {
+	for {
+		select {
+		case <-c.quit:
+			return
+		default:
+		}
 		err := c.conn.SetReadDeadline(time.Now().UTC().Add(SocketReadTimeout))
 		if err != nil {
 			log.Println("SetReadDeadline triggered, reconnecting")
@@ -116,7 +122,7 @@ func (c *Destiny) Run() {
 
 // Stop ...
 func (c *Destiny) Stop() {
-	c.stopped = true
+	c.quit <- struct{}{}
 	c.connLock.Lock()
 	if c.conn != nil {
 		c.conn.Close()
