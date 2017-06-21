@@ -32,11 +32,11 @@ func (l *Logger) DestinyLog(mc <-chan *common.Message) {
 		case "BAN":
 			l.writeLine(m.Time, m.Channel, "Ban", fmt.Sprintf("%s banned by %s", m.Data, m.Nick))
 		case "UNBAN":
-			l.writeLine(m.Time, m.Channel, "Ban", fmt.Sprintf("%s bunbanned by %s", m.Data, m.Nick))
+			l.writeLine(m.Time, m.Channel, "Ban", fmt.Sprintf("%s unbanned by %s", m.Data, m.Nick))
 		case "MUTE":
-			l.writeLine(m.Time, m.Channel, "Ban", fmt.Sprintf("%s bmuted by %s", m.Data, m.Nick))
+			l.writeLine(m.Time, m.Channel, "Ban", fmt.Sprintf("%s muted by %s", m.Data, m.Nick))
 		case "UNMUTE":
-			l.writeLine(m.Time, m.Channel, "Ban", fmt.Sprintf("%s bunmuted by %s", m.Data, m.Nick))
+			l.writeLine(m.Time, m.Channel, "Ban", fmt.Sprintf("%s unmuted by %s", m.Data, m.Nick))
 		case "BROADCAST":
 			if strings.Contains(m.Data, "subscriber!") ||
 				strings.Contains(m.Data, "subscribed on Twitch!") ||
