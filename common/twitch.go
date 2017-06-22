@@ -219,11 +219,11 @@ func (c *Twitch) Join(ch string) error {
 		return err
 	}
 	c.ChLock.Lock()
+	defer c.ChLock.Unlock()
 	if inSlice(c.channels, ch) {
 		return errors.New("already in channel")
 	}
 	c.channels = append(c.channels, ch)
-	c.ChLock.Unlock()
 	return nil
 }
 

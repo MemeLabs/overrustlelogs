@@ -35,7 +35,7 @@ func NewTwitchLogger(f func(m <-chan *common.Message)) *TwitchHub {
 		logHandler:     f,
 		admins:         make(map[string]struct{}),
 		commandChannel: common.GetConfig().Twitch.CommandChannel,
-		quit:           make(chan struct{}, 2),
+		quit:           make(chan struct{}, 1),
 	}
 
 	admins := common.GetConfig().Twitch.Admins
@@ -55,7 +55,6 @@ func NewTwitchLogger(f func(m <-chan *common.Message)) *TwitchHub {
 
 // Start ...
 func (t *TwitchHub) Start() {
-	t.join(common.GetConfig().Twitch.CommandChannel, false)
 	var c int
 	for _, channel := range t.channels {
 		select {
@@ -65,7 +64,7 @@ func (t *TwitchHub) Start() {
 		}
 		err := t.join(channel, false)
 		if err != nil {
-			log.Printf("failed to join %s: %s", channel, err.Error())
+			log.Printf("%v", err)
 			continue
 		}
 		c++
@@ -120,10 +119,10 @@ func (t *TwitchHub) join(ch string, init bool) error {
 		t.channels = append(t.channels, ch)
 		go t.saveChannels()
 	}
-	var chat *common.Twitch
 	t.chatLock.Lock()
+	var chat *common.Twitch
 	for _, c := range t.chats {
-		if len(c.Channels()) > common.MaxChannelsPerChat {
+		if len(c.Channels()) >= common.MaxChannelsPerChat {
 			continue
 		}
 		chat = c
@@ -169,11 +168,11 @@ func (t *TwitchHub) leave(ch string) error {
 		if err := c.Leave(ch); err != nil {
 			return fmt.Errorf("error leaving %s: %v", ch, err)
 		}
+		if err := t.removeChannel(ch); err != nil {
+			return fmt.Errorf("error removing channel from list: %v", err)
+		}
 		if err := t.saveChannels(); err != nil {
 			log.Printf("error saving channels: %v", err)
-		}
-		if err := t.removeChannel(ch); err != nil {
-			log.Printf("error removing channel from list: %v", err)
 		}
 		log.Println("leaving", ch)
 		return nil
