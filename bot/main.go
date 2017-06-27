@@ -273,7 +273,7 @@ func (b *Bot) toURL(host string, path string) string {
 }
 
 func (b *Bot) handleIgnoreLog(m *common.Message, r *bufio.Reader) (string, error) {
-	if b.isAdmin(m.Nick) {
+	if !b.isAdmin(m.Nick) {
 		return "", fmt.Errorf("%s is not a admin", m.Nick)
 	}
 	nick, err := ioutil.ReadAll(r)
@@ -285,7 +285,7 @@ func (b *Bot) handleIgnoreLog(m *common.Message, r *bufio.Reader) (string, error
 }
 
 func (b *Bot) handleUnignoreLog(m *common.Message, r *bufio.Reader) (string, error) {
-	if b.isAdmin(m.Nick) {
+	if !b.isAdmin(m.Nick) {
 		return "", fmt.Errorf("%s is not a admin", m.Nick)
 	}
 	nick, err := ioutil.ReadAll(r)
@@ -299,7 +299,7 @@ func (b *Bot) handleUnignoreLog(m *common.Message, r *bufio.Reader) (string, err
 }
 
 func (b *Bot) handleIgnore(m *common.Message, r *bufio.Reader) (string, error) {
-	if b.isAdmin(m.Nick) {
+	if !b.isAdmin(m.Nick) {
 		return "", fmt.Errorf("%s is not a admin", m.Nick)
 	}
 	nick, err := ioutil.ReadAll(r)
@@ -311,7 +311,7 @@ func (b *Bot) handleIgnore(m *common.Message, r *bufio.Reader) (string, error) {
 }
 
 func (b *Bot) handleUnignore(m *common.Message, r *bufio.Reader) (string, error) {
-	if b.isAdmin(m.Nick) {
+	if !b.isAdmin(m.Nick) {
 		return "", fmt.Errorf("%s is not a admin", m.Nick)
 	}
 	nick, err := ioutil.ReadAll(r)
@@ -374,7 +374,7 @@ func (b *Bot) handleSimpleNuke(m *common.Message, r *bufio.Reader) (string, erro
 }
 
 func (b *Bot) handleMute(m *common.Message, r *bufio.Reader) (string, error) {
-	if b.isAdmin(m.Nick) {
+	if !b.isAdmin(m.Nick) {
 		return "", fmt.Errorf("%s is not a admin", m.Nick)
 	}
 	text, err := ioutil.ReadAll(r)
@@ -386,7 +386,7 @@ func (b *Bot) handleMute(m *common.Message, r *bufio.Reader) (string, error) {
 }
 
 func (b *Bot) handleMuteRemove(m *common.Message, r *bufio.Reader) (string, error) {
-	if b.isAdmin(m.Nick) {
+	if !b.isAdmin(m.Nick) {
 		return "", fmt.Errorf("%s is not a admin", m.Nick)
 	}
 	text, err := ioutil.ReadAll(r)
@@ -412,7 +412,7 @@ func (b *Bot) isInAutoMute(text string) bool {
 }
 
 func (b *Bot) handleNuke(m *common.Message, d time.Duration, r io.Reader) (string, error) {
-	if b.isAdmin(m.Nick) {
+	if !b.isAdmin(m.Nick) {
 		return "", fmt.Errorf("%s is not a admin", m.Nick)
 	}
 	text, err := ioutil.ReadAll(r)
@@ -443,7 +443,7 @@ func (b *Bot) handleMentions(m *common.Message, r *bufio.Reader) (string, error)
 }
 
 func (b *Bot) handleAegis(m *common.Message, r *bufio.Reader) (string, error) {
-	if b.isAdmin(m.Nick) {
+	if !b.isAdmin(m.Nick) {
 		return "", fmt.Errorf("%s is not a admin", m.Nick)
 	}
 	b.nukeEOL = time.Now()
