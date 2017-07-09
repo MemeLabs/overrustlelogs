@@ -91,21 +91,21 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", d.WatchHandle("Broadcaster", WrapperHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("Subscriber", SubscriberHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", d.WatchHandle("Subscriber", WrapperHandle)).Methods("GET")
-
-	r.HandleFunc("/api/v1/status.json", d.WatchHandle("Status", d.HTTPHandle))
-	r.HandleFunc("/api/v1/channels.json", d.WatchHandle("Channels", ChannelsAPIHandle)).Methods("GET")
-	r.HandleFunc("/api/v1/{channel:[a-zA-Z0-9_-]+}/months.json", d.WatchHandle("Months", MonthsAPIHandle)).Methods("GET")
-	r.HandleFunc("/api/v1/{channel:[a-zA-Z0-9_-]+}/{month:[a-zA-Z]+ [0-9]{4}}/days.json", d.WatchHandle("Months", DaysAPIHandle)).Methods("GET")
-	r.HandleFunc("/api/v1/{channel:[a-zA-Z0-9_-]+}/{month:[a-zA-Z]+ [0-9]{4}}/users.json", d.WatchHandle("Users", UsersAPIHandle)).Methods("GET")
-	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Queries("limit", "{limit:[0-9]+}").Methods("GET")
-	r.HandleFunc("/api/v1/stalk/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Methods("GET")
-	r.HandleFunc("/api/v1/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}", "limit", "{limit:[0-9]+}")
-	r.HandleFunc("/api/v1/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Queries("limit", "{limit:[0-9]+}")
-	r.HandleFunc("/api/v1/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
-	r.HandleFunc("/api/v1/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Methods("GET")
-
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
 	// r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("/orl/assets"))))
+
+	api := r.PathPrefix("/api/v1").Subrouter()
+	api.HandleFunc("/status.json", d.WatchHandle("Status", d.HTTPHandle))
+	api.HandleFunc("/channels.json", d.WatchHandle("Channels", ChannelsAPIHandle)).Methods("GET")
+	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/months.json", d.WatchHandle("Months", MonthsAPIHandle)).Methods("GET")
+	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/{month:[a-zA-Z]+ [0-9]{4}}/days.json", d.WatchHandle("Months", DaysAPIHandle)).Methods("GET")
+	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/{month:[a-zA-Z]+ [0-9]{4}}/users.json", d.WatchHandle("Users", UsersAPIHandle)).Methods("GET")
+	api.HandleFunc("/stalk/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Queries("limit", "{limit:[0-9]+}").Methods("GET")
+	api.HandleFunc("/stalk/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Methods("GET")
+	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}", "limit", "{limit:[0-9]+}")
+	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Queries("limit", "{limit:[0-9]+}")
+	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
+	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Methods("GET")
 
 	srv := &http.Server{
 		Addr: common.GetConfig().Server.Address,
@@ -156,7 +156,7 @@ func (d *Debugger) WatchHandle(name string, f http.HandlerFunc) http.HandlerFunc
 		atomic.AddInt64(c, 1)
 		start := time.Now()
 		f.ServeHTTP(w, r)
-		log.Printf("served \"%s\" in %s", r.URL.Path, time.Since(start))
+		log.Printf("served \"%s\" to \"%s\" in %s\n", r.URL.Path, r.Header.Get("Cf-Connecting-Ip"), time.Since(start))
 		atomic.AddInt64(c, -1)
 	}
 }
@@ -250,7 +250,7 @@ func ChannelHandle(w http.ResponseWriter, r *http.Request) {
 		serveError(w, err)
 		return
 	}
-	sort.Sort(dirsByMonth(paths))
+	sort.Sort(byMonth(paths))
 	serveDirIndex(w, []string{vars["channel"]}, paths)
 }
 
@@ -266,7 +266,7 @@ func MonthHandle(w http.ResponseWriter, r *http.Request) {
 	if vars["channel"] == "Destinygg chatlog" {
 		metaPaths = append(metaPaths, "bans.txt")
 	}
-	sort.Sort(dirsByDay(paths))
+	sort.Sort(byDay(paths))
 	paths = append(paths, metaPaths...)
 	copy(paths[len(metaPaths):], paths)
 	copy(paths, metaPaths)
@@ -288,11 +288,9 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
 	w.Header().Set("Cache-control", "max-age=60")
 	var ok bool
-	var filter func([]byte, string) bool
+	var filter = func(l []byte, f string) bool { return true }
 	if _, ok = vars["filter"]; ok {
 		filter = filterKey
-	} else {
-		filter = func(l []byte, f string) bool { return true }
 	}
 	var lineCount int
 	reader := bufio.NewReaderSize(bytes.NewReader(data), len(data))
@@ -411,9 +409,7 @@ func convertChannelCase(ch string) string {
 // NickHandle shows the users most recent available log
 func NickHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	log.Println(vars["channel"])
 	vars["channel"] = convertChannelCase(vars["channel"])
-	log.Println(vars["channel"])
 	search, err := common.NewNickSearch(filepath.Join(common.GetConfig().LogPath, vars["channel"]), vars["nick"])
 	if err != nil {
 		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
@@ -513,7 +509,7 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), t.Format("January 2006"), t.Format("2006-01-02")))
 	if err != nil {
-		http.Error(w, "no logs found :( "+filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), t.Format("January 2006"), t.Format("2006-01-02")), http.StatusNotFound)
+		http.Error(w, "no logs found :( ", http.StatusNotFound)
 		return
 	}
 	buf := make([]string, 0)
@@ -534,7 +530,7 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(lines) == 0 {
-		http.Error(w, "no mentions :(", http.StatusInternalServerError)
+		http.Error(w, "no mentions :(", http.StatusNotFound)
 		return
 	}
 	for i := 0; i < len(lines); i++ {
@@ -620,7 +616,7 @@ func MonthsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sort.Sort(dirsByMonth(files))
+	sort.Sort(byMonth(files))
 	d, _ := json.Marshal(files)
 	w.Write(d)
 }
@@ -663,7 +659,7 @@ func DaysAPIHandle(w http.ResponseWriter, r *http.Request) {
 	var filteredDirs []string
 	filteredDirs = append(filteredDirs, metaLogs...)
 
-	sort.Sort(dirsByDay(temp))
+	sort.Sort(byDay(temp))
 	filteredDirs = append(filteredDirs, temp...)
 
 	d, _ := json.Marshal(filteredDirs)
@@ -801,17 +797,11 @@ ScanLogs:
 	w.Write(d)
 }
 
-type dirsByMonth []string
+type byMonth []string
 
-func (l dirsByMonth) Len() int {
-	return len(l)
-}
-
-func (l dirsByMonth) Swap(i, j int) {
-	l[i], l[j] = l[j], l[i]
-}
-
-func (l dirsByMonth) Less(i, j int) bool {
+func (l byMonth) Len() int      { return len(l) }
+func (l byMonth) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
+func (l byMonth) Less(i, j int) bool {
 	format := "January 2006"
 	a, err := time.Parse(format, l[i])
 	if err != nil {
@@ -824,17 +814,11 @@ func (l dirsByMonth) Less(i, j int) bool {
 	return !b.After(a)
 }
 
-type dirsByDay []string
+type byDay []string
 
-func (l dirsByDay) Len() int {
-	return len(l)
-}
-
-func (l dirsByDay) Swap(i, j int) {
-	l[i], l[j] = l[j], l[i]
-}
-
-func (l dirsByDay) Less(i, j int) bool {
+func (l byDay) Len() int      { return len(l) }
+func (l byDay) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
+func (l byDay) Less(i, j int) bool {
 	format := "2006-01-02.txt.gz"
 	a, err := time.Parse(format, gzPath(l[i]))
 	if err != nil {
@@ -908,10 +892,10 @@ func readLogFile(path string) ([]byte, error) {
 func nickFilter(nick string) func([]byte) bool {
 	nick += ":"
 	return func(line []byte) bool {
-		for i := 0; i < len(nick); i++ {
-			if i+LogLinePrefixLength > len(line) || line[i+LogLinePrefixLength] != nick[i] {
-				return false
-			}
+		line = bytes.ToLower(line)
+		nick = strings.ToLower(nick)
+		if LogLinePrefixLength > len(line) || !bytes.HasPrefix(line[LogLinePrefixLength:], []byte(nick)) {
+			return false
 		}
 		return true
 	}
@@ -920,12 +904,13 @@ func nickFilter(nick string) func([]byte) bool {
 func searchKey(nick, filter string) func([]byte) bool {
 	nick += ":"
 	return func(line []byte) bool {
-		for i := 0; i < len(nick); i++ {
-			if i+LogLinePrefixLength > len(line) || line[i+LogLinePrefixLength] != nick[i] {
-				return false
-			}
+		line = bytes.ToLower(line)
+		nick = strings.ToLower(nick)
+		filter = strings.ToLower(filter)
+		if LogLinePrefixLength > len(line) || (!bytes.HasPrefix(line[LogLinePrefixLength:], []byte(nick)) && !bytes.Contains(line[len(nick)+LogLinePrefixLength:], []byte(filter))) {
+			return false
 		}
-		return bytes.Contains(bytes.ToLower(line[len(nick)+LogLinePrefixLength:]), bytes.ToLower([]byte(filter)))
+		return true
 	}
 }
 
