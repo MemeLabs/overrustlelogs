@@ -44,6 +44,8 @@ html lang=en
               a class="brand-logo" href="/" OverRustle Logs
             ul id="nav-mobile" class="right hide-on-med-and-down"
               li
+                a class="active" href="//stalk.overrustlelogs.net/" Stalk
+              li
                 a class="active" href="/changelog" Changelog
               li
                 a class="active" href="/contact" Contact
