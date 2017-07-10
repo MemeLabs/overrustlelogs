@@ -81,6 +81,7 @@ updateServerPack(){
 	echo "pulling channels.json from server"
 	rm /var/overrustlelogs/channels.json
 	curl https://overrustlelogs.net/api/v1/channels.json >> /var/overrustlelogs/channels.json
+	chown overrustlelogs:overrustlelogs /var/overrustlelogs/channels.json
 
 	rm -rf /var/overrustlelogs/views
 	rm -rf /var/overrustlelogs/public/assets
