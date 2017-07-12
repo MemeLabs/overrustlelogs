@@ -10,6 +10,13 @@ else
 	TODO=$1
 	MODE=default
 	git pull
+	go get -u "github.com/cloudflare/golz4"
+	go get -u "github.com/datadog/zstd"
+	go get -u "github.com/gorilla/websocket"
+	go get -u "github.com/gorilla/mux"
+	go get -u "github.com/gorilla/handlers"
+	go get -u "github.com/hashicorp/golang-lru"
+	go get -u "github.com/yosssi/ace"
 fi
 
 ## systemd support
@@ -20,13 +27,6 @@ else
 fi
 
 source /etc/profile
-
-go get -u "github.com/cloudflare/golz4"
-go get -u "github.com/gorilla/websocket"
-go get -u "github.com/gorilla/mux"
-go get -u "github.com/hashicorp/golang-lru"
-go get -u "github.com/xlab/handysort"
-go get -u "github.com/yosssi/ace"
 
 updateBot(){
 	go install $src/bot
@@ -42,12 +42,6 @@ updateBot(){
 updateServer(){
 	go install $src/server
 	$SSS stop orl-server
-
-	cp -r $GOPATH/src/$src/server/views /var/overrustlelogs/
-	cp -r $GOPATH/src/$src/server/assets /var/overrustlelogs/public/
-	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/views
-	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/public/assets
-
 	cp $GOPATH/bin/server /usr/bin/orl-server
 
 	$SSS start orl-server
@@ -70,10 +64,35 @@ updateLogger(){
 updatePack(){
 	cp -p /etc/overrustlelogs/overrustlelogs.conf /etc/overrustlelogs/overrustlelogs.local.conf
 	cp -r $GOPATH/src/$src/package/* /
-	cp -p "/etc/overrustlelogs/overrustlelogs.local.conf" /etc/overrustlelogs/overrustlelogs.conf
+	cp -p /etc/overrustlelogs/overrustlelogs.local.conf /etc/overrustlelogs/overrustlelogs.conf
+
+	echo "pulling channels.json from server"
+	rm /var/overrustlelogs/channels.json
+	curl https://overrustlelogs.net/api/v1/channels.json >> /var/overrustlelogs/channels.json
+
 	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
 	systemctl daemon-reload
 	echo "updated package etc & var"
+}
+
+updateServerPack(){
+	$SSS stop orl-server
+
+	echo "pulling channels.json from server"
+	rm /var/overrustlelogs/channels.json
+	curl https://overrustlelogs.net/api/v1/channels.json >> /var/overrustlelogs/channels.json
+	chown overrustlelogs:overrustlelogs /var/overrustlelogs/channels.json
+
+	rm -rf /var/overrustlelogs/views
+	rm -rf /var/overrustlelogs/public/assets
+
+	cp -r $GOPATH/src/$src/server/views /var/overrustlelogs/
+	cp -r $GOPATH/src/$src/server/assets /var/overrustlelogs/public/
+	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/views
+	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/public/assets
+
+	$SSS start orl-server
+	echo "updated the server assets"
 }
 
 if [[ $TODO == "bot" ]]; then
@@ -82,6 +101,9 @@ if [[ $TODO == "bot" ]]; then
 elif [[ $TODO == "server" ]]; then
 	echo "updating the orl-server..."
 	updateServer
+elif [[ $TODO == "serverpack" ]]; then
+	echo "updating the orl-server assets..."
+	updateServerPack
 elif [[ $TODO == "logger" ]]; then
 	echo "updating the orl-logger"
 	updateLogger
@@ -93,6 +115,7 @@ else
 	updateBot
 	updateLogger
 	updateServer
+	updateServerPack
 	updatePack
 	echo "updating complete"
 fi

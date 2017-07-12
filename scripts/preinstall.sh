@@ -1,12 +1,13 @@
 #!/bin/bash
 
 if [ -z `which nginx` ]; then
-  apt-get install nginx --assume-yes
+  apt-get update
+  apt-get install nginx -y
 fi
 
 if [ -z `which go` ]; then
   apt-get update
-  apt-get install build-essential git wget --assume-yes
+  apt-get install build-essential git wget curl -y
 
   pushd . > /dev/null
   cd /tmp
@@ -23,8 +24,8 @@ if [ -z `which go` ]; then
   echo "export PATH=\$PATH:\$GOPATH/bin:\$GOROOT/bin" >> /etc/profile
   source /etc/profile
 
-  wget https://storage.googleapis.com/golang/go1.7.5.src.tar.gz
-  tar xzf go1.7.5.src.tar.gz
+  wget https://storage.googleapis.com/golang/go1.8.3.src.tar.gz
+  tar xzf go1.8.3.src.tar.gz
   cd go/src
   GOROOT_BOOTSTRAP=$GOROOT bash ./make.bash
   cd /tmp
@@ -37,10 +38,11 @@ if [ -z `which go` ]; then
 fi
 
 go get -u "github.com/cloudflare/golz4"
+go get -u "github.com/datadog/zstd"
 go get -u "github.com/gorilla/websocket"
 go get -u "github.com/gorilla/mux"
+go get -u "github.com/gorilla/handlers"
 go get -u "github.com/hashicorp/golang-lru"
-go get -u "github.com/xlab/handysort"
 go get -u "github.com/yosssi/ace"
 
 useradd overrustlelogs

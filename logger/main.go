@@ -30,15 +30,15 @@ func main() {
 		NewLogger(NewChatLogs()).TwitchLog(m)
 	}
 
-	orl := NewTwitchLogger(twitchLogHandler)
-	go orl.Start()
+	tl := NewTwitchLogger(twitchLogHandler)
+	go tl.Start()
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
 	<-sigint
 	logs.Close()
 	dc.Stop()
-	orl.Stop()
+	tl.Stop()
 	log.Println("i love you guys, be careful")
 	os.Exit(0)
 }
