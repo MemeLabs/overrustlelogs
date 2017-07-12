@@ -891,10 +891,12 @@ func readLogFile(path string) ([]byte, error) {
 
 func nickFilter(nick string) func([]byte) bool {
 	nick += ":"
+	nick = strings.ToLower(nick)
 	return func(line []byte) bool {
-		line = bytes.ToLower(line)
-		nick = strings.ToLower(nick)
-		if LogLinePrefixLength > len(line) || !bytes.HasPrefix(line[LogLinePrefixLength:], []byte(nick)) {
+		if LogLinePrefixLength+len(nick) > len(line) {
+			return false
+		}
+		if !bytes.EqualFold(line[LogLinePrefixLength:LogLinePrefixLength+len(nick)], []byte(nick)) {
 			return false
 		}
 		return true
@@ -903,10 +905,10 @@ func nickFilter(nick string) func([]byte) bool {
 
 func searchKey(nick, filter string) func([]byte) bool {
 	nick += ":"
+	nick = strings.ToLower(nick)
+	filter = strings.ToLower(filter)
 	return func(line []byte) bool {
 		line = bytes.ToLower(line)
-		nick = strings.ToLower(nick)
-		filter = strings.ToLower(filter)
 		if LogLinePrefixLength > len(line) || (!bytes.HasPrefix(line[LogLinePrefixLength:], []byte(nick)) && !bytes.Contains(line[len(nick)+LogLinePrefixLength:], []byte(filter))) {
 			return false
 		}
