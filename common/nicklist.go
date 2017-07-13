@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -141,7 +140,6 @@ func (n *NickSearch) Month(m string) (string, error) {
 	if _, ok := n.months[m]; !ok {
 		return "", errors.New("month not found")
 	}
-	log.Println(filepath.Join(n.path, m))
 	f, err := os.Open(filepath.Join(n.path, m))
 	if err != nil {
 		return "", err
@@ -154,15 +152,12 @@ func (n *NickSearch) Month(m string) (string, error) {
 		if !strings.Contains(file, ".nicks") {
 			continue
 		}
-		log.Println(filepath.Join(n.path, file))
 		nicks := NickCaseMap{}
 		err := ReadNickList(nicks, filepath.Join(n.path, m, file))
 		if err != nil {
-			log.Println(err)
 			return "", err
 		}
 		if nick, ok := nicks[n.nick]; ok {
-			log.Println(nick)
 			return nick, nil
 		}
 	}

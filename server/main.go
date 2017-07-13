@@ -343,13 +343,8 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 func UserHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	vars["channel"] = convertChannelCase(vars["channel"])
-	search, err := common.NewNickSearch(filepath.Join(common.GetConfig().LogPath, vars["channel"]), vars["nick"])
-	if err != nil {
-		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
-		return
-	}
-	nick, err := search.Month(vars["month"])
-	if err != nil {
+	nick, ok := userInMonth(vars["channel"], vars["nick"], vars["month"])
+	if !ok {
 		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
 		return
 	}
@@ -360,47 +355,77 @@ func UserHandle(w http.ResponseWriter, r *http.Request) {
 	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
+func userInMonth(channel, nick, month string) (string, bool) {
+	search, err := common.NewNickSearch(filepath.Join(common.GetConfig().LogPath, channel), nick)
+	if err != nil {
+		return "", false
+	}
+	n, err := search.Month(month)
+	if err != nil {
+		return "", false
+	}
+	return n, true
+}
+
 // BroadcasterHandle channel index
 func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	vars["channel"] = convertChannelCase(vars["channel"])
 	nick := vars["channel"][:len(vars["channel"])-8]
-	search, err := common.NewNickSearch(filepath.Join(common.GetConfig().LogPath, vars["channel"]), nick)
-	if err != nil {
-		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
+	nick, ok := userInMonth(vars["channel"], nick, vars["month"])
+	if !ok {
+		http.Error(w, ErrUserNotFound.Error(), http.StatusInternalServerError)
 		return
 	}
-	rs, err := search.Next()
-	if err == io.EOF {
-		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
-		return
-	} else if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), vars["month"]), nickFilter(rs.Nick()))
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
 // SubscriberHandle channel index
 func SubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), vars["month"]), nickFilter("twitchnotify"))
+	vars["channel"] = convertChannelCase(vars["channel"])
+	nick, ok := userInMonth(vars["channel"], "twitchnotify", vars["month"])
+	if !ok {
+		http.Error(w, errors.New("no subscribers this month :(").Error(), http.StatusInternalServerError)
+		return
+	}
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
 // DestinyBroadcasterHandle destiny logs
 func DestinyBroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, "Destinygg chatlog", vars["month"]), nickFilter("Destiny"))
+	vars["channel"] = "Destinygg chatlog"
+	nick, ok := userInMonth(vars["channel"], "Destiny", vars["month"])
+	if !ok {
+		http.Error(w, ErrUserNotFound.Error(), http.StatusInternalServerError)
+		return
+	}
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
 // DestinySubscriberHandle destiny subscriber logs
 func DestinySubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, "Destinygg chatlog", vars["month"]), nickFilter("Subscriber"))
+	vars["channel"] = "Destinygg chatlog"
+	nick, ok := userInMonth(vars["channel"], "Subscriber", vars["month"])
+	if !ok {
+		http.Error(w, errors.New("no subscribers this month").Error(), http.StatusInternalServerError)
+		return
+	}
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
 // DestinyBanHandle channel ban list
 func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, "Destinygg chatlog", vars["month"]), nickFilter("Ban"))
+	vars["channel"] = "Destinygg chatlog"
+	nick, ok := userInMonth(vars["channel"], "Ban", vars["month"])
+	if !ok {
+		http.Error(w, ErrUserNotFound.Error(), http.StatusInternalServerError)
+		return
+	}
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
 // CurrentBaseHandle shows the most recent months logs directly on the subdomain
@@ -1002,7 +1027,6 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 	}
 
 	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
-	var lineCount int
 	for _, name := range logs {
 		data, err := readLogFile(filepath.Join(path, name))
 		if err != nil {
@@ -1020,12 +1044,7 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 			}
 			if filter(line) {
 				w.Write(line)
-				lineCount++
 			}
 		}
-	}
-	if lineCount == 0 {
-		http.Error(w, ErrSearchKeyNotFound.Error(), http.StatusNotFound)
-		return
 	}
 }
