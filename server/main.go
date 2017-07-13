@@ -342,11 +342,22 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 // UserHandle user log
 func UserHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	if _, ok := vars["filter"]; ok {
-		serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), vars["month"]), searchKey(vars["nick"], vars["filter"]))
+	vars["channel"] = convertChannelCase(vars["channel"])
+	search, err := common.NewNickSearch(filepath.Join(common.GetConfig().LogPath, vars["channel"]), vars["nick"])
+	if err != nil {
+		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
 		return
 	}
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), vars["month"]), nickFilter(vars["nick"]))
+	nick, err := search.Month(vars["month"])
+	if err != nil {
+		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
+		return
+	}
+	if _, ok := vars["filter"]; ok {
+		serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), searchKey(nick, vars["filter"]))
+		return
+	}
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
 // BroadcasterHandle channel index
@@ -856,14 +867,14 @@ func readLogDir(path string) ([]string, error) {
 	if err != nil {
 		return nil, ErrNotFound
 	}
-	files, err := f.Readdir(0)
+	files, err := f.Readdirnames(0)
 	if err != nil {
 		return nil, err
 	}
 	var names []string
 	for _, file := range files {
-		if LogExtension.MatchString(file.Name()) {
-			names = append(names, file.Name())
+		if LogExtension.MatchString(file) {
+			names = append(names, file)
 		}
 	}
 	sort.Strings(names)
