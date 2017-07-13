@@ -374,7 +374,7 @@ func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	nick := vars["channel"][:len(vars["channel"])-8]
 	nick, ok := userInMonth(vars["channel"], nick, vars["month"])
 	if !ok {
-		http.Error(w, ErrUserNotFound.Error(), http.StatusInternalServerError)
+		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
 		return
 	}
 	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
@@ -386,7 +386,7 @@ func SubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	vars["channel"] = convertChannelCase(vars["channel"])
 	nick, ok := userInMonth(vars["channel"], "twitchnotify", vars["month"])
 	if !ok {
-		http.Error(w, errors.New("no subscribers this month :(").Error(), http.StatusInternalServerError)
+		http.Error(w, errors.New("no subscribers this month :(").Error(), http.StatusNotFound)
 		return
 	}
 	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
@@ -398,7 +398,7 @@ func DestinyBroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 	vars["channel"] = "Destinygg chatlog"
 	nick, ok := userInMonth(vars["channel"], "Destiny", vars["month"])
 	if !ok {
-		http.Error(w, ErrUserNotFound.Error(), http.StatusInternalServerError)
+		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
 		return
 	}
 	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
@@ -410,7 +410,7 @@ func DestinySubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	vars["channel"] = "Destinygg chatlog"
 	nick, ok := userInMonth(vars["channel"], "Subscriber", vars["month"])
 	if !ok {
-		http.Error(w, errors.New("no subscribers this month").Error(), http.StatusInternalServerError)
+		http.Error(w, errors.New("no subscribers this month").Error(), http.StatusNotFound)
 		return
 	}
 	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
@@ -422,7 +422,7 @@ func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
 	vars["channel"] = "Destinygg chatlog"
 	nick, ok := userInMonth(vars["channel"], "Ban", vars["month"])
 	if !ok {
-		http.Error(w, ErrUserNotFound.Error(), http.StatusInternalServerError)
+		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
 		return
 	}
 	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
