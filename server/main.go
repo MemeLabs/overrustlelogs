@@ -9,7 +9,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,10 +22,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/CloudyKit/jet"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/slugalisk/overrustlelogs/common"
-	"github.com/yosssi/ace"
 )
 
 // temp ish.. move to config
@@ -47,6 +46,8 @@ var (
 	NicksExtension = regexp.MustCompile(`\.nicks\.gz$`)
 )
 
+var view *jet.Set
+
 func init() {
 	configPath := flag.String("config", "", "config path")
 	flag.Parse()
@@ -56,6 +57,8 @@ func init() {
 // Start server
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	view = jet.NewHTMLSet(common.GetConfig().Server.ViewPath)
+	// view.SetDevelopmentMode(true)
 
 	d := NewDebugger()
 	r := mux.NewRouter()
@@ -81,18 +84,18 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current", d.WatchHandle("CurrentBase", CurrentBaseHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current/{nick:[a-zA-Z0-9_]+}.txt", d.WatchHandle("NickHandle", NickHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current/{nick:[a-zA-Z0-9_]+}", d.WatchHandle("NickHandle", WrapperHandle)).Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", d.WatchHandle("DestinyBroadcaster", DestinyBroadcasterHandle)).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", d.WatchHandle("DestinyBroadcaster", logHandle("Destinygg", "Destiny"))).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", d.WatchHandle("DestinyBroadcaster", WrapperHandle)).Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("DestinySubscriber", DestinySubscriberHandle)).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("DestinySubscriber", logHandle("Destinygg", "Subscriber"))).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", d.WatchHandle("DestinySubscriber", WrapperHandle)).Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans.txt", d.WatchHandle("DestinyBan", DestinyBanHandle)).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans.txt", d.WatchHandle("DestinyBan", logHandle("Destinygg", "Ban"))).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans", d.WatchHandle("DestinyBan", WrapperHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", d.WatchHandle("Broadcaster", BroadcasterHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", d.WatchHandle("Broadcaster", logHandle("", ""))).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", d.WatchHandle("Broadcaster", WrapperHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("Subscriber", SubscriberHandle)).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("Subscriber", logHandle("", "twitchnotify"))).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", d.WatchHandle("Subscriber", WrapperHandle)).Methods("GET")
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
-	// r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("/orl/assets"))))
+	r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("/orl/assets"))))
 
 	api := r.PathPrefix("/api/v1").Subrouter()
 	api.HandleFunc("/status.json", d.WatchHandle("Status", d.HTTPHandle))
@@ -102,9 +105,9 @@ func main() {
 	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/{month:[a-zA-Z]+ [0-9]{4}}/users.json", d.WatchHandle("Users", UsersAPIHandle)).Methods("GET")
 	api.HandleFunc("/stalk/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Queries("limit", "{limit:[0-9]+}").Methods("GET")
 	api.HandleFunc("/stalk/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Stalk", StalkHandle)).Methods("GET")
-	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}", "limit", "{limit:[0-9]+}")
-	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Queries("limit", "{limit:[0-9]+}")
-	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
+	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}", "limit", "{limit:[0-9]+}").Methods("GET")
+	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Queries("limit", "{limit:[0-9]+}").Methods("GET")
+	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}").Methods("GET")
 	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", d.WatchHandle("Mentions", MentionsAPIHandle)).Methods("GET")
 
 	srv := &http.Server{
@@ -199,7 +202,7 @@ func BaseHandle(w http.ResponseWriter, r *http.Request) {
 
 // WrapperHandle static html log wrapper
 func WrapperHandle(w http.ResponseWriter, r *http.Request) {
-	tpl, err := ace.Load(common.GetConfig().Server.ViewPath+"/layout", common.GetConfig().Server.ViewPath+"/wrapper", nil)
+	tpl, err := view.GetTemplate("wrapper")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -209,20 +212,20 @@ func WrapperHandle(w http.ResponseWriter, r *http.Request) {
 	if r.URL.RawQuery != "" {
 		path += "?" + r.URL.RawQuery
 	}
-	if err := tpl.Execute(w, struct{ Path string }{Path: path}); err != nil {
+	if err := tpl.Execute(w, nil, struct{ Path string }{Path: path}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
 // ContactHandle contact page
 func ContactHandle(w http.ResponseWriter, r *http.Request) {
-	tpl, err := ace.Load(common.GetConfig().Server.ViewPath+"/layout", common.GetConfig().Server.ViewPath+"/contact", nil)
+	tpl, err := view.GetTemplate("contact")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-type", "text/html")
-	if err := tpl.Execute(w, nil); err != nil {
+	if err := tpl.Execute(w, nil, nil); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -230,13 +233,13 @@ func ContactHandle(w http.ResponseWriter, r *http.Request) {
 
 // ChangelogHandle changelog page
 func ChangelogHandle(w http.ResponseWriter, r *http.Request) {
-	tpl, err := ace.Load(common.GetConfig().Server.ViewPath+"/layout", common.GetConfig().Server.ViewPath+"/changelog", nil)
+	tpl, err := view.GetTemplate("changelog")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-type", "text/html")
-	if err := tpl.Execute(w, nil); err != nil {
+	if err := tpl.Execute(w, nil, nil); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -367,65 +370,24 @@ func userInMonth(channel, nick, month string) (string, bool) {
 	return n, true
 }
 
-// BroadcasterHandle channel index
-func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	vars["channel"] = convertChannelCase(vars["channel"])
-	nick := vars["channel"][:len(vars["channel"])-8]
-	nick, ok := userInMonth(vars["channel"], nick, vars["month"])
-	if !ok {
-		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
-		return
+// LogHandle serves special logs
+func logHandle(channel, nick string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		if _, ok := vars["channel"]; !ok {
+			vars["channel"] = channel + " chatlog"
+		}
+		if nick == "" {
+			nick = vars["channel"][:len(vars["channel"])-8]
+		}
+		vars["channel"] = convertChannelCase(vars["channel"])
+		nick, ok := userInMonth(vars["channel"], nick, vars["month"])
+		if !ok {
+			http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
+			return
+		}
+		serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
 	}
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
-}
-
-// SubscriberHandle channel index
-func SubscriberHandle(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	vars["channel"] = convertChannelCase(vars["channel"])
-	nick, ok := userInMonth(vars["channel"], "twitchnotify", vars["month"])
-	if !ok {
-		http.Error(w, errors.New("no subscribers this month :(").Error(), http.StatusNotFound)
-		return
-	}
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
-}
-
-// DestinyBroadcasterHandle destiny logs
-func DestinyBroadcasterHandle(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	vars["channel"] = "Destinygg chatlog"
-	nick, ok := userInMonth(vars["channel"], "Destiny", vars["month"])
-	if !ok {
-		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
-		return
-	}
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
-}
-
-// DestinySubscriberHandle destiny subscriber logs
-func DestinySubscriberHandle(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	vars["channel"] = "Destinygg chatlog"
-	nick, ok := userInMonth(vars["channel"], "Subscriber", vars["month"])
-	if !ok {
-		http.Error(w, errors.New("no subscribers this month").Error(), http.StatusNotFound)
-		return
-	}
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
-}
-
-// DestinyBanHandle channel ban list
-func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	vars["channel"] = "Destinygg chatlog"
-	nick, ok := userInMonth(vars["channel"], "Ban", vars["month"])
-	if !ok {
-		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
-		return
-	}
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
 // CurrentBaseHandle shows the most recent months logs directly on the subdomain
@@ -519,18 +481,8 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 	} else {
 		vars["channel"] = "Destinygg chatlog"
 	}
-	var limit int
-	_, ok := vars["limit"]
-	if !ok {
-		limit = math.MaxInt32
-	} else {
-		l, err := strconv.Atoi(vars["limit"])
-		if err != nil {
-			http.Error(w, "limit query is not a integer", http.StatusBadRequest)
-			return
-		}
-		limit = l
-	}
+
+	w.Header().Set("Content-type", "text/plain")
 	if _, ok := vars["date"]; !ok {
 		vars["date"] = time.Now().UTC().Format("2006-01-02")
 	}
@@ -548,9 +500,8 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no logs found :( ", http.StatusNotFound)
 		return
 	}
-	buf := make([]string, 0)
-	lines := [][]byte{}
-	w.Header().Set("Content-type", "application/json")
+
+	var lines [][]byte
 	reader := bufio.NewReaderSize(bytes.NewReader(data), len(data))
 	for {
 		line, err := reader.ReadSlice('\n')
@@ -569,36 +520,47 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no mentions :(", http.StatusNotFound)
 		return
 	}
-	for i := 0; i < len(lines); i++ {
-		if len(buf) == limit {
-			break
+
+	var limit int
+	_, ok := vars["limit"]
+	if !ok {
+		limit = len(lines)
+	} else {
+		l, err := strconv.Atoi(vars["limit"])
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "limit query is not a integer", http.StatusBadRequest)
+			return
 		}
-		if limit < len(lines) {
-			buf = append(buf, string(lines[len(lines)-limit+i]))
-		} else {
-			buf = append(buf, string(lines[i]))
-		}
+		limit = l
 	}
 
-	type m struct {
+	var buf [][]byte
+	buf = lines[len(lines)-limit:]
+
+	type msg struct {
 		Date int64  `json:"date"`
 		Text string `json:"text"`
 		Nick string `json:"nick"`
 	}
-	mentions := make([]m, 0)
+
+	mentions := make([]msg, 0)
 	for _, line := range buf {
-		t, err := time.Parse("2006-01-02 15:04:05 MST", line[1:24])
+		t, err := time.Parse("2006-01-02 15:04:05 MST", string(line[1:24]))
 		if err != nil {
 			continue
 		}
-		ci := strings.Index(line[LogLinePrefixLength:], ":")
-		data := m{}
-		data.Date = t.Unix()
-		data.Nick = line[LogLinePrefixLength : LogLinePrefixLength+ci]
-		data.Text = strings.TrimSpace(line[ci+LogLinePrefixLength+2:])
+
+		i := bytes.Index(line[LogLinePrefixLength:], []byte(":"))
+		data := msg{
+			Date: t.Unix(),
+			Nick: string(line[LogLinePrefixLength : LogLinePrefixLength+i]),
+			Text: strings.TrimSpace(string(line[i+LogLinePrefixLength+2:])),
+		}
 		mentions = append(mentions, data)
 	}
 
+	w.Header().Set("Content-type", "application/json")
 	d, _ := json.Marshal(mentions)
 	w.Write(d)
 }
@@ -958,7 +920,7 @@ func filterKey(line []byte, f string) bool {
 
 // serveError ...
 func serveError(w http.ResponseWriter, e error) {
-	tpl, err := ace.Load(filepath.Join(common.GetConfig().Server.ViewPath, "layout"), filepath.Join(common.GetConfig().Server.ViewPath, "error"), nil)
+	tpl, err := view.GetTemplate("error")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -968,34 +930,33 @@ func serveError(w http.ResponseWriter, e error) {
 		w.WriteHeader(http.StatusNotFound)
 		data["Message"] = e.Error()
 	} else if e != nil {
-		// w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		data["Message"] = e.Error()
 	} else {
-		// w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		data["Message"] = "Unknown Error"
 	}
 	w.Header().Set("Content-type", "text/html")
-	if err := tpl.Execute(w, data); err != nil {
+	if err := tpl.Execute(w, nil, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
 }
 
 // serveDirIndex ...
 func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
-	tpl, err := ace.Load(filepath.Join(common.GetConfig().Server.ViewPath, "layout"), filepath.Join(common.GetConfig().Server.ViewPath, "directory"), nil)
+	tpl, err := view.GetTemplate("directory")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	data := map[string]interface{}{
+	data := map[string][]map[string]string{
 		"Breadcrumbs": []map[string]string{},
 		"Paths":       []map[string]string{},
 	}
 	basePath := ""
 	for _, path := range base {
 		basePath += "/" + path
-		data["Breadcrumbs"] = append(data["Breadcrumbs"].([]map[string]string), map[string]string{
+		data["Breadcrumbs"] = append(data["Breadcrumbs"], map[string]string{
 			"Path": basePath,
 			"Name": path,
 		})
@@ -1006,14 +967,14 @@ func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
 		if filepath.Ext(path) == "" {
 			icon = "folder"
 		}
-		data["Paths"] = append(data["Paths"].([]map[string]string), map[string]string{
+		data["Paths"] = append(data["Paths"], map[string]string{
 			"Path": basePath + strings.Replace(path, ".txt", "", -1),
 			"Name": path,
 			"Icon": icon,
 		})
 	}
 	w.Header().Set("Content-type", "text/html")
-	if err := tpl.Execute(w, data); err != nil {
+	if err := tpl.Execute(w, nil, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -1,8 +1,0 @@
-= content body
-  div class="container"
-    div class="card"
-      div class="card-content center-align"
-        h3
-          span
-            i class="fa fa-github fa-fw"
-          a href="https://github.com/slugalisk/overrustlelogs/commits/master" target="_blank" GitHub

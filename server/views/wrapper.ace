@@ -1,9 +1,0 @@
-= content body
-  div class="row"
-    div class="col m1 l2 hide-on-med-and-down"
-    div class="col s12 m12 l8 hide-on-large-only center-align"
-      iframe src="//rcm-na.amazon-adsystem.com/e/cm?o=1&p=48&l=ur1&category=amazonhomepage_2017&f=ifr&linkID=bbc7c334f3b99b4bf8cd119877973c49&t=orl02-20&tracking_id=orl02-20" width="728" height="90" scrolling="no" border="0" marginwidth="0" style="border:none;" frameborder="0"
-    div class="col s12 m12 l8"
-      div class="text"
-    div class="col m1 l2 hide-on-med-and-down"
-      iframe src="//rcm-na.amazon-adsystem.com/e/cm?o=1&p=29&l=ur1&category=amazonhomepage_2017&f=ifr&linkID=4730b5aea11f768430c3244f9343d82e&t=orl02-20&tracking_id=orl02-20" width="120" height="600" scrolling="no" border="0" marginwidth="0" style="border:none;" frameborder="0"
