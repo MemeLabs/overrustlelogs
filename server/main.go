@@ -377,7 +377,7 @@ func logHandle(channel, nick string) http.HandlerFunc {
 		if _, ok := vars["channel"]; !ok {
 			vars["channel"] = channel + " chatlog"
 		}
-		if nick == "" {
+		if nick == "" || !strings.HasPrefix(vars["channel"], nick) {
 			nick = vars["channel"][:len(vars["channel"])-8]
 		}
 		vars["channel"] = convertChannelCase(vars["channel"])
