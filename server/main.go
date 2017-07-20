@@ -84,18 +84,18 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current", d.WatchHandle("CurrentBase", CurrentBaseHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current/{nick:[a-zA-Z0-9_]+}.txt", d.WatchHandle("NickHandle", NickHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current/{nick:[a-zA-Z0-9_]+}", d.WatchHandle("NickHandle", WrapperHandle)).Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", d.WatchHandle("DestinyBroadcaster", logHandle("Destinygg", "Destiny"))).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", d.WatchHandle("DestinyBroadcaster", DestinyBroadcasterHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", d.WatchHandle("DestinyBroadcaster", WrapperHandle)).Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("DestinySubscriber", logHandle("Destinygg", "Subscriber"))).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("DestinySubscriber", DestinySubscriberHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", d.WatchHandle("DestinySubscriber", WrapperHandle)).Methods("GET")
-	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans.txt", d.WatchHandle("DestinyBan", logHandle("Destinygg", "Ban"))).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans.txt", d.WatchHandle("DestinyBan", DestinyBanHandle)).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans", d.WatchHandle("DestinyBan", WrapperHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", d.WatchHandle("Broadcaster", logHandle("", ""))).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", d.WatchHandle("Broadcaster", BroadcasterHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", d.WatchHandle("Broadcaster", WrapperHandle)).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("Subscriber", logHandle("", "twitchnotify"))).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("Subscriber", SubscriberHandle)).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", d.WatchHandle("Subscriber", WrapperHandle)).Methods("GET")
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
-	// r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("/orl/assets"))))
+	r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("/orl/assets"))))
 
 	api := r.PathPrefix("/api/v1").Subrouter()
 	api.HandleFunc("/status.json", d.WatchHandle("Status", d.HTTPHandle))
@@ -370,24 +370,65 @@ func userInMonth(channel, nick, month string) (string, bool) {
 	return n, true
 }
 
-// LogHandle serves special logs
-func logHandle(channel, nick string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		if _, ok := vars["channel"]; !ok {
-			vars["channel"] = channel + " chatlog"
-		}
-		if nick == "" || !strings.HasPrefix(vars["channel"], nick) {
-			nick = vars["channel"][:len(vars["channel"])-8]
-		}
-		vars["channel"] = convertChannelCase(vars["channel"])
-		nick, ok := userInMonth(vars["channel"], nick, vars["month"])
-		if !ok {
-			http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
-			return
-		}
-		serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
+// BroadcasterHandle channel index
+func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	vars["channel"] = convertChannelCase(vars["channel"])
+	nick := vars["channel"][:len(vars["channel"])-8]
+	nick, ok := userInMonth(vars["channel"], nick, vars["month"])
+	if !ok {
+		http.Error(w, ErrUserNotFound.Error(), http.StatusInternalServerError)
+		return
 	}
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
+}
+
+// SubscriberHandle channel index
+func SubscriberHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	vars["channel"] = convertChannelCase(vars["channel"])
+	nick, ok := userInMonth(vars["channel"], "twitchnotify", vars["month"])
+	if !ok {
+		http.Error(w, errors.New("no subscribers this month :(").Error(), http.StatusInternalServerError)
+		return
+	}
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
+}
+
+// DestinyBroadcasterHandle destiny logs
+func DestinyBroadcasterHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	vars["channel"] = "Destinygg chatlog"
+	nick, ok := userInMonth(vars["channel"], "Destiny", vars["month"])
+	if !ok {
+		http.Error(w, ErrUserNotFound.Error(), http.StatusInternalServerError)
+		return
+	}
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
+}
+
+// DestinySubscriberHandle destiny subscriber logs
+func DestinySubscriberHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	vars["channel"] = "Destinygg chatlog"
+	nick, ok := userInMonth(vars["channel"], "Subscriber", vars["month"])
+	if !ok {
+		http.Error(w, errors.New("no subscribers this month").Error(), http.StatusInternalServerError)
+		return
+	}
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
+}
+
+// DestinyBanHandle channel ban list
+func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	vars["channel"] = "Destinygg chatlog"
+	nick, ok := userInMonth(vars["channel"], "Ban", vars["month"])
+	if !ok {
+		http.Error(w, ErrUserNotFound.Error(), http.StatusInternalServerError)
+		return
+	}
+	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
 // CurrentBaseHandle shows the most recent months logs directly on the subdomain
