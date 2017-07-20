@@ -95,7 +95,7 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", d.WatchHandle("Subscriber", logHandle("", "twitchnotify"))).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", d.WatchHandle("Subscriber", WrapperHandle)).Methods("GET")
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
-	r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("/orl/assets"))))
+	// r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("/orl/assets"))))
 
 	api := r.PathPrefix("/api/v1").Subrouter()
 	api.HandleFunc("/status.json", d.WatchHandle("Status", d.HTTPHandle))
