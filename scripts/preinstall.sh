@@ -43,6 +43,6 @@ go get -u "github.com/gorilla/websocket"
 go get -u "github.com/gorilla/mux"
 go get -u "github.com/gorilla/handlers"
 go get -u "github.com/hashicorp/golang-lru"
-go get -u "github.com/yosssi/ace"
+go get -u "github.com/CloudyKit/jet"
 
 useradd overrustlelogs
