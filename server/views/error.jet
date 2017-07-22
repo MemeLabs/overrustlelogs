@@ -5,7 +5,7 @@
       <div class="card-content">
         <h3 class="center">
           <i class="fa fa-exclamation-triangle"></i>
-          <span> &nbsp; Error {{.["Message"]}}</span>
+          <span> Error {{.}}</span>
         </h3>
       </div>
     </div>

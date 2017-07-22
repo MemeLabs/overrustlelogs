@@ -5,16 +5,10 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
     <title>OverRustle Logs</title>
-    <script type="text/javascript">
-      try { if (!window.CloudFlare) { var CloudFlare = [{ verbose: 0, p: 0, byc: 0, owlid: "cf", bag2: 1, mirage2: 0, oracle: 0, paths: { cloudflare: "/cdn-cgi/nexp/dok3v=1613a3a185/" }, atok: "55f506b8c93b95856ec102f6bc31d73f", petok: "cba3878429ac864995af99d4c3de9c5053d91350-1439773029-1800", betok: "090fb43b0743cfa5ae19b5f1871084b269ee8fb6-1439773029-120", zone: "overrustlelogs.net", rocket: "a", apps: { "ga_key": { "ua": "UA-46946005-1", "ga_bs": "2" } } }]; document.write('<script type="text/javascript" src="//ajax.cloudflare.com/cdn-cgi/nexp/dok3v=e9627cd26a/cloudflare.min.js"><' + '\/script>'); } } catch (e) { };
-    </script>
     <link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico" />
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/materialize/0.100.0/css/materialize.min.css" media="screen,projection" />
     <link rel="stylesheet" href="/assets/css/orl.css" />
-    <script src="//use.fontawesome.com/5fd85f0c6d.js"></script>
-    <script src="//code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/materialize/0.100.0/js/materialize.min.js"></script>
     <script src="/assets/js/orl.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -36,7 +30,7 @@
       (function (path) {
         var selection = location.hash.match(/\#([0-9]+)-([0-9]+)/);
         path && orl.load(path, selection && [selection[1] >> 0, selection[2] >> 0]);
-      })("{{isset(.Path) ? .Path : "" }}")
+      })({{if isset(.Path)}}"{{.Path}}"{{end}})
     </script>
   </head>
   <body>
@@ -73,5 +67,8 @@
       </nav>
     </div>
     {{yield body()}}
+    <script src="//cdnjs.cloudflare.com/ajax/libs/materialize/0.100.0/js/materialize.min.js"></script>
+    <script src="//use.fontawesome.com/5fd85f0c6d.js"></script>
+    <script src="//code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
   </body>
 </html>

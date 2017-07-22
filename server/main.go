@@ -187,14 +187,14 @@ func (d *Debugger) HTTPHandle(w http.ResponseWriter, r *http.Request) {
 
 // NotFoundHandle channel index
 func NotFoundHandle(w http.ResponseWriter, r *http.Request) {
-	serveError(w, ErrNotFound)
+	serveError(w, r, ErrNotFound)
 }
 
 // BaseHandle channel index
 func BaseHandle(w http.ResponseWriter, r *http.Request) {
 	paths, err := readDirIndex(common.GetConfig().LogPath)
 	if err != nil {
-		serveError(w, err)
+		serveError(w, r, err)
 		return
 	}
 	serveDirIndex(w, []string{}, paths)
@@ -250,7 +250,7 @@ func ChannelHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	paths, err := readDirIndex(filepath.Join(common.GetConfig().LogPath, vars["channel"]))
 	if err != nil {
-		serveError(w, err)
+		serveError(w, r, err)
 		return
 	}
 	sort.Sort(byMonth(paths))
@@ -262,7 +262,7 @@ func MonthHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	paths, err := readLogDir(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), vars["month"]))
 	if err != nil {
-		serveError(w, err)
+		serveError(w, r, err)
 		return
 	}
 	metaPaths := []string{"userlogs", "broadcaster.txt", "subscribers.txt"}
@@ -320,12 +320,12 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	f, err := os.Open(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), vars["month"]))
 	if err != nil {
-		serveError(w, ErrNotFound)
+		serveError(w, r, ErrNotFound)
 		return
 	}
 	files, err := f.Readdir(0)
 	if err != nil {
-		serveError(w, err)
+		serveError(w, r, err)
 		return
 	}
 	nicks := common.NickList{}
@@ -710,12 +710,12 @@ func UsersAPIHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	f, err := os.Open(filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"]))
 	if err != nil {
-		serveError(w, ErrNotFound)
+		serveError(w, r, ErrNotFound)
 		return
 	}
 	files, err := f.Readdirnames(0)
 	if err != nil {
-		serveError(w, err)
+		serveError(w, r, err)
 		return
 	}
 	nicks := common.NickList{}
@@ -960,25 +960,22 @@ func filterKey(line []byte, f string) bool {
 }
 
 // serveError ...
-func serveError(w http.ResponseWriter, e error) {
+func serveError(w http.ResponseWriter, r *http.Request, e error) {
 	tpl, err := view.GetTemplate("error")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	data := map[string]interface{}{}
+	w.Header().Set("Content-type", "text/html")
 	if e == ErrNotFound {
 		w.WriteHeader(http.StatusNotFound)
-		data["Message"] = e.Error()
 	} else if e != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		data["Message"] = e.Error()
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
-		data["Message"] = "Unknown Error"
+		e = errors.New("Unknown Error")
 	}
-	w.Header().Set("Content-type", "text/html")
-	if err := tpl.Execute(w, nil, data); err != nil {
+	if err := tpl.Execute(w, nil, e.Error()); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
