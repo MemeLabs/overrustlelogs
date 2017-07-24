@@ -13,9 +13,6 @@ type Config struct {
 		SocketURL string
 		OriginURL string
 		Cookie    string
-		Premium   struct {
-			Users []string
-		}
 	}
 	Twitch struct {
 		LogHost         string

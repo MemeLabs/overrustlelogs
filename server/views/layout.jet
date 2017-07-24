@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+    <title>OverRustle Logs</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico" />
+    <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/materialize/0.100.0/css/materialize.min.css" media="screen,projection" />
+    <link rel="stylesheet" href="/assets/css/orl.css" />
+    <script src="/assets/js/orl.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-46946005-1']);
+      _gaq.push(['_trackPageview']);
+
+      (function () {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+      (function (b) { (function (a) { "__CF" in b && "DJS" in b.__CF ? b.__CF.DJS.push(a) : "addEventListener" in b ? b.addEventListener("load", a, !1) : b.attachEvent("onload", a) })(function () { "FB" in b && "Event" in FB && "subscribe" in FB.Event && (FB.Event.subscribe("edge.create", function (a) { _gaq.push(["_trackSocial", "facebook", "like", a]) }), FB.Event.subscribe("edge.remove", function (a) { _gaq.push(["_trackSocial", "facebook", "unlike", a]) }), FB.Event.subscribe("message.send", function (a) { _gaq.push(["_trackSocial", "facebook", "send", a]) })); "twttr" in b && "events" in twttr && "bind" in twttr.events && twttr.events.bind("tweet", function (a) { if (a) { var b; if (a.target && a.target.nodeName == "IFRAME") a: { if (a = a.target.src) { a = a.split("#")[0].match(/[^?=&]+=([^&]*)?/g); b = 0; for (var c; c = a[b]; ++b)if (c.indexOf("url") === 0) { b = unescape(c.split("=")[1]); break a } } b = void 0 } _gaq.push(["_trackSocial", "twitter", "tweet", b]) } }) }) })(window);
+    </script>
+    <script type="text/javascript">
+      $(function () { $(".button-collapse").sideNav(); });
+    </script>
+    <script type="text/javascript">
+      (function (path) {
+        var selection = location.hash.match(/\#([0-9]+)-([0-9]+)/);
+        path && orl.load(path, selection && [selection[1] >> 0, selection[2] >> 0]);
+      })({{if isset(.Path)}}"{{.Path}}"{{end}})
+    </script>
+  </head>
+  <body>
+    <div class="navbar-fixed">
+      <nav>
+        <div class="row">
+          <div class="col m1 l2 hide-on-med-and-down"></div>
+          <div class="nav-wrapper col s12 m10 l8">
+            <span>
+              <a class="brand-logo" href="/">OverRustle Logs</a>
+            </span>
+            <ul id="nav-mobile" class="right hide-on-med-and-down">
+              <li>
+                <a class="active deep-orange donate" href="https://www.patreon.com/overrustlelogs" target="_blank">Become a Patron!</a>
+              </li>
+              <li>
+                <a class="active" href="//stalk.overrustlelogs.net/">Stalk</a>
+              </li>
+              <li>
+                <a class="active" href="/changelog">Changelog</a>
+              </li>
+              <li>
+                <a class="active" href="/contact">Contact</a>
+              </li>
+              <li>
+                <a class="donate active deep-orange" target="_blank" href="https://twitch.streamlabs.com/overrustlelogs">
+                  <i class="fa fa-paypal fa-fw" aria-hidden="true"></i> Donate
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="col m1 l2 hide-on-med-and-down"></div>
+        </div>
+      </nav>
+    </div>
+    {{yield body()}}
+    <script src="//cdnjs.cloudflare.com/ajax/libs/materialize/0.100.0/js/materialize.min.js"></script>
+    <script src="//use.fontawesome.com/5fd85f0c6d.js"></script>
+    <script src="//code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  </body>
+</html>

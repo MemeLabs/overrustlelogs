@@ -2,8 +2,10 @@ package common
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -131,6 +133,35 @@ func (n *NickSearch) Next() (*NickSearchResult, error) {
 			return &NickSearchResult{nick, n.date}, nil
 		}
 	}
+}
+
+// Month searches for a nick in m
+func (n *NickSearch) Month(m string) (string, error) {
+	if _, ok := n.months[m]; !ok {
+		return "", errors.New("month not found")
+	}
+	f, err := os.Open(filepath.Join(n.path, m))
+	if err != nil {
+		return "", err
+	}
+	nickfiles, err := f.Readdirnames(0)
+	if err != nil {
+		return "", err
+	}
+	for _, file := range nickfiles {
+		if !strings.Contains(file, ".nicks") {
+			continue
+		}
+		nicks := NickCaseMap{}
+		err := ReadNickList(nicks, filepath.Join(n.path, m, file))
+		if err != nil {
+			return "", err
+		}
+		if nick, ok := nicks[n.nick]; ok {
+			return nick, nil
+		}
+	}
+	return "", errors.New("user not found in " + m)
 }
 
 // NickSearchResult nick/path data

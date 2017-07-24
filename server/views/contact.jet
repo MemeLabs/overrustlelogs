@@ -1,0 +1,39 @@
+{{extends "layout.jet"}}
+{{block body()}}
+  <div class="container">
+    <div class="card">
+      <div class="card-content">
+        <h4>Support E-mail</h4>
+        <p>
+          <a class="flow-text" href="mailto:support@overrustlelogs.net">support@overrustlelogs.net</a>
+        </p>
+        <h4>Twitter</h4>
+        <p>
+          <a class="flow-text" href="https://twitter.com/Overrustlelogs">@Overrustlelogs</a>
+        </p>
+        <h4>
+          <a href="https://www.destiny.gg/bigscreen" target="_blank">Destiny.gg Chat</a>
+        </h4>
+        <p class="flow-text">dbc, Tensei and Slugalisk</p>
+        <h4>
+          <i class="fa fa-twitch fa-fw"></i>
+          <span>Twitch.tv</span>
+        </h4>
+        <p>
+          <a class="flow-text" href="https://www.twitch.tv/tenseyi" target="_blank">twitch.tv/tenseyi</a>
+        </p>
+        <p>
+          <a class="flow-text" href="https://www.twitch.tv/dbc__" target="_blank">twitch.tv/dbc__</a>
+        </p>
+        <div class="card-action">
+          <h6 class="center-align">
+            <span>
+              <i class="fa fa-github fa-fw"></i>
+            </span>
+            <a href="https://github.com/slugalisk/overrustlelogs" target="_blank">Fork this project on GitHub</a>
+          </h6>
+        </div>
+      </div>
+    </div>
+  </div>
+{{end}}
