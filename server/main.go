@@ -98,7 +98,7 @@ func main() {
 	// r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("/orl/assets"))))
 
 	api := r.PathPrefix("/api/v1").Subrouter()
-	api.HandleFunc("/status.json", d.WatchHandle("Status", d.HTTPHandle))
+	api.HandleFunc("/status.json", d.WatchHandle("Status", d.HTTPHandle)).Methods("GET")
 	api.HandleFunc("/channels.json", d.WatchHandle("Channels", ChannelsAPIHandle)).Methods("GET")
 	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/months.json", d.WatchHandle("Months", MonthsAPIHandle)).Methods("GET")
 	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/{month:[a-zA-Z]+ [0-9]{4}}/days.json", d.WatchHandle("Months", DaysAPIHandle)).Methods("GET")
