@@ -526,8 +526,7 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		limit = l
 	}
 
-	var buf [][]byte
-	buf = lines[len(lines)-limit:]
+	var buf = lines[len(lines)-limit:]
 
 	type msg struct {
 		Date int64  `json:"date"`

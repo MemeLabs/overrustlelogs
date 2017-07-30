@@ -116,7 +116,7 @@ func (t *TwitchHub) join(ch string, init bool) error {
 		return fmt.Errorf("%s doesn't exist my dude", ch)
 	}
 	if init {
-		t.channels = append(t.channels, ch)
+		t.addChannel(ch)
 		go t.saveChannels()
 	}
 	t.chatLock.Lock()
