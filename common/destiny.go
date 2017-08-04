@@ -14,7 +14,7 @@ import (
 
 // Destiny destiny.gg chat client
 type Destiny struct {
-	connLock sync.RWMutex
+	connLock sync.Mutex
 	conn     *websocket.Conn
 	messages chan *Message
 	quit     chan struct{}
