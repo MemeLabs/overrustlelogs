@@ -19,7 +19,7 @@ import (
 // TwitchHub ...
 type TwitchHub struct {
 	chatLock       sync.RWMutex
-	chats          map[int]*common.Twitch
+	chats          []*common.Twitch
 	chLock         sync.RWMutex
 	channels       []string
 	logHandler     func(m <-chan *common.Message)
@@ -31,7 +31,6 @@ type TwitchHub struct {
 // NewTwitchLogger ...
 func NewTwitchLogger(f func(m <-chan *common.Message)) *TwitchHub {
 	t := &TwitchHub{
-		chats:          make(map[int]*common.Twitch),
 		logHandler:     f,
 		admins:         make(map[string]struct{}),
 		commandChannel: common.GetConfig().Twitch.CommandChannel,
@@ -77,13 +76,13 @@ func (t *TwitchHub) Stop() {
 	close(t.quit)
 	var wg sync.WaitGroup
 
-	t.chatLock.RLock()
+	t.chatLock.Lock()
 	wg.Add(len(t.chats))
 	for i, c := range t.chats {
 		log.Printf("stopping chat: %d\n", i)
 		go c.Stop(&wg)
 	}
-	t.chatLock.RUnlock()
+	t.chatLock.Unlock()
 	wg.Wait()
 }
 
@@ -116,7 +115,7 @@ func (t *TwitchHub) join(ch string, init bool) error {
 		return fmt.Errorf("%s doesn't exist my dude", ch)
 	}
 	if init {
-		t.channels = append(t.channels, ch)
+		t.addChannel(ch)
 		go t.saveChannels()
 	}
 	t.chatLock.Lock()
@@ -130,7 +129,7 @@ func (t *TwitchHub) join(ch string, init bool) error {
 	if chat == nil {
 		chat = common.NewTwitch()
 		chat.Run()
-		t.chats[len(t.chats)] = chat
+		t.chats = append(t.chats, chat)
 		go t.msgHandler(chat)
 	}
 	t.chatLock.Unlock()
@@ -205,14 +204,16 @@ func (t *TwitchHub) saveChannels() error {
 		return err
 	}
 	defer f.Close()
-	t.chLock.Lock()
-	defer t.chLock.Unlock()
+
+	t.chLock.RLock()
 	sort.Strings(t.channels)
 	data, err := json.Marshal(t.channels)
 	if err != nil {
 		log.Printf("error saving channel list %s", err)
 		return err
 	}
+	t.chLock.RUnlock()
+
 	var buf bytes.Buffer
 	if err := json.Indent(&buf, data, "", "\t"); err != nil {
 		log.Printf("error saving channel list %s", err)

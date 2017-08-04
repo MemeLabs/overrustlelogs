@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/materialize/0.100.0/css/materialize.min.css" media="screen,projection" />
     <link rel="stylesheet" href="/assets/css/orl.css" />
     <script src="/assets/js/orl.js"></script>
+    <script src="//code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
       _gaq.push(['_setAccount', 'UA-46946005-1']);
@@ -40,7 +41,7 @@
           <div class="col m1 l2 hide-on-med-and-down"></div>
           <div class="nav-wrapper col s12 m10 l8">
             <span>
-              <a class="brand-logo" href="/">OverRustle Logs</a>
+              <a class="brand-logo" href="/">OverRustleLogs</a>
             </span>
             <ul id="nav-mobile" class="right hide-on-med-and-down">
               <li>
@@ -69,6 +70,5 @@
     {{yield body()}}
     <script src="//cdnjs.cloudflare.com/ajax/libs/materialize/0.100.0/js/materialize.min.js"></script>
     <script src="//use.fontawesome.com/5fd85f0c6d.js"></script>
-    <script src="//code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
   </body>
 </html>

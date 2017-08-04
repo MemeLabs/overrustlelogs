@@ -27,6 +27,8 @@ func NewLogger(logs *ChatLogs) *Logger {
 func (l *Logger) DestinyLog(mc <-chan *common.Message) {
 	var subTrigger bool
 	giftRegex := regexp.MustCompile("^[a-zA-Z0-9_]+ gifted [a-zA-Z0-9_]+ a Tier (I|II|II|IV) subscription!")
+
+loop:
 	for m := range mc {
 		switch m.Type {
 		case "BAN":
@@ -38,14 +40,21 @@ func (l *Logger) DestinyLog(mc <-chan *common.Message) {
 		case "UNMUTE":
 			l.writeLine(m.Time, m.Channel, "Ban", fmt.Sprintf("%s unmuted by %s", m.Data, m.Nick))
 		case "BROADCAST":
-			if strings.Contains(m.Data, "subscriber!") ||
-				strings.Contains(m.Data, "subscribed on Twitch!") ||
-				strings.Contains(m.Data, "has resubscribed! Active for") ||
-				giftRegex.MatchString(m.Data) {
+			subMessages := []string{"subscriber!", "subscribed on Twitch!", "has resubscribed! Active for"}
+
+			for _, smsg := range subMessages {
+				if strings.Contains(m.Data, smsg) {
+					l.writeLine(m.Time, m.Channel, "Subscriber", m.Data)
+					subTrigger = !subTrigger
+					continue loop
+				}
+			}
+			if giftRegex.MatchString(m.Data) {
 				l.writeLine(m.Time, m.Channel, "Subscriber", m.Data)
 				subTrigger = !subTrigger
-				continue
+				continue loop
 			}
+
 			if subTrigger {
 				l.writeLine(m.Time, m.Channel, "SubscriberMessage", m.Data)
 				subTrigger = !subTrigger

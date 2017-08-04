@@ -19,7 +19,7 @@ type Twitch struct {
 	connLock       sync.Mutex
 	sendLock       sync.Mutex
 	conn           *websocket.Conn
-	ChLock         sync.Mutex
+	ChLock         sync.RWMutex
 	channels       []string
 	messages       chan *Message
 	MessagePattern *regexp.Regexp
@@ -251,23 +251,23 @@ func (c *Twitch) removeChannel(ch string) error {
 }
 
 func (c *Twitch) rejoinHandler() {
-	const interval = 1 * time.Hour
+	const interval = 2 * time.Hour
 	ticker := time.NewTicker(interval)
 	for {
 		select {
 		case <-c.quit:
+			ticker.Stop()
 			return
 		case <-ticker.C:
-			c.ChLock.Lock()
+			c.ChLock.RLock()
 			for _, ch := range c.channels {
 				ch = strings.ToLower(ch)
-				log.Printf("rejoining %s\n", ch)
 				if err := c.send("JOIN #" + ch); err != nil {
 					log.Println(err)
 					continue
 				}
 			}
-			c.ChLock.Unlock()
+			c.ChLock.RUnlock()
 		}
 	}
 }
