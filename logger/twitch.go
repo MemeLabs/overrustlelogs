@@ -87,9 +87,14 @@ func (t *TwitchHub) Stop() {
 }
 
 func (t *TwitchHub) runCommand(c *common.Twitch, m *common.Message) {
-	if _, ok := t.admins[m.Nick]; !ok && m.Type != "MSG" {
+	if _, ok := t.admins[m.Nick]; !ok {
 		return
 	}
+
+	if m.Type != "MSG" {
+		return
+	}
+
 	parts := strings.Split(strings.ToLower(m.Data), " ")
 	switch parts[0] {
 	case "!join":
