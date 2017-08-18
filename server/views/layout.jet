@@ -9,8 +9,8 @@
     <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/materialize/0.100.0/css/materialize.min.css" media="screen,projection" />
     <link rel="stylesheet" href="/assets/css/orl.css" />
-    <script src="/assets/js/orl.js"></script>
     <script src="//code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script src="/assets/js/orl.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
       _gaq.push(['_setAccount', 'UA-46946005-1']);
