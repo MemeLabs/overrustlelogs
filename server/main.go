@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -110,7 +111,7 @@ func main() {
 		Addr: common.GetConfig().Server.Address,
 		Handler: handlers.CORS(
 			handlers.AllowedMethods([]string{"GET"}),
-		)(handlers.CompressHandlerLevel(logger(r), 1)),
+		)(logger(r)),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
@@ -123,7 +124,6 @@ func main() {
 	os.Exit(0)
 }
 
-// WatchHandle ...
 func logger(h http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -131,7 +131,7 @@ func logger(h http.Handler) http.HandlerFunc {
 		if strings.HasPrefix(r.URL.Path, "/assets/") || strings.HasPrefix(r.URL.Path, "/css/") || strings.HasPrefix(r.URL.Path, "/js/") {
 			return
 		}
-		log.Printf("served \"%s\" to \"%s\" in %s\n", r.URL.Path, r.Header.Get("Cf-Connecting-Ip"), time.Since(start))
+		fmt.Printf("served \"%s\" to \"%s\" in %s\n", r.URL.Path, r.Header.Get("Cf-Connecting-Ip"), time.Since(start))
 	}
 }
 
