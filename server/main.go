@@ -937,8 +937,8 @@ func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
 		return
 	}
 	data := map[string][]map[string]string{
-		"Breadcrumbs": []map[string]string{},
-		"Paths":       []map[string]string{},
+		"Breadcrumbs": {},
+		"Paths":       {},
 	}
 	basePath := ""
 	for _, path := range base {

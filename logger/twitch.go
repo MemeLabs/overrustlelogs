@@ -87,11 +87,7 @@ func (t *TwitchHub) Stop() {
 }
 
 func (t *TwitchHub) runCommand(c *common.Twitch, m *common.Message) {
-	if _, ok := t.admins[m.Nick]; !ok {
-		return
-	}
-
-	if m.Type != "MSG" {
+	if _, ok := t.admins[m.Nick]; !ok || m.Type != "MSG" {
 		return
 	}
 
@@ -154,10 +150,10 @@ func (t *TwitchHub) msgHandler(c *common.Twitch) {
 			close(messages)
 			return
 		case m := <-c.Messages():
+			messages <- m
 			if t.commandChannel == m.Channel {
 				go t.runCommand(c, m)
 			}
-			messages <- m
 		}
 	}
 }
