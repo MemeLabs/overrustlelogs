@@ -1,2 +1,3 @@
 User-agent: *
-Disallow: /Destinygg chatlog/
+Disallow: /Destinygg*
+Crawl-delay: 2

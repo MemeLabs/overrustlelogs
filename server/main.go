@@ -975,6 +975,7 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 	}
 
 	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
+	w.Header().Set("Cache-control", "max-age=60")
 	for _, name := range logs {
 		data, err := readLogFile(filepath.Join(path, name))
 		if err != nil {
