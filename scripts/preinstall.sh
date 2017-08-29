@@ -5,6 +5,11 @@ if [ -z `which nginx` ]; then
   apt-get install nginx -y
 fi
 
+if [ -z `which varnishd` ]; then
+  apt-get update
+  apt-get install varnish -y
+fi
+
 if [ -z `which go` ]; then
   apt-get update
   apt-get install build-essential git wget curl -y
@@ -24,8 +29,8 @@ if [ -z `which go` ]; then
   echo "export PATH=\$PATH:\$GOPATH/bin:\$GOROOT/bin" >> /etc/profile
   source /etc/profile
 
-  wget https://storage.googleapis.com/golang/go1.8.3.src.tar.gz
-  tar xzf go1.8.3.src.tar.gz
+  wget https://storage.googleapis.com/golang/go1.9.src.tar.gz
+  tar xzf go1.9.src.tar.gz
   cd go/src
   GOROOT_BOOTSTRAP=$GOROOT bash ./make.bash
   cd /tmp

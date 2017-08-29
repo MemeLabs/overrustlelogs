@@ -23,6 +23,8 @@ chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/views
 chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/public/assets
 cp -r $GOPATH/src/$src/package/* /
 
+service varnish restart
+
 echo "pulling channels.json from server"
 rm /var/overrustlelogs/channels.json
 curl https://overrustlelogs.net/api/v1/channels.json > /var/overrustlelogs/channels.json
