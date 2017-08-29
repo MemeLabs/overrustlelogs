@@ -3,6 +3,8 @@
 if [ -z `which nginx` ]; then
   apt-get update
   apt-get install nginx -y
+  rm /etc/nginx/sites-enabled/default
+  systemctl restart nginx
 fi
 
 if [ -z `which varnishd` ]; then
