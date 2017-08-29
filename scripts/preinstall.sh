@@ -17,9 +17,10 @@ if [ -z `which go` ]; then
   pushd . > /dev/null
   cd /tmp
 
-  wget https://storage.googleapis.com/golang/go1.4.3.src.tar.gz
-  tar xzf go1.4.3.src.tar.gz
-  cd go/src
+  git clone https://github.com/golang/go
+  cd go
+  git checkout release-branch.go1.4
+  cd src
   bash ./make.bash
   cd /tmp
   mv go /usr/local/
