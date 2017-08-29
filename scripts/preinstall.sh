@@ -47,7 +47,7 @@ go get -u "github.com/cloudflare/golz4"
 
 # checkout to 1.x branch
 go get -u "github.com/datadog/zstd"
-pushd $GOPATH/github.com/datadog/zstd
+pushd $GOPATH/src/github.com/datadog/zstd
 git checkout 1.x
 popd
 
