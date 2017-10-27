@@ -97,6 +97,7 @@ func (c *Twitch) reconnect() {
 
 // Run connect and start message read loop
 func (c *Twitch) Run() {
+	pinger := time.NewTicker(4 * time.Minute)
 	c.connect()
 	go c.rejoinHandler()
 	go func() {
@@ -125,12 +126,9 @@ func (c *Twitch) Run() {
 				continue
 			}
 
-			if strings.Index(string(msg), "PING") == 0 {
-				err := c.send(strings.Replace(string(msg), "PING", "PONG", -1))
-				if err != nil {
-					log.Printf("error sending PONG: %v", err)
-					c.reconnect()
-				}
+			if strings.HasPrefix(string(msg), "RECONNECT") {
+				log.Printf("got reconnect message: %s", msg)
+				c.reconnect()
 				continue
 			}
 
@@ -149,6 +147,8 @@ func (c *Twitch) Run() {
 				}
 
 				select {
+				case <-pinger.C:
+					c.send("PING :tmi.twitch.tv")
 				case c.messages <- m:
 				default:
 					log.Println("error messages channel full :(")
@@ -169,6 +169,8 @@ func (c *Twitch) Run() {
 				}
 
 				select {
+				case <-pinger.C:
+					c.send("PING :tmi.twitch.tv")
 				case c.messages <- m:
 				default:
 					log.Println("error messages channel full :(")
