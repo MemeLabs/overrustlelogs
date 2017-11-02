@@ -40,7 +40,7 @@ loop:
 		case "UNMUTE":
 			l.writeLine(m.Time, m.Channel, "Ban", fmt.Sprintf("%s unmuted by %s", m.Data, m.Nick))
 		case "BROADCAST":
-			subMessages := []string{"subscriber!", "subscribed on Twitch!", "has resubscribed! Active for"}
+			subMessages := []string{"subscriber!", "subscribed on Twitch!", "has resubscribed! Active for", "has resubscribed on Twitch! active"}
 
 			for _, smsg := range subMessages {
 				if strings.Contains(m.Data, smsg) {
