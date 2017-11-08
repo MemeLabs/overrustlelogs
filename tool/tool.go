@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -19,15 +21,16 @@ import (
 )
 
 var commands = map[string]command{
-	"compress":   compress,
-	"uncompress": uncompress,
-	"read":       read,
-	"readnicks":  readNicks,
-	"nicks":      nicks,
-	"migrate":    migrate,
-	"namechange": namechange,
-	"cleanup":    cleanup,
-	"convert":    convertToZSTD,
+	"compress":      compress,
+	"uncompress":    uncompress,
+	"read":          read,
+	"readnicks":     readNicks,
+	"nicks":         nicks,
+	"migrate":       migrate,
+	"namechange":    namechange,
+	"cleanup":       cleanup,
+	"convert":       convertToZSTD,
+	"createtoplist": createTopList,
 }
 
 func main() {
@@ -102,10 +105,7 @@ func nicks() error {
 			nicks.Add(string(match[1]))
 		}
 	}
-	if err := nicks.WriteTo(regexp.MustCompile("\\.txt(\\.gz)?$").ReplaceAllString(path, ".nicks")); err != nil {
-		return err
-	}
-	return nil
+	return nicks.WriteTo(regexp.MustCompile("\\.txt(\\.gz)?$").ReplaceAllString(path, ".nicks"))
 }
 
 func read() error {
@@ -317,3 +317,101 @@ func lz4Path(path string) string {
 	}
 	return path
 }
+
+// ./tool createToplist /path/to/logs/ "September *"
+func createTopList() error {
+
+	month := os.Args[3]
+	logsPath := os.Args[2]
+
+	filepaths, err := filepath.Glob(filepath.Join(logsPath, "/*", month))
+	if err != nil {
+		log.Printf("error getting filepaths: %v", err)
+		return err
+	}
+
+	for _, mpath := range filepaths {
+		fmt.Printf("creating toplist for %s\n", mpath)
+		toplist := make(map[string]*user)
+
+		files, err := ioutil.ReadDir(mpath)
+		if err != nil {
+			fmt.Printf("error reading folder: %s with: %v", mpath, err)
+			continue
+		}
+
+		for _, file := range files {
+			if !strings.HasSuffix(file.Name(), ".txt.gz") {
+				continue
+			}
+			b, err := common.ReadCompressedFile(filepath.Join(mpath, file.Name()))
+			if err != nil {
+				fmt.Printf("error: %v reading file %s", err, file.Name())
+				continue
+			}
+
+			buf := bytes.NewBuffer(b)
+			scanner := bufio.NewScanner(buf)
+
+			for scanner.Scan() {
+				line := scanner.Bytes()
+				// some 2016 files are borked
+				if !strings.HasPrefix(scanner.Text(), "[") {
+					continue
+				}
+
+				endofdate := len("[2017-08-27 01:57:59 UTC] ")
+				endofnick := bytes.Index(line[endofdate:], []byte(":"))
+
+				nick := line[endofdate : endofnick+endofdate]
+
+				if _, ok := toplist[string(nick)]; !ok {
+					toplist[string(nick)] = &user{
+						Lines:    1,
+						Bytes:    len(line[endofnick+endofdate:]),
+						Username: string(nick),
+					}
+					continue
+				}
+
+				toplist[string(nick)].Lines++
+				toplist[string(nick)].Bytes += len(line[endofnick+endofdate:])
+			}
+
+			if err := scanner.Err(); err != nil {
+				fmt.Fprintln(os.Stderr, "reading standard input:", err)
+			}
+		}
+
+		users := []*user{}
+		for _, u := range toplist {
+			users = append(users, u)
+		}
+		sort.Sort(ByLines(users))
+
+		j, err := json.MarshalIndent(users, "", "\t")
+		if err != nil {
+			fmt.Printf("error marshaling: %v", err)
+			continue
+		}
+
+		err = ioutil.WriteFile(filepath.Join(mpath, "toplist.json"), j, 0644)
+		if err != nil {
+			fmt.Printf("error writing toplist file: %v", err)
+		}
+	}
+
+	return nil
+}
+
+type user struct {
+	Username string `json:"username,omitempty"`
+	Lines    int    `json:"lines,omitempty"`
+	Bytes    int    `json:"bytes,omitempty"`
+}
+
+type ByLines []*user
+
+func (a ByLines) Len() int           { return len(a) }
+func (a ByLines) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByLines) Less(i, j int) bool { return a[i].Lines > a[j].Lines }
