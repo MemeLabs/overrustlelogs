@@ -1023,10 +1023,12 @@ func TopListHandle(w http.ResponseWriter, r *http.Request) {
 	tpl.Breadcrumbs = append(tpl.Breadcrumbs, breadcrumb{"/" + vars["channel"] + "/" + vars["month"], vars["month"]})
 	tpl.Breadcrumbs = append(tpl.Breadcrumbs, breadcrumb{"/" + vars["channel"] + "/" + vars["month"] + "/top" + vars["limit"], "Top" + vars["limit"]})
 
-	if _, err := os.Stat(path); err != nil {
+	fi, err := os.Stat(path)
+	if err != nil {
 		serveError(w, r, errors.New("check back at the end of the month :("))
 		return
 	}
+	tpl.Generated = fi.ModTime().UTC().Format("2006-01-02 15:04:05 MST")
 
 	data, err := common.ReadCompressedFile(path)
 	if err != nil {
@@ -1114,6 +1116,7 @@ type (
 		MaxLimit    int
 		Path        string
 		Breadcrumbs []breadcrumb
+		Generated   string
 	}
 	breadcrumb struct {
 		Path string

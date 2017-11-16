@@ -15,8 +15,7 @@
           {{end}}
           {{if .Limit < .MaxLimit}}
             <a href="{{.Path}}/top{{.MaxLimit}}" class="secondary-content">Show all ({{.MaxLimit}})</a>
-          {{end}}          
-          {{if .Limit >= .MaxLimit}}
+          {{else}}
             <a href="{{.Path}}/top100" class="secondary-content">Show Top100</a>
           {{end}}
         </li>
@@ -28,7 +27,7 @@
               <th><a href="{{.Path}}/top{{.Limit}}?sort=username">Username</a></th>
               <th><a href="{{.Path}}/top{{.Limit}}">Lines</a></th>
               <th><a href="{{.Path}}/top{{.Limit}}?sort=bytes">KiloBytes</a></th>
-              <th><a href="{{.Path}}/top{{.Limit}}?sort=seen">Seen</a></th>
+              <th>Seen</th>
           </tr>
         </thead>
         <tbody>
@@ -43,6 +42,7 @@
         {{end}}
         </tbody>
       </table>
+      <p class="right-align" style="opacity: 0.3">Generated: {{.Generated}}</p>
     </div>
     <div class="col m1 l2 hide-on-med-and-down"></div>
   </div>
