@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"io"
@@ -364,18 +364,26 @@ func createTopList() error {
 				endofnick := bytes.Index(line[endofdate:], []byte(":"))
 
 				nick := line[endofdate : endofnick+endofdate]
+				date, err := time.Parse("[2006-01-02 15:04:05 MST] ", string(line[:endofdate]))
+				if err != nil {
+					fmt.Println(err)
+				}
 
 				if _, ok := toplist[string(nick)]; !ok {
 					toplist[string(nick)] = &user{
 						Lines:    1,
 						Bytes:    len(line[endofnick+endofdate:]),
 						Username: string(nick),
+						Seen:     date.Unix(),
 					}
 					continue
 				}
 
 				toplist[string(nick)].Lines++
 				toplist[string(nick)].Bytes += len(line[endofnick+endofdate:])
+				if toplist[string(nick)].Seen < date.Unix() {
+					toplist[string(nick)].Seen = date.Unix()
+				}
 			}
 
 			if err := scanner.Err(); err != nil {
@@ -389,13 +397,14 @@ func createTopList() error {
 		}
 		sort.Sort(ByLines(users))
 
-		j, err := json.MarshalIndent(users, "", "\t")
+		var buf bytes.Buffer
+		err = gob.NewEncoder(&buf).Encode(users)
 		if err != nil {
-			fmt.Printf("error marshaling: %v", err)
+			fmt.Printf("error encoding users: %v", err)
 			continue
 		}
 
-		err = ioutil.WriteFile(filepath.Join(mpath, "toplist.json"), j, 0644)
+		_, err = common.WriteCompressedFile(filepath.Join(mpath, "toplist.json.gz"), buf.Bytes())
 		if err != nil {
 			fmt.Printf("error writing toplist file: %v", err)
 		}
@@ -405,9 +414,10 @@ func createTopList() error {
 }
 
 type user struct {
-	Username string `json:"username,omitempty"`
-	Lines    int    `json:"lines,omitempty"`
-	Bytes    int    `json:"bytes,omitempty"`
+	Username string
+	Lines    int
+	Bytes    int
+	Seen     int64
 }
 
 type ByLines []*user

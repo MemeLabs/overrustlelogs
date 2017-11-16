@@ -5,20 +5,23 @@
     <div class="col s12 m12 l8 hide-on-large-only center-align"></div>
     <div class="col s12 m12 l8">
       <ul class="collection with-header">
-        {{if len(.["Breadcrumbs"]) >= 1}}
+        {{if len(.Breadcrumbs) >= 1}}
           <li class="collection-header grey darken-3">
             <a href="/">
               <i class="fa fa-home fa-fw"></i>
             </a>
-            {{range v := .["Breadcrumbs"]}}
+            {{range b := .Breadcrumbs}}
               <span> / </span>
-              <a href="{{v["Path"]}}">{{v["Name"]}}</a>
+              <a href="{{b.Path}}">{{b.Name}}</a>
+            {{end}}
+            {{if len(.Breadcrumbs) == 2 && .Top100}}
+              <a href="{{.Breadcrumbs[1].Path}}/top100" class="secondary-content">Top100</a>
             {{end}}
           </li>
         {{end}}
-        {{range .["Paths"]}}
-          <a href="{{.["Path"]}}" class="collection-item">
-            <i class="fa fa-{{.["Icon"]}} fa-fw" aria-hidden="true"></i> {{.["Name"]}}
+        {{range p := .Paths}}
+          <a href="{{p.Path}}" class="collection-item">
+            <i class="fa fa-{{p.Icon}} fa-fw" aria-hidden="true"></i> {{p.Name}}
           </a>
         {{end}}
       </ul>

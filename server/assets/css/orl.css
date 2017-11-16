@@ -15,6 +15,11 @@ a:hover {
 	color: #fff
 }
 
+.secondary-content {
+    float: right;
+    color: #ff5722;
+}
+
 body {
 	background: #212121;
 	color: #fff
@@ -38,6 +43,18 @@ nav ul a:hover {
 	font-style: normal;
 	color: #fff;
 	opacity: 0.8;
+}
+
+tr td {
+	background: #212121;
+	border-bottom: 1px solid #424242;
+	padding: 10px
+}
+
+thead th {
+	background: #212121;
+	border-bottom: 1px solid #424242;
+	padding: 10px
 }
 
 .collection {

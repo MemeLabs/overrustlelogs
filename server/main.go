@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -57,7 +58,7 @@ func init() {
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	view = jet.NewHTMLSet(common.GetConfig().Server.ViewPath)
-	// view.SetDevelopmentMode(true)
+	view.SetDevelopmentMode(true)
 
 	r := mux.NewRouter()
 	r.StrictSlash(true)
@@ -75,6 +76,8 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", DayHandle).Queries("search", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", DayHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}", WrapperHandle).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/top{limit:[0-9]{1,9}}", TopListHandle).Methods("GET").Queries("sort", "{sort:[a-z]+}")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/top{limit:[0-9]{1,9}}", TopListHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs", UsersHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{nick:[a-zA-Z0-9_-]{1,25}}.txt", UserHandle).Queries("search", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/userlogs/{nick:[a-zA-Z0-9_-]{1,25}}.txt", UserHandle).Methods("GET")
@@ -93,7 +96,7 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", SubscriberHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", WrapperHandle).Methods("GET")
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
-	// r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("/orl/assets"))))
+	// r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
 
 	api := r.PathPrefix("/api/v1").Subrouter()
 	api.HandleFunc("/channels.json", ChannelsAPIHandle).Methods("GET")
@@ -929,6 +932,17 @@ func serveError(w http.ResponseWriter, r *http.Request, e error) {
 	}
 }
 
+type (
+	directoryPayload struct {
+		Breadcrumbs []breadcrumb
+		Paths       []path
+		Top100      bool
+	}
+	path struct {
+		Path, Name, Icon string
+	}
+)
+
 // serveDirIndex ...
 func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
 	tpl, err := view.GetTemplate("directory")
@@ -936,32 +950,30 @@ func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	data := map[string][]map[string]string{
-		"Breadcrumbs": {},
-		"Paths":       {},
-	}
+	var dpl directoryPayload
 	basePath := ""
-	for _, path := range base {
-		basePath += "/" + path
-		data["Breadcrumbs"] = append(data["Breadcrumbs"], map[string]string{
-			"Path": basePath,
-			"Name": path,
-		})
+	for _, b := range base {
+		basePath += "/" + b
+		dpl.Breadcrumbs = append(dpl.Breadcrumbs, breadcrumb{Path: basePath, Name: b})
 	}
 	basePath += "/"
-	for _, path := range paths {
+	for _, p := range paths {
 		icon := "file-text"
-		if filepath.Ext(path) == "" {
+		if filepath.Ext(p) == "" {
 			icon = "folder"
 		}
-		data["Paths"] = append(data["Paths"], map[string]string{
-			"Path": basePath + strings.Replace(path, ".txt", "", -1),
-			"Name": path,
-			"Icon": icon,
+		dpl.Paths = append(dpl.Paths, path{
+			Path: basePath + strings.Replace(p, ".txt", "", -1),
+			Name: p,
+			Icon: icon,
 		})
 	}
+	if len(dpl.Breadcrumbs) >= 2 && dpl.Breadcrumbs[1].Name != time.Now().UTC().Format("January 2006") {
+		dpl.Top100 = true
+	}
+
 	w.Header().Set("Content-type", "text/html")
-	if err := tpl.Execute(w, nil, data); err != nil {
+	if err := tpl.Execute(w, nil, dpl); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -997,3 +1009,130 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 		}
 	}
 }
+
+// Todo
+// - sort by bytes, seen, lines(default), username
+// - pages????????
+// TopListHandle channel index
+func TopListHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	var tpl topListPayload
+	path := filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), vars["month"], "toplist.json.gz")
+
+	tpl.Breadcrumbs = append(tpl.Breadcrumbs, breadcrumb{"/" + vars["channel"], vars["channel"]})
+	tpl.Breadcrumbs = append(tpl.Breadcrumbs, breadcrumb{"/" + vars["channel"] + "/" + vars["month"], vars["month"]})
+	tpl.Breadcrumbs = append(tpl.Breadcrumbs, breadcrumb{"/" + vars["channel"] + "/" + vars["month"] + "/top" + vars["limit"], "Top" + vars["limit"]})
+
+	if _, err := os.Stat(path); err != nil {
+		serveError(w, r, errors.New("check back at the end of the month :("))
+		return
+	}
+
+	data, err := common.ReadCompressedFile(path)
+	if err != nil {
+		serveError(w, r, errors.New("something went bad reading the file :("))
+		return
+	}
+
+	toplist := []*user{}
+
+	err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(&toplist)
+	if err != nil {
+		serveError(w, r, errors.New("somthing went wrong :("))
+		return
+	}
+	tpl.MaxLimit = len(toplist) - 1
+
+	limit := 100
+	if l, ok := vars["limit"]; ok {
+		limitquery, err := strconv.Atoi(l)
+		if err == nil {
+			limit = limitquery
+		}
+	}
+	tpl.Limit = limit
+
+	if limit > len(toplist) {
+		limit = len(toplist) - 1
+	}
+
+	if len(toplist) > limit {
+		toplist = toplist[:limit]
+	}
+
+	tpl.Path = "/" + vars["channel"] + "/" + vars["month"]
+
+	if s, ok := vars["sort"]; ok {
+		switch s {
+		case "bytes":
+			sort.Sort(ByBytes(toplist))
+		case "seen":
+			sort.Sort(BySeen(toplist))
+		case "username":
+			sort.Sort(ByUsername(toplist))
+		}
+		tpl.Sort = s
+	}
+	tpl.TopList = toplist
+
+	for _, u := range toplist {
+		u.KiloBytes = fmt.Sprintf("%.1f", float32(u.Bytes)/1024)
+		if u.Seen == 0 {
+			u.SeenString = "Unknown"
+			continue
+		}
+		tm := time.Unix(u.Seen, 0).UTC()
+		u.SeenString = tm.Format("2006-01-02 15:04:05 MST")
+	}
+
+	t, err := view.GetTemplate("toplist")
+	if err != nil {
+		serveError(w, r, errors.New("somthing went wrong getting the template :("))
+		return
+	}
+
+	w.Header().Set("Content-type", "text/html")
+	if err := t.Execute(w, nil, tpl); err != nil {
+		serveError(w, r, errors.New("somthing went wrong :("))
+		return
+	}
+}
+
+type (
+	user struct {
+		Username   string
+		Lines      int
+		Bytes      int
+		Seen       int64
+		SeenString string
+		KiloBytes  string
+	}
+	topListPayload struct {
+		TopList     []*user
+		Sort        string
+		Limit       int
+		MaxLimit    int
+		Path        string
+		Breadcrumbs []breadcrumb
+	}
+	breadcrumb struct {
+		Path string
+		Name string
+	}
+
+	ByBytes    []*user
+	BySeen     []*user
+	ByUsername []*user
+)
+
+func (a ByBytes) Len() int           { return len(a) }
+func (a ByBytes) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByBytes) Less(i, j int) bool { return a[i].Bytes > a[j].Bytes }
+
+func (a BySeen) Len() int           { return len(a) }
+func (a BySeen) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a BySeen) Less(i, j int) bool { return a[i].Seen < a[j].Seen }
+
+func (a ByUsername) Len() int           { return len(a) }
+func (a ByUsername) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByUsername) Less(i, j int) bool { return a[i].Username < a[j].Username }

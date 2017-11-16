@@ -1,0 +1,49 @@
+{{extends "layout.jet"}}
+{{block body()}}
+  <div class="row">
+    <div class="col m1 l2 hide-on-med-and-down"></div>
+    <div class="col s12 m12 l8 hide-on-large-only center-align"></div>
+    <div class="col s12 m12 l8">
+      <ul class="collection with-header">
+        <li class="collection-header grey darken-3">
+          <a href="/">
+            <i class="fa fa-home fa-fw"></i>
+          </a>
+          {{range v := .Breadcrumbs}}
+            <span> / </span>
+            <a href="{{v.Path}}">{{v.Name}}</a>
+          {{end}}
+          {{if .Limit < .MaxLimit}}
+            <a href="{{.Path}}/top{{.MaxLimit}}" class="secondary-content">Show all ({{.MaxLimit}})</a>
+          {{end}}          
+          {{if .Limit >= .MaxLimit}}
+            <a href="{{.Path}}/top100" class="secondary-content">Show Top100</a>
+          {{end}}
+        </li>
+      </ul>
+      <table class="bordered highlight responsive-table">
+        <thead>
+          <tr>
+          <th>#</th>
+              <th><a href="{{.Path}}/top{{.Limit}}?sort=username">Username</a></th>
+              <th><a href="{{.Path}}/top{{.Limit}}">Lines</a></th>
+              <th><a href="{{.Path}}/top{{.Limit}}?sort=bytes">KiloBytes</a></th>
+              <th><a href="{{.Path}}/top{{.Limit}}?sort=seen">Seen</a></th>
+          </tr>
+        </thead>
+        <tbody>
+        {{range i, user := .TopList}}
+          <tr>
+            <td>{{ i + 1 }}</td>
+            <td>{{ user.Username }}</td>
+            <td>{{ user.Lines }}</td>
+            <td>{{ user.KiloBytes }}</td>
+            <td>{{ user.SeenString }}</td>
+          </tr>
+        {{end}}
+        </tbody>
+      </table>
+    </div>
+    <div class="col m1 l2 hide-on-med-and-down"></div>
+  </div>
+{{end}}
