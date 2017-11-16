@@ -35,7 +35,7 @@
         {{range i, user := .TopList}}
           <tr>
             <td>{{ i + 1 }}</td>
-            <td>{{ user.Username }}</td>
+            <td><a href="{{.Path}}/userlogs/{{ user.Username }}">{{ user.Username }}</a></td>
             <td>{{ user.Lines }}</td>
             <td>{{ user.KiloBytes }}</td>
             <td>{{ user.SeenString }}</td>
