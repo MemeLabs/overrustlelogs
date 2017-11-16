@@ -92,6 +92,7 @@ func NewBot(c *common.Destiny) *Bot {
 		"aegis":    b.handleAegis,
 		"bans":     b.handleBans,
 		"subs":     b.handleSubs,
+		"top100":   b.handleTop100,
 	}
 	b.private = map[string]command{
 		"log":         b.handleDestinyLogs,
@@ -460,4 +461,9 @@ func (b *Bot) handleSubs(m *common.Message, r *bufio.Reader) (string, error) {
 
 func (b *Bot) handleUptime(m *common.Message, r *bufio.Reader) (string, error) {
 	return time.Since(b.start).String(), nil
+}
+
+func (b *Bot) handleTop100(m *common.Message, r *bufio.Reader) (string, error) {
+	lastmonth := time.Now().UTC().AddDate(0, -1, 0).Format("January 2006")
+	return "https://overrustlelogs.net/Destinygg%20chatlog/" + strings.Replace(lastmonth, " ", "%20", -1) + "/top100", nil
 }
