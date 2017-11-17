@@ -65,7 +65,7 @@ func main() {
 	r.HandleFunc("/", BaseHandle).Methods("GET")
 	r.HandleFunc("/contact", ContactHandle).Methods("GET")
 	r.HandleFunc("/changelog", ChangelogHandle).Methods("GET")
-	r.HandleFunc("/stalk", StalkerHandle).Methods("GET").Queries("channel", "{channel:[a-zA-Z0-9_-]+}", "username", "{username:[a-zA-Z0-9_-]+}")
+	r.HandleFunc("/stalk", StalkerHandle).Methods("GET").Queries("channel", "{channel:[a-zA-Z0-9_-]+}", "nick", "{nick:[a-zA-Z0-9_-]+}")
 	r.HandleFunc("/stalk", StalkerHandle).Methods("GET")
 	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", MentionsHandle).Methods("GET").Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
 	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", MentionsHandle).Methods("GET")
@@ -1155,7 +1155,7 @@ func (a ByUsername) Less(i, j int) bool { return a[i].Username < a[j].Username }
 func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	channel := vars["channel"]
-	username := vars["username"]
+	nick := vars["nick"]
 
 	t, err := view.GetTemplate("stalk")
 	if err != nil {
@@ -1164,10 +1164,10 @@ func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var spl stalkPayload
-	spl.Username = username
+	spl.Nick = nick
 	spl.Channel = channel
 
-	if channel == "" || username == "" {
+	if channel == "" || nick == "" {
 		if err := t.Execute(w, nil, spl); err != nil {
 			serveError(w, r, errors.New("somthing went wrong 0 :("))
 			return
@@ -1184,7 +1184,7 @@ func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, m := range months {
-		if _, ok := userInMonth(convertChannelCase(channel), username, m.Name()); ok {
+		if _, ok := userInMonth(convertChannelCase(channel), nick, m.Name()); ok {
 			spl.Months = append(spl.Months, m.Name())
 		}
 	}
@@ -1199,7 +1199,7 @@ func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 
 type (
 	stalkPayload struct {
-		Months            []string
-		Username, Channel string
+		Months        []string
+		Nick, Channel string
 	}
 )
