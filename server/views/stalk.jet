@@ -26,8 +26,8 @@
             <label for="channel">Channel</label>
           </div>
           <div class="input-field col s5">
-            <input name="username" type="text" value="{{.Username}}">
-            <label for="username">Username</label>
+            <input name="nick" type="text" value="{{.Nick}}">
+            <label for="nick">Nick</label>
           </div>
           <div class="input-field col s1">
             <button class="btn deep-orange" type="submit">Stalk</button>
@@ -37,7 +37,7 @@
       {{if len(.Months) > 0}}
       <script >
         function appendChunk(month, id) {
-          const link = `https://overrustlelogs.net/{{.Channel}} chatlog/${month}/userlogs/{{.Username}}.txt`;
+          const link = `https://overrustlelogs.net/{{.Channel}} chatlog/${month}/userlogs/{{.Nick}}.txt`;
           var req = new XMLHttpRequest();
           req.open("GET", link, true);
           req.setRequestHeader("Content-Type", "text/plain;charset=UTF-8");
@@ -81,7 +81,7 @@
           <div class="divider" style="opacity: 0.6"></div>
           <div class="collection">
           {{range m := .Months[10:]}}
-            <a href="https://overrustlelogs.net/{{.Channel}} chatlog/{{m}}/userlogs/{{.Username}}" class="collection-item">{{m}}</a>
+            <a href="https://overrustlelogs.net/{{.Channel}} chatlog/{{m}}/userlogs/{{.Nick}}" class="collection-item">{{m}}</a>
           {{end}}
           </div>
         </div>
