@@ -1,0 +1,92 @@
+{{extends "layout.jet"}}
+{{block body()}}
+  <div class="row">
+    <div class="col m1 l2 hide-on-med-and-down">    
+      {{if len(.Months) > 0}}
+        <ul class="section table-of-contents pinned-top">
+          <li><a href="#top">Top</a></li>
+          {{range i, m := .Months}}
+            {{if i < 10}}
+              <li><a href="#month{{i}}">{{m}}</a></li>
+            {{end}}
+          {{end}}
+          {{if len(.Months) > 10}}
+            <li><a href="#more">More Months</a></li>
+          {{end}}
+        </ul>
+      {{end}}
+    </div>
+    <div class="col s12 m12 l8 hide-on-large-only center-align"></div>
+    <div class="col s12 m12 l8 scrollspy" id="top">
+    <br/>
+      <form method="get">
+        <div class="row">
+          <div class="input-field col s5">
+            <input name="channel" type="text" value="{{.Channel}}">
+            <label for="channel">Channel</label>
+          </div>
+          <div class="input-field col s5">
+            <input name="username" type="text" value="{{.Username}}">
+            <label for="username">Username</label>
+          </div>
+          <div class="input-field col s1">
+            <button class="btn deep-orange" type="submit">Stalk</button>
+          </div>
+        </div>
+      </form>      
+      {{if len(.Months) > 0}}
+      <script >
+        function appendChunk(month, id) {
+          const link = `https://overrustlelogs.net/{{.Channel}} chatlog/${month}/userlogs/{{.Username}}.txt`;
+          var req = new XMLHttpRequest();
+          req.open("GET", link, true);
+          req.setRequestHeader("Content-Type", "text/plain;charset=UTF-8");
+          $(`.progressbar${id}`).show();
+          req.onload = function () {
+              const text = req.responseText;
+              $(`.progressbar${id}`).hide();
+              $(`.field${id}`).empty();
+              $("<span />").text(text).appendTo(`.field${id}`);
+          };
+          req.send();
+        }
+        $(document).ready(function () {
+          $('.scrollspy').scrollSpy({
+            scrollOffset: 50
+          });
+          $('.table-of-contents').pushpin({
+            top: 0,
+            offset: 60
+          });
+        });
+      </script>
+        {{range i, m := .Months}}
+          <div class="section scrollspy" id="month{{i}}">
+            <h5>{{m}} <span><button class="waves-effect waves-orange btn-flat @b" onclick="appendChunk('{{m}}', {{i}})">Load</button></span></h5>
+            <div class="field{{i}} text"></div>
+            <div class="progress deep-orange progressbar{{i}}" style="display: none">
+              <div class="indeterminate orange"></div>
+            </div>
+          </div>
+          <div class="divider" style="opacity: 0.6"></div>
+        {{end}}
+        <script>
+          appendChunk('{{.Months[0]}}', '0')
+        </script>
+      {{end}}
+      {{if len(.Months) > 10}}
+        <div id="more" class="scrollspy" >
+          <br/>
+          <h5>More Months</h5>
+          <div class="divider" style="opacity: 0.6"></div>
+          <div class="collection">
+          {{range m := .Months[10:]}}
+            <a href="https://overrustlelogs.net/{{.Channel}} chatlog/{{m}}/userlogs/{{.Username}}" class="collection-item">{{m}}</a>
+          {{end}}
+          </div>
+        </div>
+      {{end}}
+    </div>
+    <div class="col m1 l2 hide-on-med-and-down"></div>
+  </div>
+{{end}}
