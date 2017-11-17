@@ -18,7 +18,12 @@
     </div>
     <div class="col s12 m12 l8 hide-on-large-only center-align"></div>
     <div class="col s12 m12 l8 scrollspy" id="top">
-    <br/>
+      <br/>
+      {{if .Error}}
+        <div class="card-panel red lighten-1">
+          <span class="black-text">{{.Error}}</span>
+        </div>
+      {{end}}
       <form method="get">
         <div class="row">
           <div class="input-field col s5">
