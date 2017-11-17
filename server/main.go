@@ -1193,7 +1193,12 @@ func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 			spl.Months = append(spl.Months, m.Name())
 		}
 	}
-	sort.Sort(byMonth(spl.Months))
+
+	if len(spl.Months) > 0 {
+		sort.Sort(byMonth(spl.Months))
+	} else {
+		spl.Error = fmt.Sprintf("Couldn't find Nick: %s in Channel: %s :(", nick, channel)
+	}
 
 	w.Header().Set("Content-type", "text/html")
 	if err := t.Execute(w, nil, spl); err != nil {
@@ -1204,7 +1209,7 @@ func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 
 type (
 	stalkPayload struct {
-		Months        []string
-		Nick, Channel string
+		Months               []string
+		Nick, Channel, Error string
 	}
 )
