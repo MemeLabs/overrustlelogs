@@ -11,7 +11,23 @@ backend default {
         }
 }
 
+//backend stalk {
+//        .host = "127.0.0.1";
+//        .port = "5000";
+//        .probe = {
+//                .url = "/";
+//                .timeout = 5000 ms;
+//                .interval = 5s;
+//                .window = 2;
+//                .threshold = 2;
+//        }
+//}
+
 sub vcl_recv {
+//        if ( req.http.host ~ "^stalk" ) {
+//               set req.backend_hint = stalk;
+//        }
+
         // Handle compression correctly. Different browsers send different
         // "Accept-Encoding" headers, even though they mostly all support the same
         // compression mechanisms. By consolidating these compression headers into
