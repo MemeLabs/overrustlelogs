@@ -65,6 +65,8 @@ func main() {
 	r.HandleFunc("/", BaseHandle).Methods("GET")
 	r.HandleFunc("/contact", ContactHandle).Methods("GET")
 	r.HandleFunc("/changelog", ChangelogHandle).Methods("GET")
+	r.HandleFunc("/stalk", StalkerHandle).Methods("GET").Queries("channel", "{channel:[a-zA-Z0-9_-]+}", "username", "{username:[a-zA-Z0-9_-]+}")
+	r.HandleFunc("/stalk", StalkerHandle).Methods("GET")
 	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", MentionsHandle).Methods("GET").Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
 	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", MentionsHandle).Methods("GET")
 	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}", WrapperHandle).Methods("GET")
@@ -96,7 +98,7 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", SubscriberHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", WrapperHandle).Methods("GET")
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
-	// r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
+	r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
 
 	api := r.PathPrefix("/api/v1").Subrouter()
 	api.HandleFunc("/channels.json", ChannelsAPIHandle).Methods("GET")
@@ -134,7 +136,11 @@ func logger(h http.Handler) http.HandlerFunc {
 		if strings.HasPrefix(r.URL.Path, "/assets/") || strings.HasPrefix(r.URL.Path, "/css/") || strings.HasPrefix(r.URL.Path, "/js/") {
 			return
 		}
-		fmt.Printf("served \"%s\" to \"%s\" in %s\n", r.URL.Path, r.Header.Get("Cf-Connecting-Ip"), time.Since(start))
+		path := r.URL.Path
+		if r.URL.RawQuery != "" {
+			path += "?" + r.URL.RawQuery
+		}
+		fmt.Printf("served \"%s\" to \"%s\" in %s\n", path, r.Header.Get("Cf-Connecting-Ip"), time.Since(start))
 	}
 }
 
@@ -594,7 +600,7 @@ func MonthsAPIHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-type", "application/json")
-	f, err := os.Open(filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"]))
+	f, err := os.Open(filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog"))
 	if err != nil {
 		d, _ := json.Marshal(Error{err.Error()})
 		http.Error(w, string(d), http.StatusInternalServerError)
@@ -1142,3 +1148,58 @@ func (a BySeen) Less(i, j int) bool { return a[i].Seen < a[j].Seen }
 func (a ByUsername) Len() int           { return len(a) }
 func (a ByUsername) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByUsername) Less(i, j int) bool { return a[i].Username < a[j].Username }
+
+// wip
+// /stalk
+// /stalk?channel=xxx&nick=xxx
+func StalkerHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	channel := vars["channel"]
+	username := vars["username"]
+
+	t, err := view.GetTemplate("stalk")
+	if err != nil {
+		serveError(w, r, errors.New("somthing went wrong getting the template :("))
+		return
+	}
+
+	var spl stalkPayload
+	spl.Username = username
+	spl.Channel = channel
+
+	if channel == "" || username == "" {
+		if err := t.Execute(w, nil, spl); err != nil {
+			serveError(w, r, errors.New("somthing went wrong 0 :("))
+			return
+		}
+		return
+	}
+
+	path := filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]))
+
+	months, err := ioutil.ReadDir(path)
+	if err != nil {
+		serveError(w, r, fmt.Errorf("couldn't find channel: %s ", channel))
+		return
+	}
+
+	for _, m := range months {
+		if _, ok := userInMonth(convertChannelCase(channel), username, m.Name()); ok {
+			spl.Months = append(spl.Months, m.Name())
+		}
+	}
+	sort.Sort(byMonth(spl.Months))
+
+	w.Header().Set("Content-type", "text/html")
+	if err := t.Execute(w, nil, spl); err != nil {
+		serveError(w, r, errors.New("somthing went wrong 1 :("))
+		return
+	}
+}
+
+type (
+	stalkPayload struct {
+		Months            []string
+		Username, Channel string
+	}
+)
