@@ -58,5 +58,6 @@ go get -u "github.com/gorilla/mux"
 go get -u "github.com/gorilla/handlers"
 go get -u "github.com/hashicorp/golang-lru"
 go get -u "github.com/CloudyKit/jet"
+go get -u "github.com/fatih/color"
 
 useradd overrustlelogs

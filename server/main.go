@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/CloudyKit/jet"
+	"github.com/fatih/color"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/slugalisk/overrustlelogs/common"
@@ -44,6 +45,10 @@ var (
 var (
 	LogExtension   = regexp.MustCompile(`\.txt(\.gz)?$`)
 	NicksExtension = regexp.MustCompile(`\.nicks\.gz$`)
+
+	green = color.New(color.FgGreen).SprintFunc()
+	blue  = color.New(color.FgBlue).SprintFunc()
+	cyan  = color.New(color.FgCyan).SprintFunc()
 )
 
 var view *jet.Set
@@ -136,11 +141,11 @@ func logger(h http.Handler) http.HandlerFunc {
 		if strings.HasPrefix(r.URL.Path, "/assets/") || strings.HasPrefix(r.URL.Path, "/css/") || strings.HasPrefix(r.URL.Path, "/js/") {
 			return
 		}
-		path := r.URL.Path
+		path := green(r.URL.Path)
 		if r.URL.RawQuery != "" {
-			path += "?" + r.URL.RawQuery
+			path += blue("?" + r.URL.RawQuery)
 		}
-		fmt.Printf("served \"%s\" to \"%s\" in %s\n", path, r.Header.Get("Cf-Connecting-Ip"), time.Since(start))
+		fmt.Printf("served \"%s\" to \"%s\" in %s\n", path, r.Header.Get("Cf-Connecting-Ip"), cyan(time.Since(start)))
 	}
 }
 
