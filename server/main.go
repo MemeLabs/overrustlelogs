@@ -900,10 +900,13 @@ func searchKey(nick, filter string) func([]byte) bool {
 	filter = strings.ToLower(filter)
 	return func(line []byte) bool {
 		line = bytes.ToLower(line)
-		if LogLinePrefixLength+len(nick) > len(line) || (!bytes.HasPrefix(line[LogLinePrefixLength:], []byte(nick)) && !bytes.Contains(line[len(nick)+LogLinePrefixLength:], []byte(filter))) {
+		if len(line) < LogLinePrefixLength+len(nick) {
 			return false
 		}
-		return true
+		if !bytes.HasPrefix(line[LogLinePrefixLength:], []byte(nick)) {
+			return false
+		}
+		return bytes.Contains(line[LogLinePrefixLength+len(nick):], []byte(filter))
 	}
 }
 
