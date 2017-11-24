@@ -55,6 +55,10 @@ updateLogger(){
 
 	$SSS stop orl-logger
 
+	echo "pulling channels.json from server"
+	rm /var/overrustlelogs/channels.json
+	curl https://overrustlelogs.net/api/v1/channels.json > /var/overrustlelogs/channels.json
+
 	cp $GOPATH/bin/logger /usr/bin/orl-logger
 	cp $GOPATH/bin/tool /usr/bin/orl-tool
 
@@ -67,10 +71,6 @@ updatePack(){
 	cp -r $GOPATH/src/$src/package/* /
 	cp -p /etc/overrustlelogs/overrustlelogs.local.conf /etc/overrustlelogs/overrustlelogs.conf
 
-	echo "pulling channels.json from server"
-	rm /var/overrustlelogs/channels.json
-	curl https://overrustlelogs.net/api/v1/channels.json > /var/overrustlelogs/channels.json
-
 	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs
 	systemctl daemon-reload
 	echo "updated package etc & var"
@@ -78,11 +78,6 @@ updatePack(){
 
 updateServerPack(){
 	$SSS stop orl-server
-
-	echo "pulling channels.json from server"
-	rm /var/overrustlelogs/channels.json
-	curl https://overrustlelogs.net/api/v1/channels.json > /var/overrustlelogs/channels.json
-	chown overrustlelogs:overrustlelogs /var/overrustlelogs/channels.json
 
 	rm -rf /var/overrustlelogs/views
 	rm -rf /var/overrustlelogs/public/assets
