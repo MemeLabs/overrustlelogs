@@ -24,7 +24,6 @@ import (
 
 	"github.com/CloudyKit/jet"
 	"github.com/fatih/color"
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/slugalisk/overrustlelogs/common"
 )
@@ -118,10 +117,8 @@ func main() {
 	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", MentionsAPIHandle).Methods("GET")
 
 	srv := &http.Server{
-		Addr: common.GetConfig().Server.Address,
-		Handler: handlers.CORS(
-			handlers.AllowedMethods([]string{"GET"}),
-		)(logger(r)),
+		Addr:         common.GetConfig().Server.Address,
+		Handler:      logger(r),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
