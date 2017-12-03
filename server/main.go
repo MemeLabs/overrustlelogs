@@ -115,6 +115,8 @@ func main() {
 	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", MentionsAPIHandle).Queries("limit", "{limit:[0-9]+}").Methods("GET")
 	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", MentionsAPIHandle).Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}").Methods("GET")
 	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", MentionsAPIHandle).Methods("GET")
+	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/top{limit:[0-9]{1,9}}.json", TopListApiHandle).Methods("GET").Queries("sort", "{sort:[a-z]+}")
+	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/top{limit:[0-9]{1,9}}.json", TopListApiHandle).Methods("GET")
 
 	srv := &http.Server{
 		Addr:         common.GetConfig().Server.Address,
@@ -1028,74 +1030,10 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 func TopListHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	var tpl topListPayload
-	path := filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), vars["month"], "toplist.json.gz")
-
-	tpl.Breadcrumbs = append(tpl.Breadcrumbs, breadcrumb{"/" + vars["channel"], vars["channel"]})
-	tpl.Breadcrumbs = append(tpl.Breadcrumbs, breadcrumb{"/" + vars["channel"] + "/" + vars["month"], vars["month"]})
-	tpl.Breadcrumbs = append(tpl.Breadcrumbs, breadcrumb{"/" + vars["channel"] + "/" + vars["month"] + "/top" + vars["limit"], "Top" + vars["limit"]})
-
-	fi, err := os.Stat(path)
+	tpl, err := getToplistPayload(vars["channel"], vars["month"], vars["limit"], vars["sort"])
 	if err != nil {
-		serveError(w, r, errors.New("check back at the end of the month :("))
+		serveError(w, r, err)
 		return
-	}
-	tpl.Generated = fi.ModTime().UTC().Format("2006-01-02 15:04:05 MST")
-
-	data, err := common.ReadCompressedFile(path)
-	if err != nil {
-		serveError(w, r, errors.New("something went bad reading the file :("))
-		return
-	}
-
-	toplist := []*user{}
-
-	err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(&toplist)
-	if err != nil {
-		serveError(w, r, errors.New("somthing went wrong :("))
-		return
-	}
-	tpl.MaxLimit = len(toplist) - 1
-
-	limit := 100
-	if l, ok := vars["limit"]; ok {
-		limitquery, err := strconv.Atoi(l)
-		if err == nil {
-			limit = limitquery
-		}
-	}
-	tpl.Limit = limit
-
-	if limit > len(toplist) {
-		limit = len(toplist) - 1
-	}
-
-	if len(toplist) > limit {
-		toplist = toplist[:limit]
-	}
-
-	tpl.Path = "/" + vars["channel"] + "/" + vars["month"]
-
-	if s, ok := vars["sort"]; ok {
-		switch s {
-		case "bytes":
-			sort.Sort(ByBytes(toplist))
-		case "seen":
-			sort.Sort(BySeen(toplist))
-		case "username":
-			sort.Sort(ByUsername(toplist))
-		}
-		tpl.Sort = s
-	}
-	tpl.TopList = toplist
-
-	for _, u := range toplist {
-		u.KiloBytes = fmt.Sprintf("%.1f", float32(u.Bytes)/1024)
-		if u.Seen == 0 {
-			u.SeenString = "Unknown"
-			continue
-		}
-		tm := time.Unix(u.Seen, 0).UTC()
-		u.SeenString = tm.Format("2006-01-02 15:04:05 MST")
 	}
 
 	t, err := view.GetTemplate("toplist")
@@ -1111,6 +1049,95 @@ func TopListHandle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func TopListApiHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	var tpl topListPayload
+
+	tpl, err := getToplistPayload(vars["channel"], vars["month"], vars["limit"], vars["sort"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data, err := json.MarshalIndent(tpl, "", "\t")
+	if err != nil {
+		http.Error(w, "something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-type", "application/json")
+	w.Write(data)
+}
+
+func getToplistPayload(channel, month, limitquery, sortquery string) (topListPayload, error) {
+	var tpl topListPayload
+	path := filepath.Join(common.GetConfig().LogPath, convertChannelCase(channel), month, "toplist.json.gz")
+
+	tpl.Breadcrumbs = append(tpl.Breadcrumbs, breadcrumb{"/" + channel, channel})
+	tpl.Breadcrumbs = append(tpl.Breadcrumbs, breadcrumb{"/" + channel + "/" + month, month})
+	tpl.Breadcrumbs = append(tpl.Breadcrumbs, breadcrumb{"/" + channel + "/" + month + "/top" + limitquery, "Top" + limitquery})
+
+	fi, err := os.Stat(path)
+	if err != nil {
+		return tpl, errors.New("check back at the end of the month :(")
+	}
+	tpl.Generated = fi.ModTime().UTC().Format("2006-01-02 15:04:05 MST")
+
+	data, err := common.ReadCompressedFile(path)
+	if err != nil {
+		return tpl, errors.New("something went bad reading the file :(")
+	}
+
+	toplist := []*user{}
+
+	err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(&toplist)
+	if err != nil {
+		return tpl, errors.New("somthing went wrong :(")
+	}
+	tpl.MaxLimit = len(toplist) - 1
+
+	limit := 100
+	if limitquery != "" {
+		limit, _ = strconv.Atoi(limitquery)
+	}
+
+	tpl.Limit = limit
+
+	if limit > len(toplist) {
+		limit = len(toplist) - 1
+	}
+
+	if len(toplist) > limit {
+		toplist = toplist[:limit]
+	}
+
+	tpl.Path = "/" + channel + "/" + month
+
+	if sortquery != "" {
+		switch sortquery {
+		case "bytes":
+			sort.Sort(ByBytes(toplist))
+		case "seen":
+			sort.Sort(BySeen(toplist))
+		case "username":
+			sort.Sort(ByUsername(toplist))
+		}
+		tpl.Sort = sortquery
+	}
+	tpl.TopList = toplist
+
+	for _, u := range toplist {
+		u.KiloBytes = fmt.Sprintf("%.1f", float32(u.Bytes)/1024)
+		if u.Seen == 0 {
+			u.SeenString = "Unknown"
+			continue
+		}
+		tm := time.Unix(u.Seen, 0).UTC()
+		u.SeenString = tm.Format("2006-01-02 15:04:05 MST")
+	}
+	return tpl, nil
+}
+
 type (
 	user struct {
 		Username   string
@@ -1121,13 +1148,13 @@ type (
 		KiloBytes  string
 	}
 	topListPayload struct {
-		TopList     []*user
-		Sort        string
-		Limit       int
-		MaxLimit    int
-		Path        string
-		Breadcrumbs []breadcrumb
-		Generated   string
+		Sort        string       `json:"sort"`
+		Limit       int          `json:"limit"`
+		MaxLimit    int          `json:"maxLimit"`
+		Path        string       `json:"-"`
+		Breadcrumbs []breadcrumb `json:"-"`
+		Generated   string       `json:"generated"`
+		TopList     []*user      `json:"topList"`
 	}
 	breadcrumb struct {
 		Path string
@@ -1177,7 +1204,7 @@ func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]))
+	path := filepath.Join(common.GetConfig().LogPath, convertChannelCase(channel))
 
 	months, err := ioutil.ReadDir(path)
 	if err != nil {
