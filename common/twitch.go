@@ -66,6 +66,7 @@ func (c *Twitch) connect() {
 
 	c.send("PASS " + conf.Twitch.OAuth)
 	c.send("NICK " + conf.Twitch.Nick)
+	c.send("CAP REQ :twitch.tv/tags")
 	c.send("CAP REQ :twitch.tv/commands")
 
 	for _, ch := range c.channels {
