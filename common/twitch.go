@@ -38,7 +38,7 @@ func NewTwitch() *Twitch {
 		// > @badges=staff/1,broadcaster/1,turbo/1;color=#008000;display-name=ronni;emotes=;mod=0;msg-id=resub;msg-param-months=6;
 		// msg-param-sub-plan=Prime;msg-param-sub-plan-name=Prime;room-id=1337;subscriber=1;system-msg=ronni\shas\ssubscribed\sfor\s6\smonths!;
 		// login=ronni;turbo=1;user-id=1337;user-type=staff :tmi.twitch.tv USERNOTICE #dallas :Great stream -- keep it up!
-		SubPattern: regexp.MustCompile(`system-msg=(.+);tmi-sent-ts.+ \:tmi\.twitch\.tv USERNOTICE #([a-z0-9_-]+)( :.+)?`),
+		SubPattern: regexp.MustCompile(`msg-id=(sub|resub);.+;system-msg=(.+);tmi-sent-ts.+ \:tmi\.twitch\.tv USERNOTICE #([a-z0-9_-]+)( :.+)?`),
 		quit:       make(chan struct{}, 2),
 	}
 }
@@ -145,13 +145,13 @@ func (c *Twitch) Run() {
 
 			s := c.SubPattern.FindAllStringSubmatch(string(msg), -1)
 			for _, v := range s {
-				data := strings.Replace(v[1], "\\s", " ", -1)
-				if v[3] != "" {
-					data += " [SubMessage]: " + v[3][2:]
+				data := strings.Replace(v[2], "\\s", " ", -1)
+				if v[4] != "" {
+					data += " [SubMessage]: " + v[4][2:]
 				}
 				m := &Message{
 					Type:    "MSG",
-					Channel: v[2],
+					Channel: v[3],
 					Nick:    "twitchnotify",
 					Data:    data,
 					Time:    time.Now().UTC(),
