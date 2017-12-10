@@ -66,7 +66,6 @@ func (c *Twitch) connect() {
 
 	c.send("PASS " + conf.Twitch.OAuth)
 	c.send("NICK " + conf.Twitch.Nick)
-	c.send("CAP REQ :twitch.tv/tags")
 	c.send("CAP REQ :twitch.tv/commands")
 
 	for _, ch := range c.channels {
@@ -99,12 +98,21 @@ func (c *Twitch) reconnect() {
 func (c *Twitch) Run() {
 	c.connect()
 	go c.rejoinHandler()
+
+	pingTicker := time.NewTicker(5 * time.Minute)
+
 	go func() {
 		for {
 			select {
 			case <-c.quit:
 				close(c.messages)
 				return
+			case <-pingTicker.C:
+				err := c.send("PING")
+				if err != nil {
+					c.reconnect()
+					continue
+				}
 			default:
 			}
 			c.connLock.Lock()
@@ -126,7 +134,7 @@ func (c *Twitch) Run() {
 			}
 
 			if strings.Index(string(msg), "PING") == 0 {
-				err := c.send(strings.Replace(string(msg), "PING", "PONG", -1))
+				err := c.send("PONG")
 				if err != nil {
 					log.Printf("error sending PONG: %v", err)
 					c.reconnect()

@@ -9,7 +9,7 @@ import (
 // const ...
 const (
 	HandshakeTimeout     = 10 * time.Second
-	MaxChannelsPerChat   = 40
+	MaxChannelsPerChat   = 50
 	MessageBufferSize    = 1000
 	SocketReadTimeout    = 6 * time.Minute
 	SocketReconnectDelay = 20 * time.Second
