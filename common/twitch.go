@@ -97,6 +97,7 @@ func (c *Twitch) reconnect() {
 
 // Run connect and start message read loop
 func (c *Twitch) Run() {
+	pinger := time.NewTicker(4 * time.Minute)
 	c.connect()
 	go c.rejoinHandler()
 
@@ -158,6 +159,8 @@ func (c *Twitch) Run() {
 				}
 
 				select {
+				case <-pinger.C:
+					c.send("PING :tmi.twitch.tv")
 				case c.messages <- m:
 				default:
 					log.Println("error messages channel full :(")
@@ -178,6 +181,8 @@ func (c *Twitch) Run() {
 				}
 
 				select {
+				case <-pinger.C:
+					c.send("PING :tmi.twitch.tv")
 				case c.messages <- m:
 				default:
 					log.Println("error messages channel full :(")

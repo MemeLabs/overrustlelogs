@@ -111,7 +111,7 @@ func (c *Destiny) Run() {
 		}
 
 		if strings.Index(string(msg), "PING") == 0 {
-			err := c.send("PONG", map[string]string{"timestamp": "yee"})
+			err := c.conn.WriteMessage(websocket.TextMessage, bytes.Replace(msg, []byte("PING"), []byte("PONG"), -1))
 			if err != nil {
 				c.reconnect()
 			}
@@ -125,6 +125,7 @@ func (c *Destiny) Run() {
 		}{}
 
 		if err := json.Unmarshal(msg[index+1:], data); err != nil {
+			log.Println(string(msg))
 			continue
 		}
 
