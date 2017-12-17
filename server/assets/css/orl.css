@@ -22,11 +22,35 @@ a:hover {
 
 body {
 	background: #212121;
-	color: #fff
+	color: #fff;
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
 }
 
+  main {
+    flex: 1 0 auto;
+  }
 nav {
 	background-color: #212121
+}
+.no-margin, .footer-pad{
+	padding: 0px 15px
+}
+.copyright-pad{
+	padding: 0px 28px
+}
+.row .col.l7 {
+	padding: 0px
+}
+
+.link-pad{
+	padding-bottom: 5px
+}
+
+.page-footer {
+	background-color: #242424;
+	padding-top: 0px
 }
 
 nav ul li.active {
@@ -44,7 +68,12 @@ nav ul a:hover {
 	color: #fff;
 	opacity: 0.8;
 }
-
+line, .domain{
+	stroke: white
+}
+text {
+	fill: white
+}
 tr td {
 	background: #212121;
 	border-bottom: 1px solid #424242;

@@ -109,6 +109,7 @@ func main() {
 	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/months.json", MonthsAPIHandle).Methods("GET")
 	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/{month:[a-zA-Z]+ [0-9]{4}}/days.json", DaysAPIHandle).Methods("GET")
 	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/{month:[a-zA-Z]+ [0-9]{4}}/users.json", UsersAPIHandle).Methods("GET")
+	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+} chatlog/{month:[a-zA-Z]+ [0-9]{4}}/lines.json", LinesAPIHandle).Methods("GET")
 	api.HandleFunc("/stalk/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", StalkHandle).Queries("limit", "{limit:[0-9]+}").Methods("GET")
 	api.HandleFunc("/stalk/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", StalkHandle).Methods("GET")
 	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", MentionsAPIHandle).Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}", "limit", "{limit:[0-9]+}").Methods("GET")
@@ -667,6 +668,60 @@ func DaysAPIHandle(w http.ResponseWriter, r *http.Request) {
 	w.Write(d)
 }
 
+// LinesAPIHandle lists the channels
+func LinesAPIHandle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	type Error struct {
+		Error string `json:"error"`
+	}
+
+	w.Header().Set("Content-type", "application/json")
+	monthPath := filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"])
+	f, err := os.Open(monthPath)
+	if err != nil {
+		d, _ := json.Marshal(Error{err.Error()})
+		http.Error(w, string(d), http.StatusInternalServerError)
+		return
+	}
+	files, err := f.Readdirnames(0)
+	if err != nil {
+		d, _ := json.Marshal(Error{err.Error()})
+		http.Error(w, string(d), http.StatusInternalServerError)
+		return
+	}
+	var temp struct {
+		Data []struct {
+			Date  string `json:"date"`
+			Lines int    `json:"lines"`
+		} `json:"data"`
+	}
+	for _, v := range files {
+		if strings.Contains(v, ".nicks") {
+			continue
+		}
+		if strings.Contains(v, ".txt.gz") {
+			b, err := common.ReadCompressedFile(filepath.Join(monthPath, v))
+			if err != nil {
+				continue
+			}
+			lines := bytes.Count(b, []byte("\n"))
+			df := "2006-01-02"
+			d, err := time.Parse(df, v[:len(df)])
+			if err != nil {
+				continue
+			}
+			date := d.UTC().UTC().Format("2006-01-02T15:04:05-0700")
+			temp.Data = append(temp.Data, struct {
+				Date  string `json:"date"`
+				Lines int    `json:"lines"`
+			}{Date: date, Lines: lines})
+		}
+	}
+
+	d, _ := json.Marshal(temp)
+	w.Write(d)
+}
+
 // UsersAPIHandle returns the */userlogs directory in json format
 func UsersAPIHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -949,6 +1004,8 @@ type (
 	directoryPayload struct {
 		Breadcrumbs []breadcrumb
 		Paths       []path
+		Channel     string
+		Month       string
 		Top100      bool
 	}
 	path struct {
@@ -968,6 +1025,10 @@ func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
 	for _, b := range base {
 		basePath += "/" + b
 		dpl.Breadcrumbs = append(dpl.Breadcrumbs, breadcrumb{Path: basePath, Name: b})
+	}
+	if len(base) == 2 {
+		dpl.Channel = base[0]
+		dpl.Month = base[1]
 	}
 	basePath += "/"
 	for _, p := range paths {
