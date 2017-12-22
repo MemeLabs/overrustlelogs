@@ -1,96 +1,84 @@
 {{extends "layout.jet"}}
 {{block body()}}
-  <div class="row">
-    <div class="col m1 l2 hide-on-med-and-down"></div>
-    <div class="col s12 m12 l8 hide-on-large-only center-align"></div>
-    <div class="col s12 m12 l8">
-      <ul class="collection with-header">
-        {{if len(.Breadcrumbs) >= 1}}
-          <li class="collection-header grey darken-3">
-            <a href="/">
-              <i class="fa fa-home fa-fw"></i>
-            </a>
-            {{range b := .Breadcrumbs}}
-              <span> / </span>
-              <a href="{{b.Path}}">{{b.Name}}</a>
-            {{end}}
-            {{if len(.Breadcrumbs) == 2 && .Top100}}
-              <a href="{{.Breadcrumbs[1].Path}}/top100" class="secondary-content">Top100</a>
-            {{end}}
-          </li>
-        {{end}}
-        {{range p := .Paths}}
-          <a href="{{p.Path}}" class="collection-item">
-            <i class="fa fa-{{p.Icon}} fa-fw" aria-hidden="true"></i> {{p.Name}}
-          </a>
-        {{end}}
-      </ul>
-    </div>
-    <div class="col m1 l2 hide-on-med-and-down"></div>
-  </div>
+<ul class="collection with-header">
+{{if len(.Breadcrumbs) >= 1}}
+  <li class="collection-header grey darken-3">
+    <a href="/">
+      <i class="fa fa-home fa-fw"></i>
+    </a>
+    {{range b := .Breadcrumbs}}
+      <span> / </span>
+      <a href="{{b.Path}}">{{b.Name}}</a>
+    {{end}}
+    {{if len(.Breadcrumbs) == 2 && .Top100}}
+      <a href="{{.Breadcrumbs[1].Path}}/top100" class="secondary-content">Top100</a>
+    {{end}}
+  </li>
+{{end}}
+{{range p := .Paths}}
+  <a href="{{p.Path}}" class="collection-item">
+    <i class="fa fa-{{p.Icon}} fa-fw" aria-hidden="true"></i> {{p.Name}}
+  </a>
+{{end}}
+</ul>
 {{end}}
 {{block diagram()}}
-  <div class="row">
-    <div class="col m1 l2 hide-on-med-and-down"></div>
-    <div class="col s12 m12 l8 hide-on-large-only center-align"></div>
-    <div class="col s12 m12 l8" id="svg-container">
-        <svg class="dia-pad" id="dia-svg" height="300"></svg>
-        <script src="https://d3js.org/d3.v4.min.js"></script>
-        <script>
-          var con = document.getElementById("svg-container");
-          var s = document.getElementById("dia-svg");
-          s.setAttribute("width",  con.offsetWidth - 35);
+<div id="svg-container">
+  <svg class="dia-pad" id="dia-svg" height="300"></svg>
+  <script src="/assets/js/d3.min.js"></script>
+  <script>
+    var con = document.getElementById("svg-container");
+    var s = document.getElementById("dia-svg");
+    s.setAttribute("width",  con.offsetWidth - 35);
 
-          var svg = d3.select("svg"),
-              margin = {top: 20, right: 20, bottom: 30, left: 50},
-              width = +svg.attr("width") - margin.left - margin.right,
-              height = +svg.attr("height") - margin.top - margin.bottom,
-              g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    var svg = d3.select("svg"),
+        margin = {top: 20, right: 20, bottom: 30, left: 50},
+        width = +svg.attr("width") - margin.left - margin.right,
+        height = +svg.attr("height") - margin.top - margin.bottom,
+        g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-          var parseTime = d3.timeParse("%d-%b-%y");
+    var parseTime = d3.timeParse("%d-%b-%y");
 
-          var x = d3.scaleTime()
-              .rangeRound([0, width]);
+    var x = d3.scaleTime()
+        .rangeRound([0, width]);
 
-          var y = d3.scaleLinear()
-              .rangeRound([height, 0]);
-              d3.interpolate('basis')
-          var line = d3.line()
-          .curve(d3.curveMonotoneX)
-              .x(function(d) { return x(new Date(d.date)); })
-              .y(function(d) { return y(d.lines); });
+    var y = d3.scaleLinear()
+        .rangeRound([height, 0]);
+        d3.interpolate('basis')
+    var line = d3.line()
+    .curve(d3.curveMonotoneX)
+        .x(function(d) { return x(new Date(d.date)); })
+        .y(function(d) { return y(d.lines); });
 
-          d3.json("/api/v1/{{.Channel}}/{{.Month}}/lines.json", function(d) {
-          x.domain(d3.extent(d.data, function(day) { return new Date(day.date); }));
-          y.domain(d3.extent(d.data, function(day) { return day.lines; }));
-          
-          g.append("g")
-              .attr("transform", "translate(0," + height + ")")
-              .call(d3.axisBottom(x))
-              .select(".domain")
-              .remove();
+    d3.json("/api/v1/{{.Channel}}/{{.Month}}/lines.json", function(d) {
+    x.domain(d3.extent(d.data, function(day) { return new Date(day.date); }));
+    y.domain(d3.extent(d.data, function(day) { return day.lines; }));
+    
+    g.append("g")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(x))
+        .select(".domain")
+        .remove();
 
-          g.append("g")
-              .call(d3.axisLeft(y))
-              .append("text")
-              .attr("fill", "#fff")
-              .attr("transform", "rotate(-90)")
-              .attr("y", 6)
-              .attr("dy", "0.71em")
-              .attr("text-anchor", "end")
-              .text("Lines");
+    g.append("g")
+        .call(d3.axisLeft(y))
+        .append("text")
+        .attr("fill", "#fff")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", "0.71em")
+        .attr("text-anchor", "end")
+        .text("Lines");
 
-          g.append("path")
-              .datum(d.data)
-              .attr("fill", "none")
-              .attr("stroke", "#ff5722")
-              .attr("stroke-linejoin", "round")
-              .attr("stroke-linecap", "round")
-              .attr("stroke-width", 1.5)
-              .attr("d", line);
-          });
-        </script>
-    </div>
-    <div class="col m1 l2 hide-on-med-and-down"></div>
-  </div>
+    g.append("path")
+        .datum(d.data)
+        .attr("fill", "none")
+        .attr("stroke", "#ff5722")
+        .attr("stroke-linejoin", "round")
+        .attr("stroke-linecap", "round")
+        .attr("stroke-width", 1.5)
+        .attr("d", line);
+    });
+  </script>
+</div>
 {{end}}

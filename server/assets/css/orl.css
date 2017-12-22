@@ -37,20 +37,9 @@ nav {
 .dia-pad{
 	padding: 0px 15px
 }
-.copyright-pad{
-	padding: 0px 28px
-}
-.row .col.l7 {
-	padding: 0px
-}
 
 .link-pad{
 	padding-bottom: 5px
-}
-
-.page-footer {
-	background-color: #242424;
-	padding-top: 0px
 }
 
 nav ul li.active {

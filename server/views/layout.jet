@@ -68,24 +68,18 @@
       </nav>
     </div>
     <main>
-      {{yield body()}}
-      {{if isset(.Month) && .Month != ""}}
-        {{yield diagram()}}
-      {{end}}
-    </main>
-    <footer class="page-footer">
-      <div class="footer-copyright">
-        <div class="container copyright-pad">
-          © 2017 Copyright Overrustlelogs
-        <a class="grey-text text-lighten-4 right" href="https://github.com/slugalisk/overrustlelogs">
-          <span>
-            <i class="fa fa-github fa-fw"></i>
-          </span>
-          GitHub
-        </a>
+      <div class="row">
+        <div class="col m1 l2 hide-on-med-and-down"></div>
+        <div class="col s12 m12 l8 hide-on-large-only center-align"></div>
+        <div class="col s12 m12 l8">
+          {{yield body()}}
+          {{if isset(.Month) && .Month != ""}}
+            {{yield diagram()}}
+          {{end}}
         </div>
+        <div class="col m1 l2 hide-on-med-and-down"></div>
       </div>
-    </footer>
+    </main>
     <script src="//cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/js/materialize.min.js"></script>
     <script src="//use.fontawesome.com/5fd85f0c6d.js"></script>
   </body>

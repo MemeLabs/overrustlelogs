@@ -1,13 +1,11 @@
 {{extends "layout.jet"}}
 {{block body()}}
-  <div class="container">
-    <div class="card">
-      <div class="card-content">
-        <h3 class="center">
-          <i class="fa fa-exclamation-triangle"></i>
-          <span> Error {{.}}</span>
-        </h3>
-      </div>
-    </div>
+<div class="card">
+  <div class="card-content">
+    <h3 class="center">
+      <i class="fa fa-exclamation-triangle"></i>
+      <span> Error {{.}}</span>
+    </h3>
   </div>
+</div>
 {{end}}

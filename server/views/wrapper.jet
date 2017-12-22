@@ -1,21 +1,13 @@
 {{extends "layout.jet"}}
 {{block body()}}
-  <script type="text/javascript">
-    $(document).ready(function(){
-      $('.scrollspy').scrollSpy();
-    });
-  </script>
-  <div class="row">
-    <div class="col m1 l2 hide-on-med-and-down"></div>
-    <div class="col s12 m12 l8 hide-on-large-only center-align"></div>
-    <div class="col s12 m12 l8">
-      <div class="text"></div>
-    </div>
-    <div class="col m1 l2 hide-on-med-and-down">
-      <div class="fixed-action-btn">
-        <a href="#bottom" class="btn-floating btn-large waves-effect waves-light deep-orange left" style="bottom: 45px; right: 24px;"><i class="material-icons">expand_more</i></a>
-      </div>
-    </div>
-  </div>
-  <div id="bottom" class="scrollspy"></div>
+<script type="text/javascript">
+  $(document).ready(function(){
+    $('.scrollspy').scrollSpy();
+  });
+</script>  
+<div class="text"></div>
+<div class="fixed-action-btn">
+  <a href="#bottom" class="btn-floating btn-large waves-effect waves-light deep-orange left" style="bottom: 45px; right: 24px;"><i class="material-icons">expand_more</i></a>
+</div>
+<div id="bottom" class="scrollspy"></div>
 {{end}}
