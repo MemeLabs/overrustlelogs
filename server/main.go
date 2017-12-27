@@ -689,12 +689,7 @@ func LinesAPIHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, string(d), http.StatusInternalServerError)
 		return
 	}
-	var temp struct {
-		Data []struct {
-			Date  string `json:"date"`
-			Lines int    `json:"lines"`
-		} `json:"data"`
-	}
+	var temp linesData
 	for _, v := range files {
 		if strings.Contains(v, ".nicks") {
 			continue
@@ -717,9 +712,27 @@ func LinesAPIHandle(w http.ResponseWriter, r *http.Request) {
 			}{Date: date, Lines: lines})
 		}
 	}
+	sort.Sort(ByDate(temp))
 
 	d, _ := json.Marshal(temp)
 	w.Write(d)
+}
+
+type ByDate linesData
+
+type linesData struct {
+	Data []struct {
+		Date  string `json:"date"`
+		Lines int    `json:"lines"`
+	} `json:"data"`
+}
+
+func (a ByDate) Len() int      { return len(a.Data) }
+func (a ByDate) Swap(i, j int) { a.Data[i], a.Data[j] = a.Data[j], a.Data[i] }
+func (a ByDate) Less(i, j int) bool {
+	ad, _ := time.Parse("2006-01-02T15:04:05-0700", a.Data[i].Date)
+	bd, _ := time.Parse("2006-01-02T15:04:05-0700", a.Data[j].Date)
+	return ad.Before(bd)
 }
 
 // UsersAPIHandle returns the */userlogs directory in json format
