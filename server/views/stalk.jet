@@ -38,16 +38,17 @@
   {{if len(.Months) > 0}}
   <script >
     function appendChunk(month, id) {
-      const link = `https://overrustlelogs.net/{{.Channel}} chatlog/${month}/userlogs/{{.Nick}}.txt`;
+      const link = `/{{.Channel}} chatlog/${month}/userlogs/{{.Nick}}.txt`;
       var req = new XMLHttpRequest();
       req.open("GET", link, true);
       req.setRequestHeader("Content-Type", "text/plain;charset=UTF-8");
       $(`.progressbar${id}`).show();
       req.onload = function () {
           const text = req.responseText;
-          $(`.progressbar${id}`).hide();
           $(`.field${id}`).empty();
           $("<span />").text(text).appendTo(`.field${id}`);
+          document.getElementById("end"+id).scrollIntoView(false);
+          $(`.progressbar${id}`).hide();
       };
       req.send();
     }
@@ -65,7 +66,7 @@
       <div class="section scrollspy" id="month{{i}}">
         <h5>{{m}} <span><button class="waves-effect waves-orange btn-flat @b" onclick="appendChunk('{{m}}', {{i}})">Load</button></span></h5>
         <div class="field{{i}} text"></div>
-        <div class="progress deep-orange progressbar{{i}}" style="display: none">
+        <div class="progress deep-orange progressbar{{i}}" id="end{{i}}" style="display: none">
           <div class="indeterminate orange"></div>
         </div>
       </div>
