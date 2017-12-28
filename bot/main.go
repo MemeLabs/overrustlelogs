@@ -495,7 +495,7 @@ func (b *Bot) handleClip(m *common.Message, r *bufio.Reader) (string, error) {
 			return fmt.Sprintf("%s pm Tensei and tell him to refresh the tokens.", m.Nick), err
 		}
 		if strings.Contains(err.Error(), "offline channel.") {
-			return fmt.Sprintf("%s hes offline SOTRIGGERED", m.Nick), nil
+			return fmt.Sprintf("%s he's offline SOTRIGGERED", m.Nick), nil
 		}
 		return fmt.Sprintf("%s failed creating a clip, PM Tensei", m.Nick), err
 	}
