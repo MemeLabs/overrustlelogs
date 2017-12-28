@@ -110,6 +110,8 @@ func NewBot(c *common.Destiny) *Bot {
 		"unignore":    b.handleUnignore,
 		"ignorelog":   b.handleIgnoreLog,
 		"unignorelog": b.handleUnignoreLog,
+		"clip":        b.handleClip,
+		"refresh":     b.handleRefreshTokens,
 	}
 	b.ignore = make(map[string]struct{})
 	if d, err := ioutil.ReadFile(common.GetConfig().Bot.IgnoreListPath); err == nil {
@@ -182,6 +184,7 @@ func (b *Bot) Run() {
 		case "PRIVMSG":
 			rs, err := b.runCommand(b.private, m)
 			if err != nil || rs == "" {
+				log.Println(err)
 				continue
 			}
 			if err = b.c.Whisper(m.Nick, rs); err != nil {
@@ -489,16 +492,10 @@ func (b *Bot) handleClip(m *common.Message, r *bufio.Reader) (string, error) {
 	clipid, err := b.clip.CreateClip(ctx, "18074328")
 	if err != nil {
 		if strings.Contains(err.Error(), "Unauthorized") {
-			resp, err := b.clip.RefreshAuthToken(ctx)
-			if err != nil {
-				return "something went wrong, PM Tensei", err
-			}
-			common.GetConfig().Twitch.AccessToken = resp.AccessToken
-			common.GetConfig().Twitch.RefreshToken = resp.RefreshToken
-			err = common.SaveConfig(configPath)
-			if err != nil {
-				return "", err
-			}
+			return fmt.Sprintf("%s pm Tensei and tell him to refresh the tokens.", m.Nick), err
+		}
+		if strings.Contains(err.Error(), "offline channel.") {
+			return fmt.Sprintf("%s hes offline SOTRIGGERED", m.Nick), nil
 		}
 		return fmt.Sprintf("%s failed creating a clip, PM Tensei", m.Nick), err
 	}
@@ -508,6 +505,26 @@ func (b *Bot) handleClip(m *common.Message, r *bufio.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
+	if len(clip.Data) == 0 {
+		return "", fmt.Errorf("clip is empty: %v", clip)
+	}
 	return fmt.Sprintf("%s %s", m.Nick, clip.Data[0].URL), nil
+}
+
+func (b *Bot) handleRefreshTokens(m *common.Message, r *bufio.Reader) (string, error) {
+	if !b.isAdmin(m.Nick) {
+		return "", fmt.Errorf("%s is not a admin", m.Nick)
+	}
+	ctx := context.Background()
+	resp, err := b.clip.RefreshAuthToken(ctx)
+	if err != nil {
+		return "something went wrong", err
+	}
+	common.GetConfig().Twitch.AccessToken = resp.AccessToken
+	common.GetConfig().Twitch.RefreshToken = resp.RefreshToken
+	err = common.SaveConfig(configPath)
+	if err != nil {
+		return "failed saving config", err
+	}
+	return fmt.Sprintf("%s success", m.Nick), nil
 }
