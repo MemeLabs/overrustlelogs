@@ -487,7 +487,7 @@ func (b *Bot) handleClip(m *common.Message, r *bufio.Reader) (string, error) {
 	if !time.Now().After(b.clipCooldown) {
 		return "", errors.New("!clip is on cooldown.")
 	}
-	b.clipCooldown = time.Now().Add(time.Second * 16)
+	b.clipCooldown = time.Now().Add(time.Second * 30)
 	ctx := context.Background()
 	clipid, err := b.clip.CreateClip(ctx, "18074328")
 	if err != nil {
