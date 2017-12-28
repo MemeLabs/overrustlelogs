@@ -1,9 +1,9 @@
 package main
 
 import (
-	"context"
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -19,8 +19,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/tensei/twitch-clip"
 	"github.com/slugalisk/overrustlelogs/common"
+	"github.com/tensei/twitch-clip"
 )
 
 // log paths
@@ -30,11 +30,12 @@ const (
 )
 
 var validNick = regexp.MustCompile("^[a-zA-Z0-9_]+$")
+var configPath string
 
 func init() {
-	configPath := flag.String("config", "", "config path")
+	flag.StringVar(&configPath, "config", "", "config path")
 	flag.Parse()
-	common.SetupConfig(*configPath)
+	common.SetupConfig(configPath)
 }
 
 func main() {
@@ -56,20 +57,20 @@ type command func(m *common.Message, r *bufio.Reader) (string, error)
 
 // Bot commands
 type Bot struct {
-	c           *common.Destiny
-	clip        *twitchClip.Twitch
+	c            *common.Destiny
+	clip         *twitchClip.Twitch
 	clipCooldown time.Time
-	start       time.Time
-	nukeEOL     time.Time
-	nukeText    []byte
-	autoMutes   []string
-	lastLine    string
-	cooldownEOL time.Time
-	public      map[string]command
-	private     map[string]command
-	admins      map[string]struct{}
-	ignore      map[string]struct{}
-	ignoreLog   map[string]struct{}
+	start        time.Time
+	nukeEOL      time.Time
+	nukeText     []byte
+	autoMutes    []string
+	lastLine     string
+	cooldownEOL  time.Time
+	public       map[string]command
+	private      map[string]command
+	admins       map[string]struct{}
+	ignore       map[string]struct{}
+	ignoreLog    map[string]struct{}
 }
 
 // NewBot ...
@@ -488,7 +489,7 @@ func (b *Bot) handleClip(m *common.Message, r *bufio.Reader) (string, error) {
 	clipid, err := b.clip.CreateClip(ctx, "18074328")
 	if err != nil {
 		if strings.Contains(err.Error(), "Unauthorized") {
-			resp, err:= b.clip.RefreshAuthToken(ctx)
+			resp, err := b.clip.RefreshAuthToken(ctx)
 			if err != nil {
 				return "something went wrong, PM Tensei", err
 			}
@@ -507,6 +508,6 @@ func (b *Bot) handleClip(m *common.Message, r *bufio.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	return fmt.Sprintf("%s %s", m.Nick, clip.Data[0].URL), nil
 }
