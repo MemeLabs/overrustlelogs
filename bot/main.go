@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"bufio"
 	"bytes"
 	"encoding/json"
@@ -18,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tensei/twitch-clip"
 	"github.com/slugalisk/overrustlelogs/common"
 )
 
@@ -55,6 +57,8 @@ type command func(m *common.Message, r *bufio.Reader) (string, error)
 // Bot commands
 type Bot struct {
 	c           *common.Destiny
+	clip        *twitchClip.Twitch
+	clipCooldown time.Time
 	start       time.Time
 	nukeEOL     time.Time
 	nukeText    []byte
@@ -93,6 +97,7 @@ func NewBot(c *common.Destiny) *Bot {
 		"bans":     b.handleBans,
 		"subs":     b.handleSubs,
 		"top100":   b.handleTop100,
+		"clip":     b.handleClip,
 	}
 	b.private = map[string]command{
 		"log":         b.handleDestinyLogs,
@@ -121,6 +126,9 @@ func NewBot(c *common.Destiny) *Bot {
 				b.addIgnoreLog(nick)
 			}
 		}
+	}
+	if tc, err := twitchClip.NewClient(common.GetConfig().Twitch.ClientID, common.GetConfig().Twitch.ClientSecret, common.GetConfig().Twitch.AccessToken, common.GetConfig().Twitch.RefreshToken); err == nil {
+		b.clip = tc
 	}
 	return b
 }
@@ -466,4 +474,39 @@ func (b *Bot) handleUptime(m *common.Message, r *bufio.Reader) (string, error) {
 func (b *Bot) handleTop100(m *common.Message, r *bufio.Reader) (string, error) {
 	lastmonth := time.Now().UTC().AddDate(0, -1, 0).Format("January 2006")
 	return "https://overrustlelogs.net/Destinygg%20chatlog/" + strings.Replace(lastmonth, " ", "%20", -1) + "/top100", nil
+}
+
+func (b *Bot) handleClip(m *common.Message, r *bufio.Reader) (string, error) {
+	if b.clip == nil {
+		return "", errors.New("twitch-clip not setup.")
+	}
+	if !time.Now().After(b.clipCooldown) {
+		return "", errors.New("!clip is on cooldown.")
+	}
+	b.clipCooldown = time.Now()
+	ctx := context.Background()
+	clipid, err := b.clip.CreateClip(ctx, "18074328")
+	if err != nil {
+		if strings.Contains(err.Error(), "Unauthorized") {
+			resp, err:= b.clip.RefreshAuthToken(ctx)
+			if err != nil {
+				return "something went wrong, PM Tensei", err
+			}
+			common.GetConfig().Twitch.AccessToken = resp.AccessToken
+			common.GetConfig().Twitch.RefreshToken = resp.RefreshToken
+			err = common.SaveConfig(configPath)
+			if err != nil {
+				return "", err
+			}
+		}
+		return fmt.Sprintf("%s failed creating a clip, PM Tensei", m.Nick), err
+	}
+	time.Sleep(time.Second)
+
+	clip, err := b.clip.GetClip(ctx, clipid)
+	if err != nil {
+		return "", err
+	}
+	
+	return fmt.Sprintf("%s %s", m.Nick, clip.Data[0].URL), nil
 }

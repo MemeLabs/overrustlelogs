@@ -9,35 +9,38 @@ import (
 // Config settings
 type Config struct {
 	DestinyGG struct {
-		LogHost   string
-		SocketURL string
-		OriginURL string
-		Cookie    string
-	}
+		LogHost   string `json:"logHost"`
+		SocketURL string `json:"socketURL"`
+		OriginURL string `json:"originURL"`
+		Cookie    string `json:"cookie"`
+	} `json:"destinyGG"`
 	Twitch struct {
-		LogHost         string
-		SocketURL       string
-		OriginURL       string
-		ClientID        string
-		OAuth           string
-		Nick            string
-		Admins          []string
-		ChannelListPath string
-		CommandChannel  string
-	}
+		LogHost         string   `json:"logHost"`
+		SocketURL       string   `json:"socketURL"`
+		OriginURL       string   `json:"originURL"`
+		ClientID        string   `json:"clientID"`
+		ClientSecret    string   `json:"clientSecret"`
+		AccessToken     string   `json:"accessToken"`
+		RefreshToken    string   `json:"refreshToken"`
+		OAuth           string   `json:"oAuth"`
+		Nick            string   `json:"nick"`
+		Admins          []string `json:"admins"`
+		ChannelListPath string   `json:"channelListPath"`
+		CommandChannel  string   `json:"commandChannel"`
+	} `json:"twitch"`
 	Server struct {
-		ViewPath      string
-		Address       string
-		MaxStalkLines int
-	}
+		ViewPath      string `json:"viewPath"`
+		Address       string `json:"address"`
+		MaxStalkLines int    `json:"maxStalkLines"`
+	} `json:"server"`
 	Bot struct {
-		IgnoreListPath    string
-		IgnoreLogListPath string
-		Admins            []string
-	}
-	LogHost     string
-	LogPath     string
-	MaxOpenLogs int
+		IgnoreListPath    string   `json:"ignoreListPath"`
+		IgnoreLogListPath string   `json:"ignoreLogListPath"`
+		Admins            []string `json:"admins"`
+	} `json:"bot"`
+	LogHost     string `json:"logHost"`
+	LogPath     string `json:"logPath"`
+	MaxOpenLogs int    `json:"maxOpenLogs"`
 }
 
 var config *Config
@@ -61,4 +64,12 @@ func SetupConfig(path string) *Config {
 // GetConfig returns config
 func GetConfig() *Config {
 	return config
+}
+
+func SaveConfig(path string) error {
+	b, err := json.MarshalIndent(&config, "", "\t")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(path, b, 0755)
 }
