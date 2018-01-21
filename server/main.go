@@ -69,7 +69,7 @@ func main() {
 	r.HandleFunc("/", BaseHandle).Methods("GET")
 	r.HandleFunc("/contact", ContactHandle).Methods("GET")
 	r.HandleFunc("/changelog", ChangelogHandle).Methods("GET")
-	r.HandleFunc("/stalk", StalkerHandle).Methods("GET").Queries("channel", "{channel:[a-zA-Z0-9_-]+}", "nick", "{nick:[a-zA-Z0-9_-]+}")
+	r.HandleFunc("/stalk", StalkerHandle).Methods("GET").Queries("channel", "{channel:[a-zA-Z0-9_-]+}", "nick", "{nick:@?[a-zA-Z0-9_-]+}")
 	r.HandleFunc("/stalk", StalkerHandle).Methods("GET")
 	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", MentionsHandle).Methods("GET").Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
 	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", MentionsHandle).Methods("GET")
@@ -1258,7 +1258,7 @@ func (a ByUsername) Less(i, j int) bool { return a[i].Username < a[j].Username }
 func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	channel := vars["channel"]
-	nick := vars["nick"]
+	nick := strings.TrimPrefix(vars["nick"], "@")
 
 	t, err := view.GetTemplate("stalk")
 	if err != nil {
