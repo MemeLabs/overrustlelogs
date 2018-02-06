@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -57,7 +56,6 @@ type command func(m *common.Message, r *bufio.Reader) (string, error)
 // Bot commands
 type Bot struct {
 	c            *common.Destiny
-	clip         *twitchClip.Twitch
 	clipCooldown time.Time
 	start        time.Time
 	nukeEOL      time.Time
@@ -97,7 +95,6 @@ func NewBot(c *common.Destiny) *Bot {
 		"bans":     b.handleBans,
 		"subs":     b.handleSubs,
 		"top100":   b.handleTop100,
-		// "clip":     b.handleClip,
 	}
 	b.private = map[string]command{
 		"log":         b.handleDestinyLogs,
@@ -109,9 +106,8 @@ func NewBot(c *common.Destiny) *Bot {
 		"unignore":    b.handleUnignore,
 		"ignorelog":   b.handleIgnoreLog,
 		"unignorelog": b.handleUnignoreLog,
-		"clip":        b.handleClip,
-		"refresh":     b.handleRefreshTokens,
 	}
+
 	b.ignore = make(map[string]struct{})
 	if d, err := ioutil.ReadFile(common.GetConfig().Bot.IgnoreListPath); err == nil {
 		ignore := []string{}
@@ -129,9 +125,7 @@ func NewBot(c *common.Destiny) *Bot {
 			}
 		}
 	}
-	if tc, err := twitchClip.NewClient(common.GetConfig().Twitch.ClientID, common.GetConfig().Twitch.ClientSecret, common.GetConfig().Twitch.AccessToken, common.GetConfig().Twitch.RefreshToken); err == nil {
-		b.clip = tc
-	}
+
 	return b
 }
 
@@ -477,53 +471,4 @@ func (b *Bot) handleUptime(m *common.Message, r *bufio.Reader) (string, error) {
 func (b *Bot) handleTop100(m *common.Message, r *bufio.Reader) (string, error) {
 	lastmonth := time.Now().UTC().AddDate(0, -1, 0).Format("January 2006")
 	return "https://overrustlelogs.net/Destinygg%20chatlog/" + strings.Replace(lastmonth, " ", "%20", -1) + "/top100", nil
-}
-
-func (b *Bot) handleClip(m *common.Message, r *bufio.Reader) (string, error) {
-	if b.clip == nil {
-		return "", errors.New("twitch-clip not setup.")
-	}
-	if !time.Now().After(b.clipCooldown) {
-		return "", errors.New("!clip is on cooldown.")
-	}
-	b.clipCooldown = time.Now().Add(time.Second * 30)
-	ctx := context.Background()
-	clipid, err := b.clip.CreateClip(ctx, "18074328")
-	if err != nil {
-		if strings.Contains(err.Error(), "Unauthorized") {
-			return fmt.Sprintf("%s pm Tensei and tell him to refresh the tokens.", m.Nick), err
-		}
-		if strings.Contains(err.Error(), "offline channel.") {
-			return fmt.Sprintf("%s he's offline SOTRIGGERED", m.Nick), nil
-		}
-		return fmt.Sprintf("%s failed creating a clip, PM Tensei", m.Nick), err
-	}
-	time.Sleep(time.Second)
-
-	clip, err := b.clip.GetClip(ctx, clipid)
-	if err != nil {
-		return "", err
-	}
-	if len(clip.Data) == 0 {
-		return "", fmt.Errorf("clip is empty: %v", clip)
-	}
-	return fmt.Sprintf("%s %s", m.Nick, clip.Data[0].URL), nil
-}
-
-func (b *Bot) handleRefreshTokens(m *common.Message, r *bufio.Reader) (string, error) {
-	if !b.isAdmin(m.Nick) {
-		return "", fmt.Errorf("%s is not a admin", m.Nick)
-	}
-	ctx := context.Background()
-	resp, err := b.clip.RefreshAuthToken(ctx)
-	if err != nil {
-		return "something went wrong", err
-	}
-	common.GetConfig().Twitch.AccessToken = resp.AccessToken
-	common.GetConfig().Twitch.RefreshToken = resp.RefreshToken
-	err = common.SaveConfig(configPath)
-	if err != nil {
-		return "failed saving config", err
-	}
-	return fmt.Sprintf("%s success", m.Nick), nil
 }
