@@ -33,10 +33,13 @@
 
       if (req.readyState === 4) {
         if (selection) {
-          var span = $('.selection');
-          if (span.length) {
-            $('body').scrollTop(span.offset().top - HEADER_HEIGHT);
-          }
+          $(".selection")[0].scrollIntoView();
+          window.scrollBy(0, - HEADER_HEIGHT);
+          // var span = $('.selection');
+          // if (span.length) {
+          //   // $("html, body").animate({ scrollTop: $(".selection").first().offset().top - HEADER_HEIGHT }, 10);
+          //   span.scrollIntoView();
+          // }
         }
 
         $('.text').on('mouseup', updateHash);
