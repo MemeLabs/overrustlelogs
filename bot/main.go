@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/slugalisk/overrustlelogs/common"
-	"github.com/tensei/twitch-clip"
 )
 
 // log paths
@@ -98,7 +97,7 @@ func NewBot(c *common.Destiny) *Bot {
 		"bans":     b.handleBans,
 		"subs":     b.handleSubs,
 		"top100":   b.handleTop100,
-		"clip":     b.handleClip,
+		// "clip":     b.handleClip,
 	}
 	b.private = map[string]command{
 		"log":         b.handleDestinyLogs,
