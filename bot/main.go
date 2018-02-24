@@ -55,19 +55,18 @@ type command func(m *common.Message, r *bufio.Reader) (string, error)
 
 // Bot commands
 type Bot struct {
-	c            *common.Destiny
-	clipCooldown time.Time
-	start        time.Time
-	nukeEOL      time.Time
-	nukeText     []byte
-	autoMutes    []string
-	lastLine     string
-	cooldownEOL  time.Time
-	public       map[string]command
-	private      map[string]command
-	admins       map[string]struct{}
-	ignore       map[string]struct{}
-	ignoreLog    map[string]struct{}
+	c           *common.Destiny
+	start       time.Time
+	nukeEOL     time.Time
+	nukeText    []byte
+	autoMutes   []string
+	lastLine    string
+	cooldownEOL time.Time
+	public      map[string]command
+	private     map[string]command
+	admins      map[string]struct{}
+	ignore      map[string]struct{}
+	ignoreLog   map[string]struct{}
 }
 
 // NewBot ...
@@ -141,7 +140,14 @@ func (b *Bot) Run() {
 				continue
 			}
 			rs, err := b.runCommand(b.public, m)
-			if err != nil || rs == "" {
+			if err != nil {
+				continue
+			}
+			if rs == "" {
+				err := b.c.Whisper(m.Nick, "user not found")
+				if err != nil {
+					log.Println("error sending whisper: ", err)
+				}
 				continue
 			}
 			if b.isNuked(rs) || b.isInAutoMute(rs) {
