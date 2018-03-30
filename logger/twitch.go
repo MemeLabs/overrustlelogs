@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/slugalisk/overrustlelogs/common"
+	"github.com/MemeLabs/overrustlelogs/common"
 )
 
 // TwitchHub ...

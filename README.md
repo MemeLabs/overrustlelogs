@@ -19,7 +19,7 @@ sudo apt-get install git --assume-yes
 Clone the overrustlelogs repo.
 
 ```bash
-git clone https://github.com/slugalisk/overrustlelogs.git
+git clone https://github.com/MemeLabs/overrustlelogs.git
 ```
 
 ### Step 3

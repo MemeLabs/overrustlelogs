@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/slugalisk/overrustlelogs/common"
+	"github.com/MemeLabs/overrustlelogs/common"
 )
 
 func init() {

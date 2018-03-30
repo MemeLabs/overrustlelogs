@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/golang-lru"
-	"github.com/slugalisk/overrustlelogs/common"
+	"github.com/MemeLabs/overrustlelogs/common"
 )
 
 // var empty struct{}
