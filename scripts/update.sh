@@ -33,9 +33,9 @@ updateBot(){
 	go install $src/bot || exit 2
 
 	$SSS stop orl-bot
-	
+
 	cp $GOPATH/bin/bot /usr/bin/orl-bot
-	
+
 	$SSS start orl-bot
 	echo "updated the orl-bot"
 }
@@ -54,10 +54,6 @@ updateLogger(){
 	go install $src/tool || exit 2
 
 	$SSS stop orl-logger
-
-	echo "pulling channels.json from server"
-	rm /var/overrustlelogs/channels.json
-	curl https://overrustlelogs.net/api/v1/channels.json > /var/overrustlelogs/channels.json
 
 	cp $GOPATH/bin/logger /usr/bin/orl-logger
 	cp $GOPATH/bin/tool /usr/bin/orl-tool
