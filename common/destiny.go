@@ -61,26 +61,11 @@ func (c *Destiny) reconnect() {
 func (c *Destiny) Run() {
 	c.connect()
 	defer close(c.messages)
-	gotPong := time.Now().UTC()
-	pingTicker := time.NewTicker(5 * time.Minute)
 	for {
 		select {
 		case <-c.quit:
 			return
-		case <-pingTicker.C:
-			err := c.send("PING", map[string]string{"timestamp": string(time.Now().UnixNano())})
-			if err != nil {
-				log.Println(err)
-				c.reconnect()
-				continue
-			}
 		default:
-		}
-
-		if time.Now().UTC().Sub(gotPong).Minutes() > 6 {
-			log.Println("didn't get a PONG back, reconnecting...")
-			c.reconnect()
-			continue
 		}
 
 		err := c.conn.SetReadDeadline(time.Now().UTC().Add(SocketReadTimeout))
@@ -102,11 +87,6 @@ func (c *Destiny) Run() {
 		index := bytes.IndexByte(msg, ' ')
 		if index == -1 || len(msg) < index+1 {
 			log.Printf("invalid message %s", msg)
-			continue
-		}
-
-		if strings.Index(string(msg), "PONG") == 0 {
-			gotPong = time.Now().UTC()
 			continue
 		}
 
