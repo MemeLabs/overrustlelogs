@@ -1,9 +1,9 @@
 #!/bin/bash
 
-export src="github.com/slugalisk/overrustlelogs"
+export src="github.com/MemeLabs/overrustlelogs"
 source /etc/profile
 
-mkdir -p $GOPATH/src/github.com/slugalisk
+mkdir -p $GOPATH/src/github.com/MemeLabs
 ln -s $(readlink -e $(dirname $0)/..) $GOPATH/src/$src
 
 go install $src/logger

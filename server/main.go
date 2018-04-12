@@ -25,7 +25,7 @@ import (
 	"github.com/CloudyKit/jet"
 	"github.com/fatih/color"
 	"github.com/gorilla/mux"
-	"github.com/slugalisk/overrustlelogs/common"
+	"github.com/MemeLabs/overrustlelogs/common"
 )
 
 // temp ish.. move to config

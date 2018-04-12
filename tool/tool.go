@@ -17,7 +17,7 @@ import (
 	"time"
 
 	lz4 "github.com/cloudflare/golz4"
-	"github.com/slugalisk/overrustlelogs/common"
+	"github.com/MemeLabs/overrustlelogs/common"
 )
 
 var commands = map[string]command{

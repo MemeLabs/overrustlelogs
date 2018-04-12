@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export src="github.com/slugalisk/overrustlelogs"
+export src="github.com/MemeLabs/overrustlelogs"
 
 ## local mode to deploy ignoring git
 if [[ $1 == "local" ]]; then

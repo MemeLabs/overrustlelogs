@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/slugalisk/overrustlelogs/common"
+	"github.com/MemeLabs/overrustlelogs/common"
 )
 
 // Logger logger
