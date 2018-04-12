@@ -95,13 +95,13 @@ func (t *TwitchHub) runCommand(c *common.Twitch, m *common.Message) {
 	switch parts[0] {
 	case "!join":
 		if err := t.join(parts[1], true); err != nil {
-			c.Message(m.Channel, err.Error())
+			log.Println(c.Message(m.Channel, err.Error()))
 			return
 		}
-		c.Message(m.Channel, fmt.Sprintf("Logging %s", parts[1]))
+		c.Message(m.Channel, fmt.Sprintf("Logging %s", strings.TrimSpace(parts[1])))
 	case "!leave":
 		if err := t.leave(parts[1]); err != nil {
-			c.Message(m.Channel, fmt.Sprintf("Not logging %s", parts[1]))
+			log.Println(c.Message(m.Channel, fmt.Sprintf("Not logging %s", strings.TrimSpace(parts[1]))))
 			return
 		}
 		c.Message(m.Channel, fmt.Sprintf("Leaving %s", parts[1]))
