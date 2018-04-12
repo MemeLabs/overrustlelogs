@@ -161,6 +161,13 @@ func (t *TwitchHub) msgHandler(c *common.Twitch) {
 }
 
 func (t *TwitchHub) leave(ch string) error {
+	if err := t.removeChannel(ch); err != nil {
+		return err
+	}
+	if err := t.saveChannels(); err != nil {
+		return err
+	}
+
 	t.chatLock.Lock()
 	defer t.chatLock.Unlock()
 	for _, c := range t.chats {
@@ -170,12 +177,7 @@ func (t *TwitchHub) leave(ch string) error {
 		if err := c.Leave(ch); err != nil {
 			return fmt.Errorf("error leaving %s: %v", ch, err)
 		}
-		if err := t.removeChannel(ch); err != nil {
-			return fmt.Errorf("error removing channel from list: %v", err)
-		}
-		if err := t.saveChannels(); err != nil {
-			log.Printf("error saving channels: %v", err)
-		}
+
 		log.Println("leaving", ch)
 		return nil
 	}
