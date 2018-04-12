@@ -192,10 +192,11 @@ func (t *TwitchHub) removeChannel(ch string) error {
 	t.chLock.Lock()
 	defer t.chLock.Unlock()
 	sort.Strings(t.channels)
-	i := sort.SearchStrings(t.channels, ch)
-	if i < len(t.channels) && t.channels[i] == ch {
-		t.channels = append(t.channels[:i], t.channels[i+1:]...)
-		return nil
+	for i, c := range t.channels {
+		if strings.EqualFold(ch, c) {
+			t.channels = append(t.channels[:i], t.channels[i+1:]...)
+			return nil
+		}
 	}
 	return fmt.Errorf("didn't find %s in the channels list", ch)
 }
