@@ -12,17 +12,21 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
-	lz4 "github.com/cloudflare/golz4"
 	"github.com/MemeLabs/overrustlelogs/common"
+	lz4 "github.com/cloudflare/golz4"
+	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
 var commands = map[string]command{
 	"compress":      compress,
 	"uncompress":    uncompress,
+	"uncompressAll": uncompressAll,
 	"read":          read,
 	"readnicks":     readNicks,
 	"nicks":         nicks,
@@ -425,3 +429,48 @@ type ByLines []*user
 func (a ByLines) Len() int           { return len(a) }
 func (a ByLines) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByLines) Less(i, j int) bool { return a[i].Lines > a[j].Lines }
+
+func uncompressAll() error {
+	logsPath := os.Args[2]
+	if logsPath == "" {
+		return fmt.Errorf("didn't provide a path to the logs")
+	}
+
+	MAXWORKERS := runtime.NumCPU()
+
+	files, err := filepath.Glob(filepath.Join(logsPath, "/*/*/*.gz"))
+	if err != nil || len(files) < 1 {
+		log.Println("couldn't find any compressed log files in", logsPath)
+		return err
+	}
+
+	bar := pb.StartNew(len(files))
+
+	wg := sync.WaitGroup{}
+	wg.Add(MAXWORKERS)
+
+	queue := make(chan string, len(files))
+	for i := 0; i < MAXWORKERS; i++ {
+		go func(queue <-chan string, i int, cb *pb.ProgressBar) {
+			for file := range queue {
+				f, err := common.UncompressFile(file)
+				if err != nil {
+					log.Println(err, file)
+					continue
+				}
+				f.Close()
+				cb.Increment()
+			}
+			wg.Done()
+		}(queue, i, bar)
+	}
+
+	for _, file := range files {
+		queue <- file
+	}
+
+	close(queue)
+	wg.Wait()
+	bar.Finish()
+	return nil
+}
