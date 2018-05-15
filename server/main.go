@@ -468,7 +468,7 @@ func MentionsHandle(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		lowerLine := bytes.ToLower(line)
-		if bytes.Contains(lowerLine[bytes.Index(lowerLine[LogLinePrefixLength:], []byte(":"))+LogLinePrefixLength:], bytes.ToLower([]byte(" "+vars["nick"]))) {
+		if isMentioned([]byte(" "+vars["nick"]), lowerLine) {
 			w.Write(line)
 			lineCount++
 		}
@@ -476,6 +476,11 @@ func MentionsHandle(w http.ResponseWriter, r *http.Request) {
 	if lineCount == 0 {
 		http.Error(w, "no mentions :(", http.StatusNotFound)
 	}
+}
+
+func isMentioned(nick, line []byte) bool {
+	colonIndex := bytes.Index(line[LogLinePrefixLength:], []byte(":")) + LogLinePrefixLength
+	return bytes.Contains(line[colonIndex:], bytes.ToLower([]byte(string(nick)+" "))) || bytes.Contains(line[colonIndex:], bytes.ToLower([]byte(string(nick)+"\n")))
 }
 
 // MentionsAPIHandle returns mentions from a nick in json format
@@ -500,6 +505,7 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "can't look into the future D:", http.StatusBadRequest)
 		return
 	}
+
 	data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), t.Format("January 2006"), t.Format("2006-01-02")))
 	if err != nil {
 		http.Error(w, "no logs found :( ", http.StatusNotFound)
@@ -517,7 +523,7 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		lowerLine := bytes.ToLower(line)
-		if bytes.Contains(lowerLine[bytes.Index(lowerLine[LogLinePrefixLength:], []byte(":"))+LogLinePrefixLength:], bytes.ToLower([]byte(" "+vars["nick"]))) {
+		if isMentioned([]byte(" "+vars["nick"]), lowerLine) {
 			lines = append(lines, line)
 		}
 	}
