@@ -23,9 +23,9 @@ import (
 	"time"
 
 	"github.com/CloudyKit/jet"
+	"github.com/MemeLabs/overrustlelogs/common"
 	"github.com/fatih/color"
 	"github.com/gorilla/mux"
-	"github.com/MemeLabs/overrustlelogs/common"
 )
 
 // temp ish.. move to config
@@ -517,7 +517,7 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		lowerLine := bytes.ToLower(line)
-		if bytes.Contains(lowerLine[bytes.Index(lowerLine[LogLinePrefixLength:], []byte(":"))+LogLinePrefixLength:], bytes.ToLower([]byte(vars["nick"]))) {
+		if bytes.Contains(lowerLine[bytes.Index(lowerLine[LogLinePrefixLength:], []byte(":"))+LogLinePrefixLength:], bytes.ToLower([]byte(" "+vars["nick"]))) {
 			lines = append(lines, line)
 		}
 	}
