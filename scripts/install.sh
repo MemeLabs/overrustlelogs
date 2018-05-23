@@ -6,10 +6,10 @@ source /etc/profile
 mkdir -p $GOPATH/src/github.com/MemeLabs
 ln -s $(readlink -e $(dirname $0)/..) $GOPATH/src/$src
 
-go install $src/logger
-go install $src/server
-go install $src/bot
-go install $src/tool
+vgo install $src/logger
+vgo install $src/server
+vgo install $src/bot
+vgo install $src/tool
 
 cp $GOPATH/bin/logger /usr/bin/orl-logger
 cp $GOPATH/bin/server /usr/bin/orl-server

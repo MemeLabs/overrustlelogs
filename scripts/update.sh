@@ -10,14 +10,6 @@ else
 	TODO=$1
 	MODE=default
 	git pull
-	go get -u "github.com/cloudflare/golz4"
-	go get -u "github.com/datadog/zstd"
-	go get -u "github.com/gorilla/websocket"
-	go get -u "github.com/gorilla/mux"
-	go get -u "github.com/gorilla/handlers"
-	go get -u "github.com/hashicorp/golang-lru"
-	go get -u "github.com/CloudyKit/jet"
-	go get -u "github.com/fatih/color"
 fi
 
 ## systemd support
@@ -30,7 +22,7 @@ fi
 source /etc/profile
 
 updateBot(){
-	go install $src/bot || exit 2
+	vgo install $src/bot || exit 2
 
 	$SSS stop orl-bot
 
@@ -41,7 +33,7 @@ updateBot(){
 }
 
 updateServer(){
-	go install $src/server || exit 2
+	vgo install $src/server || exit 2
 	$SSS stop orl-server
 	cp $GOPATH/bin/server /usr/bin/orl-server
 
@@ -50,8 +42,8 @@ updateServer(){
 }
 
 updateLogger(){
-	go install $src/logger || exit 2
-	go install $src/tool || exit 2
+	vgo install $src/logger || exit 2
+	vgo install $src/tool || exit 2
 
 	$SSS stop orl-logger
 

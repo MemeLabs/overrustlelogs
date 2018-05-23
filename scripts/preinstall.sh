@@ -32,8 +32,8 @@ if [ -z `which go` ]; then
   echo "export PATH=\$PATH:\$GOPATH/bin:\$GOROOT/bin" >> /etc/profile
   source /etc/profile
 
-  wget https://storage.googleapis.com/golang/go1.9.src.tar.gz
-  tar xzf go1.9.src.tar.gz
+  wget https://dl.google.com/go/go1.10.2.src.tar.gz
+  tar xzf go1.10.2.src.tar.gz
   cd go/src
   GOROOT_BOOTSTRAP=$GOROOT bash ./make.bash
   cd /tmp
@@ -45,19 +45,6 @@ if [ -z `which go` ]; then
   popd > /dev/null
 fi
 
-go get -u "github.com/cloudflare/golz4"
-
-# checkout to 1.x branch
-go get -u "github.com/datadog/zstd"
-pushd $GOPATH/src/github.com/datadog/zstd
-git checkout 1.x
-popd
-
-go get -u "github.com/gorilla/websocket"
-go get -u "github.com/gorilla/mux"
-go get -u "github.com/gorilla/handlers"
-go get -u "github.com/hashicorp/golang-lru"
-go get -u "github.com/CloudyKit/jet"
-go get -u "github.com/fatih/color"
+go get -u "golang.org/x/vgo"
 
 useradd overrustlelogs
