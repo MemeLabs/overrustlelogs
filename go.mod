@@ -10,5 +10,6 @@ require (
 	github.com/gorilla/websocket v1.2.0
 	github.com/hashicorp/golang-lru v0.0.0-20180201235237-0fb14efe8c47
 	github.com/mattn/go-runewidth v0.0.2
+	golang.org/x/sys v0.0.0-20180525142821-c11f84a56e43
 	gopkg.in/cheggaaa/pb.v1 v1.0.25
 )
