@@ -65,6 +65,7 @@ func main() {
 	view.SetDevelopmentMode(true)
 
 	r := mux.NewRouter()
+	r.Use(logger)
 	r.StrictSlash(true)
 	r.HandleFunc("/", BaseHandle).Methods("GET")
 	r.HandleFunc("/contact", ContactHandle).Methods("GET")
@@ -121,7 +122,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         common.GetConfig().Server.Address,
-		Handler:      logger(r),
+		Handler:      r,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
@@ -134,8 +135,8 @@ func main() {
 	os.Exit(0)
 }
 
-func logger(h http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func logger(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		h.ServeHTTP(w, r)
 		if strings.HasPrefix(r.URL.Path, "/assets/") || strings.HasPrefix(r.URL.Path, "/css/") || strings.HasPrefix(r.URL.Path, "/js/") {
@@ -146,7 +147,7 @@ func logger(h http.Handler) http.HandlerFunc {
 			path += blue("?" + r.URL.RawQuery)
 		}
 		fmt.Printf("served \"%s\" to \"%s\" in %s\n", path, r.Header.Get("Cf-Connecting-Ip"), cyan(time.Since(start)))
-	}
+	})
 }
 
 // NotFoundHandle channel index
