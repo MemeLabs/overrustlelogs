@@ -25,6 +25,7 @@ import (
 
 var commands = map[string]command{
 	"compress":      compress,
+	"deleteuser":    delete,
 	"uncompress":    uncompress,
 	"uncompressAll": uncompressAll,
 	"read":          read,
@@ -473,4 +474,111 @@ func uncompressAll() error {
 	wg.Wait()
 	bar.Finish()
 	return nil
+}
+
+func delete() error {
+	if len(os.Args) < 4 {
+		return fmt.Errorf("not enough arguments")
+	}
+
+	username := os.Args[2]
+	logsPath := os.Args[3]
+
+	files, err := filepath.Glob(filepath.Join(logsPath, "*.nicks.gz"))
+	if err != nil || len(files) < 1 {
+		log.Println("couldn't find any compressed log files in", filepath.Join(logsPath, "*.nicks.gz"))
+		return err
+	}
+
+	log.Printf("going through %d logs and deleting \"%s\"", len(files), username)
+
+	endofdate := len("[2017-08-27 01:57:59 UTC] ")
+
+	bar := pb.StartNew(len(files))
+
+	MAXWORKERS := runtime.NumCPU()
+	wg := sync.WaitGroup{}
+	wg.Add(MAXWORKERS)
+
+	queue := make(chan string, len(files))
+	for i := 0; i < MAXWORKERS; i++ {
+		go func(id int, queue <-chan string) {
+			for path := range queue {
+				bar.Increment()
+
+				if err := removeNick(username, path); err != nil {
+					// log.Println(err)
+					continue
+				}
+
+				path = strings.Replace(path, ".nicks", ".txt", -1)
+
+				f, err := common.UncompressFile(path)
+				if err != nil {
+					log.Println(err, path)
+					continue
+				}
+				f, err = os.Open(f.Name())
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+
+				buf := bytes.NewBuffer([]byte{})
+				r := bufio.NewReaderSize(f, 1024*10)
+				for {
+					line, err := r.ReadSlice('\n')
+					if err != nil {
+						if err != io.EOF {
+							log.Println(err)
+						}
+						break
+					}
+					if len(line) < endofdate {
+						continue
+					}
+					if bytes.HasPrefix(line[endofdate:], []byte(username+": ")) {
+						continue
+					}
+					buf.Write(line)
+					buf.WriteString("\n")
+				}
+				f.Close()
+
+				if err := os.Remove(f.Name()); err != nil {
+					log.Println(err)
+				}
+
+				if _, err = common.WriteCompressedFile(f.Name(), buf.Bytes()); err != nil {
+					log.Println(err)
+				}
+
+			}
+			wg.Done()
+		}(i, queue)
+	}
+
+	for _, path := range files {
+		queue <- path
+	}
+	close(queue)
+
+	wg.Wait()
+	bar.Finish()
+
+	return nil
+}
+
+func removeNick(username, path string) error {
+	n := common.NickList{}
+	err := common.ReadNickList(n, path)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	if _, ok := n[username]; !ok {
+		return fmt.Errorf("username not found")
+	}
+	n.Remove(username)
+	return n.WriteTo(path[:len(path)-3])
 }
