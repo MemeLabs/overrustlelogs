@@ -1,0 +1,22 @@
+{
+    "type": "record",
+    "name": "message",
+    "fields": [
+        {
+            "name": "Time",
+            "type": "long"
+        },
+        {
+            "name": "Channel",
+            "type": "string"
+        },
+        {
+            "name": "Nick",
+            "type": "string"
+        },
+        {
+            "name": "Message",
+            "type": "string"
+        }
+    ]
+}

@@ -66,6 +66,7 @@ func GetConfig() *Config {
 	return config
 }
 
+// SaveConfig ...
 func SaveConfig(path string) error {
 	b, err := json.MarshalIndent(&config, "", "\t")
 	if err != nil {

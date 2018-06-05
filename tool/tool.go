@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -19,23 +20,26 @@ import (
 	"time"
 
 	"github.com/MemeLabs/overrustlelogs/common"
+	"github.com/MemeLabs/overrustlelogs/tool/avro"
+	"github.com/actgardner/gogen-avro/container"
 	lz4 "github.com/cloudflare/golz4"
 	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
 var commands = map[string]command{
-	"compress":      compress,
-	"deleteuser":    delete,
-	"uncompress":    uncompress,
-	"uncompressAll": uncompressAll,
-	"read":          read,
-	"readnicks":     readNicks,
-	"nicks":         nicks,
-	"migrate":       migrate,
-	"namechange":    namechange,
-	"cleanup":       cleanup,
-	"convert":       convertToZSTD,
-	"createtoplist": createTopList,
+	"compress":         compress,
+	"deleteuser":       delete,
+	"uncompress":       uncompress,
+	"uncompressAll":    uncompressAll,
+	"read":             read,
+	"readnicks":        readNicks,
+	"nicks":            nicks,
+	"migrate":          migrate,
+	"namechange":       namechange,
+	"cleanup":          cleanup,
+	"convert":          convertToZSTD,
+	"createtoplist":    createTopList,
+	"uploadToBigQuery": uploadToBigQuery,
 }
 
 func main() {
@@ -425,6 +429,7 @@ type user struct {
 	Seen     int64
 }
 
+// ByLines sort impelmentation for user line count aggregates
 type ByLines []*user
 
 func (a ByLines) Len() int           { return len(a) }
@@ -581,4 +586,115 @@ func removeNick(username, path string) error {
 	}
 	n.Remove(username)
 	return n.WriteTo(path[:len(path)-3])
+}
+
+//tool uploadToBigQuery bqconfig.json /path/to/logs/ "2018-01-01"
+func uploadToBigQuery() error {
+	logsPath := os.Args[3]
+	if logsPath == "" {
+		return fmt.Errorf("didn't provide a path to the logs")
+	}
+
+	date := os.Args[4]
+	if date == "" {
+		return fmt.Errorf("didn't provide a date load")
+	}
+
+	// parse bq config
+	var bigqueryWriterConfig common.BigQueryWriterConfig
+
+	b, err := ioutil.ReadFile(os.Args[2])
+	if err != nil {
+		return fmt.Errorf("error reading bigquery config file: %v", err)
+	}
+
+	err = json.Unmarshal(b, &bigqueryWriterConfig)
+	if err != nil {
+		return fmt.Errorf("error reading writer config: %v", err)
+	}
+
+	bufferConfig := struct {
+		RecordsPerBlock int64 `json:"recordsPerBlock"`
+		BytesPerFile    int   `json:"bytesPerFile"`
+	}{}
+	err = json.Unmarshal(b, &bufferConfig)
+	if err != nil {
+		return fmt.Errorf("error reading avro buffer config: %v", err)
+	}
+
+	// create bq client
+	tableDatestamp := strings.Replace(date, "-", "", -1)
+	bigqueryWriterConfig.TableID += "_" + tableDatestamp[0:6] + "01"
+	bq, err := common.NewBigQueryWriter(bigqueryWriterConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// upload log files
+	buffer, err := common.NewAvroBuffer(
+		avro.NewMessageWriter,
+		bq,
+		container.Snappy,
+		bufferConfig.RecordsPerBlock,
+		bufferConfig.BytesPerFile,
+	)
+	if err != nil {
+		log.Printf("error creating buffer: %v\n", err)
+	}
+
+	// find log files
+	fileNamePattern := fmt.Sprintf("%s.txt.gz", date)
+	pathPattern := filepath.Join(logsPath, "*", "*", fileNamePattern)
+	files, err := filepath.Glob(pathPattern)
+	if err != nil || len(files) < 1 {
+		log.Println("couldn't find any log files for this date in", logsPath)
+		return err
+	}
+
+	bar := pb.StartNew(len(files))
+
+	for _, file := range files {
+		if err := loadLogFileIntoAvroBuffer(file, buffer); err != nil {
+			log.Println(err)
+		}
+		bar.Increment()
+	}
+
+	if err := buffer.Flush(); err != nil {
+		log.Printf("error flushing buffer to bigquery: %v\n", err)
+	}
+
+	bar.Finish()
+
+	return nil
+}
+
+func loadLogFileIntoAvroBuffer(file string, buffer *common.AvroBuffer) error {
+	channel, err := common.ExtractChannelFromPath(file)
+	if err != nil {
+		return err
+	}
+	b, err := common.ReadCompressedFile(file)
+	if err != nil {
+		return err
+	}
+
+	lines := bytes.Split(b, []byte("\n"))
+	for _, line := range lines {
+		if len(line) == 0 {
+			continue
+		}
+
+		message, err := common.ParseMessageLine(line)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		if err := buffer.WriteRecord(avro.NewMessageFromCommonMessage(channel, message)); err != nil {
+			log.Println(err)
+		}
+	}
+
+	return nil
 }
