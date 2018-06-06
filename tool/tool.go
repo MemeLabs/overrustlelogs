@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MemeLabs/overrustlelogs/common"
@@ -497,16 +498,15 @@ func delete() error {
 
 	log.Printf("going through %d logs and deleting \"%s\"", len(files), username)
 
-	endofdate := len("[2017-08-27 01:57:59 UTC] ")
-
 	bar := pb.StartNew(len(files))
 
-	MAXWORKERS := runtime.NumCPU()
+	workerCount := runtime.NumCPU()
 	wg := sync.WaitGroup{}
-	wg.Add(MAXWORKERS)
-
+	wg.Add(workerCount)
+	var deletedKinesCount int64
 	queue := make(chan string, len(files))
-	for i := 0; i < MAXWORKERS; i++ {
+
+	for i := 0; i < workerCount; i++ {
 		go func(id int, queue <-chan string) {
 			for path := range queue {
 				bar.Increment()
@@ -518,43 +518,24 @@ func delete() error {
 
 				path = strings.Replace(path, ".nicks", ".txt", -1)
 
-				f, err := common.UncompressFile(path)
+				b, err := common.ReadCompressedFile(path)
 				if err != nil {
 					log.Println(err, path)
 					continue
 				}
-				f, err = os.Open(f.Name())
+
+				lines := bytes.Split(b, []byte("\n"))
+				deletedLines, d, err := removeUserFromLog(lines, username)
 				if err != nil {
-					log.Println(err)
 					continue
 				}
+				atomic.AddInt64(&deletedKinesCount, int64(deletedLines))
 
-				buf := bytes.NewBuffer([]byte{})
-				r := bufio.NewReaderSize(f, 1024*10)
-				for {
-					line, err := r.ReadSlice('\n')
-					if err != nil {
-						if err != io.EOF {
-							log.Println(err)
-						}
-						break
-					}
-					if len(line) < endofdate {
-						continue
-					}
-					if bytes.HasPrefix(line[endofdate:], []byte(username+": ")) {
-						continue
-					}
-					buf.Write(line)
-					buf.WriteString("\n")
-				}
-				f.Close()
-
-				if err := os.Remove(f.Name()); err != nil {
+				if err := os.Remove(path); err != nil {
 					log.Println(err)
 				}
 
-				if _, err = common.WriteCompressedFile(f.Name(), buf.Bytes()); err != nil {
+				if _, err = common.WriteCompressedFile(path, d); err != nil {
 					log.Println(err)
 				}
 
@@ -570,8 +551,32 @@ func delete() error {
 
 	wg.Wait()
 	bar.Finish()
+	log.Printf("deleted %d lines from the user: \"%s\"", deletedKinesCount, username)
 
 	return nil
+}
+
+func removeUserFromLog(lines [][]byte, nick string) (int, []byte, error) {
+	logTimestampLength := len("[2017-08-27 01:57:59 UTC] ")
+	buf := bytes.NewBuffer([]byte{})
+
+	var linesDeletedCount int
+	for _, line := range lines {
+		if len(line) <= logTimestampLength {
+			continue
+		}
+		if bytes.HasPrefix(line[logTimestampLength:], []byte(nick+": ")) {
+			linesDeletedCount++
+			continue
+		}
+		buf.Write(line)
+		buf.WriteString("\n")
+	}
+
+	if linesDeletedCount == 0 {
+		return 0, nil, errors.New("no lines were removed")
+	}
+	return linesDeletedCount, buf.Bytes(), nil
 }
 
 func removeNick(username, path string) error {
