@@ -482,13 +482,34 @@ func uncompressAll() error {
 	return nil
 }
 
+// ./tool delete nicks.json "/var/overrustlelogs/logs/*/*"
 func delete() error {
 	if len(os.Args) < 4 {
 		return fmt.Errorf("not enough arguments")
 	}
 
-	username := os.Args[2]
+	nicksFile := os.Args[2]
+	if nicksFile == "" {
+		return errors.New("did provide a path to a nicks file")
+	}
+	b, err := ioutil.ReadFile(nicksFile)
+	if err != nil {
+		return fmt.Errorf("could not read nicks from file. %v", err)
+	}
+
+	nicksToDelete := make(map[string]struct{})
+	tempNicks := []string{}
+	if err := json.Unmarshal(b, &tempNicks); err != nil {
+		return err
+	}
+	for _, nick := range tempNicks {
+		nicksToDelete[nick] = struct{}{}
+	}
+
 	logsPath := os.Args[3]
+	if logsPath == "" {
+		return errors.New("didn't provide a path to the logs folder")
+	}
 
 	files, err := filepath.Glob(filepath.Join(logsPath, "*.nicks.gz"))
 	if err != nil || len(files) < 1 {
@@ -496,7 +517,7 @@ func delete() error {
 		return err
 	}
 
-	log.Printf("going through %d logs and deleting \"%s\"", len(files), username)
+	log.Printf("going through %d logs and deleting \"%s\"", len(files), tempNicks)
 
 	bar := pb.StartNew(len(files))
 
@@ -511,7 +532,7 @@ func delete() error {
 			for path := range queue {
 				bar.Increment()
 
-				if err := removeNick(username, path); err != nil {
+				if deletedNicks, err := removeNick(nicksToDelete, path); err != nil || !deletedNicks {
 					// log.Println(err)
 					continue
 				}
@@ -525,7 +546,7 @@ func delete() error {
 				}
 
 				lines := bytes.Split(b, []byte("\n"))
-				deletedLines, d, err := removeUserFromLog(lines, username)
+				deletedLines, d, err := removeUserFromLog(lines, nicksToDelete)
 				if err != nil {
 					continue
 				}
@@ -554,12 +575,12 @@ func delete() error {
 
 	wg.Wait()
 	bar.Finish()
-	log.Printf("deleted %d lines from the user: \"%s\"", deletedKinesCount, username)
+	log.Printf("deleted %d lines", deletedKinesCount)
 
 	return nil
 }
 
-func removeUserFromLog(lines [][]byte, nick string) (int, []byte, error) {
+func removeUserFromLog(lines [][]byte, nicksToDelete map[string]struct{}) (int, []byte, error) {
 	buf := bytes.NewBuffer([]byte{})
 
 	var linesDeletedCount int
@@ -568,7 +589,7 @@ func removeUserFromLog(lines [][]byte, nick string) (int, []byte, error) {
 		if err != nil {
 			continue
 		}
-		if strings.EqualFold(msg.Nick, nick) {
+		if _, ok := nicksToDelete[msg.Nick]; ok {
 			linesDeletedCount++
 			continue
 		}
@@ -582,18 +603,22 @@ func removeUserFromLog(lines [][]byte, nick string) (int, []byte, error) {
 	return linesDeletedCount, buf.Bytes(), nil
 }
 
-func removeNick(username, path string) error {
+func removeNick(nicks map[string]struct{}, path string) (bool, error) {
+	foundNick := false
 	n := common.NickList{}
 	err := common.ReadNickList(n, path)
 	if err != nil {
 		fmt.Println(err)
-		return err
+		return foundNick, err
 	}
-	if _, ok := n[username]; !ok {
-		return fmt.Errorf("username not found")
+	for nick := range nicks {
+		if _, ok := n[nick]; !ok {
+			continue
+		}
+		foundNick = true
+		n.Remove(nick)
 	}
-	n.Remove(username)
-	return n.WriteTo(path[:len(path)-3])
+	return foundNick, n.WriteTo(path[:len(path)-3])
 }
 
 //tool uploadToBigQuery bqconfig.json /path/to/logs/ "2018-01-01"
