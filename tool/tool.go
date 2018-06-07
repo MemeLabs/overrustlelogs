@@ -524,7 +524,7 @@ func delete() error {
 	workerCount := runtime.NumCPU()
 	wg := sync.WaitGroup{}
 	wg.Add(workerCount)
-	var deletedKinesCount int64
+	var deletedLinesCount int64
 	queue := make(chan string, len(files))
 
 	for i := 0; i < workerCount; i++ {
@@ -551,7 +551,7 @@ func delete() error {
 					continue
 				}
 				if deletedLines > 0 {
-					atomic.AddInt64(&deletedKinesCount, int64(deletedLines))
+					atomic.AddInt64(&deletedLinesCount, int64(deletedLines))
 				}
 
 				f, err := common.WriteCompressedFile(path+".new", d)
@@ -575,7 +575,7 @@ func delete() error {
 
 	wg.Wait()
 	bar.Finish()
-	log.Printf("deleted %d lines", deletedKinesCount)
+	log.Printf("deleted %d lines", deletedLinesCount)
 
 	return nil
 }
