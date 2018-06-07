@@ -529,16 +529,19 @@ func delete() error {
 				if err != nil {
 					continue
 				}
-				atomic.AddInt64(&deletedKinesCount, int64(deletedLines))
-
-				if err := os.Remove(path); err != nil {
-					log.Println(err)
+				if deletedLines > 0 {
+					atomic.AddInt64(&deletedKinesCount, int64(deletedLines))
 				}
 
-				if _, err = common.WriteCompressedFile(path, d); err != nil {
+				f, err := common.WriteCompressedFile(path+".new", d)
+				if err != nil {
 					log.Println(err)
+					continue
 				}
-
+				if err := os.Rename(f.Name(), path); err != nil {
+					log.Println(err)
+					os.Remove(path + ".new")
+				}
 			}
 			wg.Done()
 		}(i, queue)
@@ -557,15 +560,15 @@ func delete() error {
 }
 
 func removeUserFromLog(lines [][]byte, nick string) (int, []byte, error) {
-	logTimestampLength := len("[2017-08-27 01:57:59 UTC] ")
 	buf := bytes.NewBuffer([]byte{})
 
 	var linesDeletedCount int
 	for _, line := range lines {
-		if len(line) <= logTimestampLength {
+		msg, err := common.ParseMessageLine(line)
+		if err != nil {
 			continue
 		}
-		if bytes.HasPrefix(line[logTimestampLength:], []byte(nick+": ")) {
+		if strings.EqualFold(msg.Nick, nick) {
 			linesDeletedCount++
 			continue
 		}
