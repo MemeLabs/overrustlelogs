@@ -62,7 +62,7 @@ func init() {
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	view = jet.NewHTMLSet(common.GetConfig().Server.ViewPath)
-	view.SetDevelopmentMode(true)
+	// view.SetDevelopmentMode(true)
 
 	r := mux.NewRouter()
 	r.Use(logger)
