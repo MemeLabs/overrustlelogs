@@ -58,10 +58,7 @@ func (n NickList) WriteTo(path string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.Rename(f.Name(), strings.Replace(f.Name(), ".writing", "", -1)); err != nil {
-		return err
-	}
-	return nil
+	return os.Rename(f.Name(), strings.Replace(f.Name(), ".writing", "", -1))
 }
 
 // NickListLower lower case nick list for case insensitive search
