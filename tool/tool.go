@@ -24,6 +24,7 @@ import (
 	"github.com/MemeLabs/overrustlelogs/tool/avro"
 	"github.com/actgardner/gogen-avro/container"
 	lz4 "github.com/cloudflare/golz4"
+	"github.com/pkg/profile"
 	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
@@ -48,6 +49,8 @@ func main() {
 	if len(os.Args) < 2 {
 		os.Exit(1)
 	}
+	p := profile.Start(profile.MemProfile)
+
 	if c, ok := commands[os.Args[1]]; ok {
 		if err := c(); err != nil {
 			fmt.Println(err)
@@ -57,6 +60,7 @@ func main() {
 		fmt.Println("invalid command")
 		os.Exit(1)
 	}
+	p.Stop()
 	os.Exit(0)
 }
 
@@ -532,7 +536,7 @@ func delete() error {
 			for path := range queue {
 				bar.Increment()
 
-				if deletedNicks, err := removeNick(nicksToDelete, path); err != nil || !deletedNicks {
+				if deletedNicks, _ := removeNick(nicksToDelete, path); !deletedNicks {
 					// log.Println(err)
 					continue
 				}
@@ -618,7 +622,10 @@ func removeNick(nicks map[string]struct{}, path string) (bool, error) {
 		foundNick = true
 		n.Remove(nick)
 	}
-	return foundNick, n.WriteTo(path[:len(path)-3])
+	if foundNick {
+		n.WriteTo(path[:len(path)-3])
+	}
+	return foundNick, nil
 }
 
 //tool uploadToBigQuery bqconfig.json /path/to/logs/ "2018-01-01"
