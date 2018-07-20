@@ -549,7 +549,7 @@ func delete() error {
 					continue
 				}
 
-				lines := bytes.Split(b, []byte("\n"))
+				lines := strings.Split(string(b), "\n")
 				deletedLines, d, err := removeUserFromLog(lines, nicksToDelete)
 				if err != nil {
 					continue
@@ -584,7 +584,7 @@ func delete() error {
 	return nil
 }
 
-func removeUserFromLog(lines [][]byte, nicksToDelete map[string]struct{}) (int, []byte, error) {
+func removeUserFromLog(lines []string, nicksToDelete map[string]struct{}) (int, []byte, error) {
 	buf := bytes.NewBuffer([]byte{})
 
 	var linesDeletedCount int
@@ -595,10 +595,11 @@ func removeUserFromLog(lines [][]byte, nicksToDelete map[string]struct{}) (int, 
 			continue
 		}
 		if _, ok := nicksToDelete[msg.Nick]; ok {
+			log.Println(msg.Nick)
 			linesDeletedCount++
 			continue
 		}
-		buf.Write(line)
+		buf.WriteString(line)
 		buf.WriteString("\n")
 	}
 
@@ -720,7 +721,7 @@ func loadLogFileIntoAvroBuffer(file string, buffer *common.AvroBuffer) error {
 		return err
 	}
 
-	lines := bytes.Split(b, []byte("\n"))
+	lines := strings.Split(string(b), "\n")
 	for _, line := range lines {
 		if len(line) == 0 {
 			continue
