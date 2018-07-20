@@ -27,7 +27,7 @@ func ParseMessageLine(b []byte) (*Message, error) {
 
 	b = b[MessageTimeLayoutLength:]
 	nickLength := bytes.IndexRune(b, ':')
-	if nickLength == len(b) || nickLength > len(b) {
+	if nickLength >= len(b) || nickLength == -1 {
 		return nil, fmt.Errorf("malformed nick in message: %s", b)
 	}
 
