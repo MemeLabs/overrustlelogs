@@ -599,7 +599,6 @@ func removeUserFromLog(lines []string, nicksToDelete map[string]struct{}) (int, 
 			continue
 		}
 		if _, ok := nicksToDelete[msg.Nick]; ok {
-			log.Println(msg.Nick)
 			linesDeletedCount++
 			continue
 		}
