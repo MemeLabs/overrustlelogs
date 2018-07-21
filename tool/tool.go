@@ -534,6 +534,10 @@ func delete() error {
 	for i := 0; i < workerCount; i++ {
 		go func(id int, queue <-chan string) {
 			for path := range queue {
+				if strings.Contains(path, "Destinygg chatlog") {
+					continue
+				}
+
 				bar.Increment()
 
 				if deletedNicks, _ := removeNick(nicksToDelete, path); !deletedNicks {
