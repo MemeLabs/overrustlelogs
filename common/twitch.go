@@ -38,7 +38,7 @@ func NewTwitch() *Twitch {
 		// > @badges=staff/1,broadcaster/1,turbo/1;color=#008000;display-name=ronni;emotes=;mod=0;msg-id=resub;msg-param-months=6;
 		// msg-param-sub-plan=Prime;msg-param-sub-plan-name=Prime;room-id=1337;subscriber=1;system-msg=ronni\shas\ssubscribed\sfor\s6\smonths!;
 		// login=ronni;turbo=1;user-id=1337;user-type=staff :tmi.twitch.tv USERNOTICE #dallas :Great stream -- keep it up!
-		SubPattern: regexp.MustCompile(`msg-id=(sub|resub|subgift);.+;system-msg=(.+);tmi-sent-ts.+ \:tmi\.twitch\.tv USERNOTICE #([a-z0-9_-]+)( :.+)?`),
+		SubPattern: regexp.MustCompile(`msg-id=(sub|resub|subgift|giftpaidupgrade);.+;system-msg=(.+);tmi-sent-ts.+ \:tmi\.twitch\.tv USERNOTICE #([a-z0-9_-]+)( :.+)?`),
 		quit:       make(chan struct{}, 2),
 	}
 }
