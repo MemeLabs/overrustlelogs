@@ -3,6 +3,11 @@
 
   function load(path, selection) {
     var offset = 0;
+    var search = null;
+    var searchParams = getSearchParams();
+    if (searchParams.search) {
+      search = searchParams.search;
+    }
 
     var req = new XMLHttpRequest();
     req.onreadystatechange = handleStateChange;
@@ -41,6 +46,9 @@
           //   span.scrollIntoView();
           // }
         }
+        else if (search) {
+          find(search);
+        }
 
         $('.text').on('mouseup', updateHash);
       }
@@ -67,6 +75,19 @@
     return $(node.parentElement).prevAll().toArray().reduce(function (length, node) {
       return length + node.textContent.length;
     }, 0);
+  }
+
+  // https://stackoverflow.com/a/47444595
+  function getSearchParams() {
+    location.search
+      .slice(1)
+      .split('&')
+      .map(p => p.split('='))
+      .reduce((obj, pair) => {
+        const [key, value] = pair.map(decodeURIComponent);
+        return ({ ...obj, [key]: value })
+      }, {})
+      ;
   }
 
   window.orl = {
