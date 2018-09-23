@@ -5,7 +5,7 @@
     var offset = 0;
     var search = null;
     var searchParams = getSearchParams();
-    if (searchParams.search) {
+    if (searchParams && searchParams.search) {
       search = searchParams.search;
     }
 
