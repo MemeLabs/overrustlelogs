@@ -79,7 +79,7 @@
 
   // https://stackoverflow.com/a/47444595
   function getSearchParams() {
-    location.search
+    return location.search
       .slice(1)
       .split('&')
       .map(p => p.split('='))
