@@ -22,7 +22,7 @@ fi
 source /etc/profile
 
 updateBot(){
-	vgo install $src/bot || exit 2
+	go install $src/bot || exit 2
 
 	$SSS stop orl-bot
 
@@ -33,7 +33,7 @@ updateBot(){
 }
 
 updateServer(){
-	vgo install $src/server || exit 2
+	go install $src/server || exit 2
 	$SSS stop orl-server
 	cp $GOPATH/bin/server /usr/bin/orl-server
 
@@ -42,8 +42,8 @@ updateServer(){
 }
 
 updateLogger(){
-	vgo install $src/logger || exit 2
-	vgo install $src/tool || exit 2
+	go install $src/logger || exit 2
+	go install $src/tool || exit 2
 
 	$SSS stop orl-logger
 

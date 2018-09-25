@@ -27,13 +27,12 @@ if [ -z `which go` ]; then
   cd /tmp
   mv go /usr/local/
 
-  echo "export GOPATH=\$HOME/go" >> /etc/profile
   echo "export GOROOT=/usr/local/go" >> /etc/profile
-  echo "export PATH=\$PATH:\$GOPATH/bin:\$GOROOT/bin" >> /etc/profile
+  echo "export PATH=\$PATH:\$HOME/go/bin:\$GOROOT/bin" >> /etc/profile
   source /etc/profile
 
-  wget https://dl.google.com/go/go1.10.2.src.tar.gz
-  tar xzf go1.10.2.src.tar.gz
+  wget https://dl.google.com/go/go1.11.src.tar.gz
+  tar xzf go1.11.src.tar.gz
   cd go/src
   GOROOT_BOOTSTRAP=$GOROOT bash ./make.bash
   cd /tmp
@@ -44,7 +43,5 @@ if [ -z `which go` ]; then
 
   popd > /dev/null
 fi
-
-go get -u "golang.org/x/vgo"
 
 useradd overrustlelogs
