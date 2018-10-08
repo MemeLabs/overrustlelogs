@@ -1,42 +1,26 @@
 {{extends "layout.jet"}}
 {{block body()}}
-  <ul class="collection with-header">
-    <li class="collection-header grey darken-3">
-      <a href="/">
-        <i class="fa fa-home fa-fw"></i>
-      </a>
-      {{range v := .Breadcrumbs}}
-        <span> / </span>
-        <a href="{{v.Path}}">{{v.Name}}</a>
-      {{end}}
-      {{if .Limit < .MaxLimit}}
-        <a href="{{.Path}}/top{{.MaxLimit}}" class="secondary-content">Show all ({{.MaxLimit}})</a>
-      {{else}}
-        <a href="{{.Path}}/top100" class="secondary-content">Show Top100</a>
-      {{end}}
-    </li>
-  </ul>
-  <table class="bordered highlight responsive-table">
+<div class="table-responsive-md">
+  <table class="table table-dark table-hover table-bordered">
     <thead>
       <tr>
       <th>#</th>
-          <th><a href="{{.Path}}/top{{.Limit}}?sort=username">Username</a></th>
-          <th><a href="{{.Path}}/top{{.Limit}}">Lines</a></th>
-          <th><a href="{{.Path}}/top{{.Limit}}?sort=bytes">KiloBytes</a></th>
-          <th>Seen</th>
+          <th><a class="link-white" href="{{.Path}}/top{{.Limit}}?sort=username">Username</a></th>
+          <th><a class="link-white" href="{{.Path}}/top{{.Limit}}">Lines</a></th>
+          <th><a class="link-white" href="{{.Path}}/top{{.Limit}}?sort=bytes">KB</a></th>
       </tr>
     </thead>
     <tbody>
     {{range i, user := .TopList}}
       <tr>
         <td>{{ i + 1 }}</td>
-        <td><a href="{{.Path}}/userlogs/{{user.Username}}">{{user.Username}}</a></td>
+        <td><a class="link-white" href="{{.Path}}/userlogs/{{user.Username}}">{{user.Username}}</a></td>
         <td>{{user.Lines}}</td>
         <td>{{user.KiloBytes}}</td>
-        <td>{{user.SeenString}}</td>
       </tr>
     {{end}}
     </tbody>
   </table>
-  <p class="right-align" style="opacity: 0.3">Generated: {{.Generated}}</p>
+</div>
+<p class="right-align" style="opacity: 0.3">Generated: {{.Generated}}</p>
 {{end}}

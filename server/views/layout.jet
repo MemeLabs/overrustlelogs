@@ -6,10 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
     <title>OverRustle Logs</title>
     <link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico" />
-    <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.min.css" media="screen,projection" />
-    <link rel="stylesheet" href="/assets/css/orl.css" />
-    <script src="//code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/orl.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="/assets/js/bootstrap.min.js" ></script>
     <script src="/assets/js/orl.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -25,9 +26,6 @@
       (function (b) { (function (a) { "__CF" in b && "DJS" in b.__CF ? b.__CF.DJS.push(a) : "addEventListener" in b ? b.addEventListener("load", a, !1) : b.attachEvent("onload", a) })(function () { "FB" in b && "Event" in FB && "subscribe" in FB.Event && (FB.Event.subscribe("edge.create", function (a) { _gaq.push(["_trackSocial", "facebook", "like", a]) }), FB.Event.subscribe("edge.remove", function (a) { _gaq.push(["_trackSocial", "facebook", "unlike", a]) }), FB.Event.subscribe("message.send", function (a) { _gaq.push(["_trackSocial", "facebook", "send", a]) })); "twttr" in b && "events" in twttr && "bind" in twttr.events && twttr.events.bind("tweet", function (a) { if (a) { var b; if (a.target && a.target.nodeName == "IFRAME") a: { if (a = a.target.src) { a = a.split("#")[0].match(/[^?=&]+=([^&]*)?/g); b = 0; for (var c; c = a[b]; ++b)if (c.indexOf("url") === 0) { b = unescape(c.split("=")[1]); break a } } b = void 0 } _gaq.push(["_trackSocial", "twitter", "tweet", b]) } }) }) })(window);
     </script>
     <script type="text/javascript">
-      $(function () { $(".button-collapse").sideNav(); });
-    </script>
-    <script type="text/javascript">
       (function (path) {
         var selection = location.hash.match(/\#([0-9]+)-([0-9]+)/);
         path && orl.load(path, selection && [selection[1] >> 0, selection[2] >> 0]);
@@ -35,52 +33,59 @@
     </script>
   </head>
   <body>
-    <div class="navbar-fixed">
-      <nav>
-        <div class="row">
-          <div class="col m1 l2 hide-on-med-and-down"></div>
-          <div class="nav-wrapper col s12 m10 l8">
-            <span>
-              <a class="brand-logo" href="/">OverRustleLogs</a>
-            </span>
-            <ul id="nav-mobile" class="right hide-on-med-and-down">
-              <li>
-                <a class="active deep-orange donate" href="https://www.patreon.com/overrustlelogs" target="_blank">Become a Patron!</a>
-              </li>
-              <li>
-                <a class="active" href="https://overrustlelogs.net/stalk">Stalk</a>
-              </li>
-              <li>
-                <a class="active" href="https://overrustlelogs.net/changelog">Changelog</a>
-              </li>
-              <li>
-                <a class="active" href="https://overrustlelogs.net/contact">Contact</a>
-              </li>
-              <li>
-                <a class="donate active deep-orange" target="_blank" href="https://twitch.streamlabs.com/overrustlelogs">
-                  <i class="fa fa-paypal fa-fw" aria-hidden="true"></i> Donate
-                </a>
-              </li>
-            </ul>
-          </div>
-          <div class="col m1 l2 hide-on-med-and-down"></div>
+    <nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark">
+      <div class="container">
+        <a class="navbar-brand" href="/">
+          <img src="/assets/rustle.png" width="30" height="30" class="d-inline-block align-top" alt="">
+          OverRustleLogs
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+          <ul class="navbar-nav mr-auto">            
+            <li class="nav-item">
+              <a class="nav-link" href="/stalk">Stalk</a>
+            </li>
+          </ul>          
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link" href="/changelog">Changelog</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/contact">Contact</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="https://streamlabs.com/overrustlelogs" target="_blank">Donate</a>
+            </li>
+            <a class="btn btn-dark btn-secondary patreon" href="https://www.patreon.com/overrustlelogs" target="_blank">Patreon</a>
+          </ul>
         </div>
-      </nav>
+      </div>     
+    </nav>
+    <div class="container py-2">
+      {{if isset(.Breadcrumbs) && len(.Breadcrumbs) >= 1}}        
+        <nav aria-label="breadcrumb" class="sticky-top">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a class="link-blue" href="/"><i class="fas fa-home"></i></a></li>            
+            {{range i, b := .Breadcrumbs}}
+              {{if i == (len(.Breadcrumbs) - 1)}}
+                <li class="breadcrumb-item active" aria-current="page">{{b.Name}}</li>
+              {{else}}
+                <li class="breadcrumb-item"><a class="link-blue" href="{{b.Path}}">{{b.Name}}</a></li>
+              {{end}}
+            {{end}}
+            {{if len(.Breadcrumbs) == 2 && .Top100}}
+              <li class="breadcrumb-item"><a class="link-blue ml-1" href="{{.Breadcrumbs[1].Path}}/top100">Top100</a></li>
+            {{end}}
+          </ol>
+        </nav>
+      {{end}}
+      {{yield body()}}
+      {{if isset(.Month) && .Month != ""}}
+        {{yield diagram()}}
+      {{end}}
     </div>
-    <main>
-      <div class="row">
-        <div class="col m1 l2 hide-on-med-and-down"></div>
-        <div class="col s12 m12 l8 hide-on-large-only center-align"></div>
-        <div class="col s12 m12 l8">
-          {{yield body()}}
-          {{if isset(.Month) && .Month != ""}}
-            {{yield diagram()}}
-          {{end}}
-        </div>
-        <div class="col m1 l2 hide-on-med-and-down"></div>
-      </div>
-    </main>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/js/materialize.min.js"></script>
-    <script src="//use.fontawesome.com/5fd85f0c6d.js"></script>
   </body>
 </html>

@@ -1,37 +1,34 @@
 {{extends "layout.jet"}}
 {{block body()}}
 <div id="top" class="scrollspy">
-  {{if len(.Months) > 0}}
-    <ul class="section table-of-contents hide-on-med-and-down" style="position: fixed; Top: 100px; Left: 50px;">
-      <li><a href="#top">Top</a></li>
-      {{range i, m := .Months}}
-        {{if i < 10}}
-          <li><a href="#month{{i}}">{{m}}</a></li>
-        {{end}}
-      {{end}}
-      {{if len(.Months) > 10}}
-        <li><a href="#more">More Months</a></li>
-      {{end}}
-    </ul>
-  {{end}}
-  <br/>
   {{if .Error}}
-    <div class="card-panel red lighten-1">
-      <span class="black-text">{{.Error}}</span>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      {{.Error}}
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
     </div>
   {{end}}
   <form method="get">
     <div class="row">
-      <div class="input-field col s6">
-        <input name="channel" type="text" value="{{.Channel}}">
-        <label for="channel">Channel</label>
+      <div class="col-lg-5 my-1">
+        <div class="input-group mb-1">
+          <div class="input-group-prepend">
+            <span class="input-group-text" id="channel-text">Channel</span>
+          </div>
+          <input name="channel" type="text" class="form-control" aria-describedby="channel-text" value="{{.Channel}}">
+        </div>
       </div>
-      <div class="input-field col s6">
-        <input name="nick" type="text" value="{{.Nick}}">
-        <label for="nick">Nick</label>
+      <div class="col-lg-5 my-1">
+        <div class="input-group mb-1">
+          <div class="input-group-prepend">
+            <span class="input-group-text" id="nick-text">Nick</span>
+          </div>
+          <input name="nick" type="text" class="form-control" aria-describedby="nick-text" value="{{.Nick}}">
+        </div>
       </div>
-      <div class="input-field col s1">
-        <button class="btn deep-orange" type="submit">Stalk</button>
+      <div class="col-lg-2 my-1">
+        <button type="submit" class="btn btn-dark full-width">Stalk</button>
       </div>
     </div>
   </form>      
@@ -42,51 +39,36 @@
       var req = new XMLHttpRequest();
       req.open("GET", link, true);
       req.setRequestHeader("Content-Type", "text/plain;charset=UTF-8");
-      $(`.progressbar${id}`).show();
-      req.onload = function () {
+      req.onload = () => {
           const text = req.responseText;
           $(`.field${id}`).empty();
           $("<span />").text(text).appendTo(`.field${id}`);
-          document.getElementById("end"+id).scrollIntoView(false);
-          $(`.progressbar${id}`).hide();
+          document.getElementById("end"+id).scrollIntoView(
+            { 
+              behavior: 'smooth', 
+              block: 'end',
+              inline: "nearest",
+            },
+          );
       };
       req.send();
     }
-    $(document).ready(function () {
-      $('.scrollspy').scrollSpy({
-        scrollOffset: 50
-      });
-      $('.table-of-contents').pushpin({
-        top: 0,
-        offset: 60
-      });
+    $(document).ready(() => {
+      appendChunk('{{.Months[0]}}', '0')
     });
   </script>
     {{range i, m := .Months}}
-      <div class="section scrollspy" id="month{{i}}">
-        <h5>{{m}} <span><button class="waves-effect waves-orange btn-flat @b" onclick="appendChunk('{{m}}', {{i}})">Load</button></span></h5>
-        <div class="field{{i}} text"></div>
-        <div class="progress deep-orange progressbar{{i}}" id="end{{i}}" style="display: none">
-          <div class="indeterminate orange"></div>
+      <div class="card bg-dark my-1" id="month{{i}}">
+        <div class="card-header">
+          {{m}}
+          <button class="btn btn-dark btn-sm float-right" onclick="appendChunk('{{m}}', {{i}})">Load</button>
+        </div>
+        <div class="card-body body{{i}}">
+          <div class="field{{i}} text"></div>
+          <div id="end{{i}}"></div>
         </div>
       </div>
-      <div class="divider" style="opacity: 0.6"></div>
     {{end}}
-    <script>
-      appendChunk('{{.Months[0]}}', '0')
-    </script>
-  {{end}}
-  {{if len(.Months) > 10}}
-    <div id="more" class="scrollspy" >
-      <br/>
-      <h5>More Months</h5>
-      <div class="divider" style="opacity: 0.6"></div>
-      <div class="collection">
-      {{range m := .Months[10:]}}
-        <a href="https://overrustlelogs.net/{{.Channel}} chatlog/{{m}}/userlogs/{{.Nick}}" class="collection-item">{{m}}</a>
-      {{end}}
-      </div>
-    </div>
   {{end}}
 </div>
 {{end}}

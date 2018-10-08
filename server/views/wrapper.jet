@@ -6,8 +6,8 @@
   });
 </script>  
 <div class="text"></div>
-<div class="fixed-action-btn">
-  <a href="#bottom" class="btn-floating btn-large waves-effect waves-light deep-orange left" style="bottom: 45px; right: 24px;"><i class="material-icons">expand_more</i></a>
+<div class="position-fixed" style="bottom: 45px; right: 24px;">
+  <a href="#bottom" class="btn btn-dark patreon"><i class="fas fa-arrow-down"></i></a>
 </div>
 <div id="bottom" class="scrollspy"></div>
 {{end}}

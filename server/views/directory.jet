@@ -1,26 +1,12 @@
 {{extends "layout.jet"}}
 {{block body()}}
-<ul class="collection with-header">
-{{if len(.Breadcrumbs) >= 1}}
-  <li class="collection-header grey darken-3">
-    <a href="/">
-      <i class="fa fa-home fa-fw"></i>
-    </a>
-    {{range b := .Breadcrumbs}}
-      <span> / </span>
-      <a href="{{b.Path}}">{{b.Name}}</a>
-    {{end}}
-    {{if len(.Breadcrumbs) == 2 && .Top100}}
-      <a href="{{.Breadcrumbs[1].Path}}/top100" class="secondary-content">Top100</a>
-    {{end}}
-  </li>
-{{end}}
+<div class="list-group">
 {{range p := .Paths}}
-  <a href="{{p.Path}}" class="collection-item">
-    <i class="fa fa-{{p.Icon}} fa-fw" aria-hidden="true"></i> {{p.Name}}
+  <a href="{{p.Path}}" class="list-group-item list-group-item-action">
+    <i class="fas fa-{{p.Icon}} mr-2"></i> {{p.Name}}
   </a>
 {{end}}
-</ul>
+</div>
 {{end}}
 {{block diagram()}}
 <div id="svg-container">

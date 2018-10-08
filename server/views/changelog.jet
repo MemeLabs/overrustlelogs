@@ -1,13 +1,8 @@
 {{extends "layout.jet"}}
 {{block body()}}
-<div class="card">
-  <div class="card-content center-align">
-    <h3>
-      <span>
-        <i class="fa fa-github fa-fw"></i>
-      </span>
-      <a href="https://github.com/MemeLabs/overrustlelogs/commits/master" target="_blank">GitHub</a>
-    </h3>
+<div class="card text-white bg-dark">
+  <div class="card-body text-center">    
+    <a class="link-white" href="https://github.com/MemeLabs/overrustlelogs/commits/master" target="_blank"><h1><i class="fab fa-github mr-2"></i>GitHub</h1></a>
   </div>
 </div>
 {{end}}
