@@ -161,18 +161,33 @@ func BaseHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 // WrapperHandle static html log wrapper
-func WrapperHandle(w http.ResponseWriter, r *http.Request) {
+func WrapperHandle(w http.ResponseWriter, r *http.Request) {	
 	tpl, err := view.GetTemplate("wrapper")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	crumbs:= strings.Split(r.URL.Path, "/")
+	bc := []breadcrumb{}
+	basePath := ""
+	for _, b := range crumbs {
+		if b == ""{
+			continue 
+		}
+		basePath += "/" + b
+		bc = append(bc, breadcrumb{Path: basePath, Name: b})
+	}
+
 	w.Header().Set("Content-type", "text/html; charset=UTF-8")
 	path := r.URL.Path + ".txt"
 	if r.URL.RawQuery != "" {
 		path += "?" + r.URL.RawQuery
 	}
-	if err := tpl.Execute(w, nil, struct{ Path string }{Path: path}); err != nil {
+	if err := tpl.Execute(w, nil, struct{ 
+		Path string
+		Breadcrumbs []breadcrumb
+	}{Path: path, Breadcrumbs: bc}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -1050,7 +1065,7 @@ func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
 	}
 	basePath += "/"
 	for _, p := range paths {
-		icon := "file-text"
+		icon := "file-alt"
 		if filepath.Ext(p) == "" {
 			icon = "folder"
 		}
