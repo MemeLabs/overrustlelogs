@@ -1,10 +1,7 @@
 {{extends "layout.jet"}}
+{{import "breadcrumbs.jet"}}
 {{block body()}}
-<script type="text/javascript">
-  $(document).ready(function(){
-    $('.scrollspy').scrollSpy();
-  });
-</script>  
+{{yield breadcrumbs()}}
 <div class="text"></div>
 <div class="position-fixed" style="bottom: 45px; right: 24px;">
   <a href="#bottom" class="btn btn-dark patreon"><i class="fas fa-arrow-down"></i></a>

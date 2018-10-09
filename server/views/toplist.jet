@@ -1,5 +1,7 @@
 {{extends "layout.jet"}}
+{{import "breadcrumbs.jet"}}
 {{block body()}}
+{{yield breadcrumbs()}}
 <div class="table-responsive-md">
   <table class="table table-dark table-hover table-bordered">
     <thead>

@@ -1,5 +1,7 @@
 {{extends "layout.jet"}}
+{{import "breadcrumbs.jet"}}
 {{block body()}}
+{{yield breadcrumbs()}}
 <div class="list-group">
 {{range p := .Paths}}
   <a href="{{p.Path}}" class="list-group-item list-group-item-action">
@@ -39,7 +41,7 @@
     d3.json("/api/v1/{{.Channel}}/{{.Month}}/lines.json", function(d) {
     x.domain(d3.extent(d.data, function(day) { return new Date(day.date); }));
     y.domain(d3.extent(d.data, function(day) { return day.lines; }));
-    
+
     g.append("g")
         .attr("transform", "translate(0," + height + ")")
         .call(d3.axisBottom(x))

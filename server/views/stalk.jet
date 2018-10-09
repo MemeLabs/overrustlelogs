@@ -31,7 +31,7 @@
         <button type="submit" class="btn btn-dark full-width">Stalk</button>
       </div>
     </div>
-  </form>      
+  </form>
   {{if len(.Months) > 0}}
   <script >
     function appendChunk(month, id) {
@@ -43,13 +43,7 @@
           const text = req.responseText;
           $(`.field${id}`).empty();
           $("<span />").text(text).appendTo(`.field${id}`);
-          document.getElementById("end"+id).scrollIntoView(
-            { 
-              behavior: 'smooth', 
-              block: 'end',
-              inline: "nearest",
-            },
-          );
+          document.getElementById("end"+id).scrollIntoView(false);
       };
       req.send();
     }

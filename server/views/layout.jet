@@ -4,12 +4,18 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-    <title>OverRustle Logs</title>
+    <meta name="description" content="Twitch.tv chat logs.">
+    <meta property="og:title" content="OverRustleLogs.net" />
+    <meta property="og:site_name" content="OverRustleLogs" />
+    <meta property="og:description" content="Twitch.tv chat logs." />
+    <meta property="og:image" content="https://overrustlelogs.net/assets/rustle.png" />
+    <title>OverRustleLogs</title>
     <link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico" />
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/orl.css">
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/solid.css" integrity="sha384-VGP9aw4WtGH/uPAOseYxZ+Vz/vaTb1ehm1bwx92Fm8dTrE+3boLfF1SpAtB1z7HW" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/fontawesome.css" integrity="sha384-1rquJLNOM3ijoueaaeS5m+McXPJCGdr5HcA03/VHXxcp2kX2sUrQDmFc3jR5i/C7" crossorigin="anonymous">
+    <script src="/assets/js/jquery-3.3.1.min.js"></script>
     <script src="/assets/js/bootstrap.min.js" ></script>
     <script src="/assets/js/orl.js"></script>
     <script type="text/javascript">
@@ -44,11 +50,11 @@
         </button>
 
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
-          <ul class="navbar-nav mr-auto">            
+          <ul class="navbar-nav mr-auto">
             <li class="nav-item">
               <a class="nav-link" href="/stalk">Stalk</a>
             </li>
-          </ul>          
+          </ul>
           <ul class="navbar-nav">
             <li class="nav-item">
               <a class="nav-link" href="/changelog">Changelog</a>
@@ -62,26 +68,9 @@
             <a class="btn btn-dark btn-secondary patreon" href="https://www.patreon.com/overrustlelogs" target="_blank">Patreon</a>
           </ul>
         </div>
-      </div>     
+      </div>
     </nav>
     <div class="container py-2">
-      {{if isset(.Breadcrumbs) && len(.Breadcrumbs) >= 1}}        
-        <nav aria-label="breadcrumb" class="sticky-top">
-          <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a class="link-blue" href="/"><i class="fas fa-home"></i></a></li>            
-            {{range i, b := .Breadcrumbs}}
-              {{if i == (len(.Breadcrumbs) - 1)}}
-                <li class="breadcrumb-item active" aria-current="page">{{b.Name}}</li>
-              {{else}}
-                <li class="breadcrumb-item"><a class="link-blue" href="{{b.Path}}">{{b.Name}}</a></li>
-              {{end}}
-            {{end}}
-            {{if len(.Breadcrumbs) == 2 && .Top100}}
-              <li class="breadcrumb-item"><a class="link-blue ml-1" href="{{.Breadcrumbs[1].Path}}/top100">Top100</a></li>
-            {{end}}
-          </ol>
-        </nav>
-      {{end}}
       {{yield body()}}
       {{if isset(.Month) && .Month != ""}}
         {{yield diagram()}}

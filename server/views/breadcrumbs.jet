@@ -1,0 +1,19 @@
+{{block breadcrumbs()}}
+{{if isset(.Breadcrumbs) && len(.Breadcrumbs) >= 1}}
+<nav aria-label="breadcrumb" class="sticky-top">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a class="link-blue" href="/"><i class="fas fa-home"></i></a></li>
+    {{range i, b := .Breadcrumbs}}
+      {{if i == (len(.Breadcrumbs) - 1)}}
+        <li class="breadcrumb-item active" aria-current="page">{{b.Name}}</li>
+      {{else}}
+        <li class="breadcrumb-item"><a class="link-blue" href="{{b.Path}}">{{b.Name}}</a></li>
+      {{end}}
+    {{end}}
+    {{if len(.Breadcrumbs) == 2 && .Top100}}
+      <li class="breadcrumb-item"><a class="link-blue ml-1" href="{{.Breadcrumbs[1].Path}}/top100">Top100</a></li>
+    {{end}}
+  </ol>
+</nav>
+{{end}}
+{{end}}
