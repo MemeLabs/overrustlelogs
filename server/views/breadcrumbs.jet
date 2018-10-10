@@ -10,7 +10,7 @@
         <li class="breadcrumb-item"><a class="link-blue" href="{{b.Path}}">{{b.Name}}</a></li>
       {{end}}
     {{end}}
-    {{if len(.Breadcrumbs) == 2 && .Top100}}
+    {{if len(.Breadcrumbs) == 2 && isset(.Top100)}}
       <li class="breadcrumb-item"><a class="link-blue ml-1" href="{{.Breadcrumbs[1].Path}}/top100">Top100</a></li>
     {{end}}
   </ol>
