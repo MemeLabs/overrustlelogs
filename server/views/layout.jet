@@ -37,6 +37,11 @@
         var selection = location.hash.match(/\#([0-9]+)-([0-9]+)/);
         path && orl.load(path, selection && [selection[1] >> 0, selection[2] >> 0]);
       })({{if isset(.Path)}}"{{.Path}}"{{end}})
+      $(function() {
+        if ($(document).height() > $(window).height()) {
+          $('.jump-buttons').show();
+        }
+      });
     </script>
   </head>
   <body>
@@ -71,11 +76,17 @@
         </div>
       </div>
     </nav>
+    <div id="top" class="scrollspy"></div>
     <div class="container py-2">
       {{yield body()}}
       {{if isset(.Month) && .Month != ""}}
         {{yield diagram()}}
       {{end}}
+    </div>
+    <div id="bottom" class="scrollspy"></div>
+    <div class="btn-group-vertical position-fixed jump-buttons" style="bottom: 45px; right: 24px; display: none;">
+      <a href="#top" class="btn btn-dark patreon"><i class="fas fa-arrow-up"></i></a>
+      <a href="#bottom" class="btn btn-dark patreon"><i class="fas fa-arrow-down"></i></a>
     </div>
   </body>
 </html>

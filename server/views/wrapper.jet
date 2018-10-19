@@ -3,8 +3,4 @@
 {{block body()}}
 {{yield breadcrumbs()}}
 <div class="text"></div>
-<div class="position-fixed" style="bottom: 45px; right: 24px;">
-  <a href="#bottom" class="btn btn-dark patreon"><i class="fas fa-arrow-down"></i></a>
-</div>
-<div id="bottom" class="scrollspy"></div>
 {{end}}
