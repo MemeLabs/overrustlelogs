@@ -45,6 +45,7 @@
     </script>
   </head>
   <body>
+    <div id="top" class="scrollspy"></div>
     <nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark">
       <div class="container">
         <a class="navbar-brand" href="/">
@@ -76,7 +77,6 @@
         </div>
       </div>
     </nav>
-    <div id="top" class="scrollspy"></div>
     <div class="container py-2">
       {{yield body()}}
       {{if isset(.Month) && .Month != ""}}
