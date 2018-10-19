@@ -45,6 +45,7 @@
           $("<span />").text(text).appendTo(`.field${id}`);
           document.getElementById("end"+id).scrollIntoView(false);
       };
+      $(".body"+id).show();
       req.send();
     }
     $(document).ready(() => {
@@ -57,7 +58,7 @@
           {{m}}
           <button class="btn btn-dark btn-sm float-right" onclick="appendChunk('{{m}}', {{i}})">Load</button>
         </div>
-        <div class="card-body body{{i}}">
+        <div class="card-body body{{i}}" style="display: none;">
           <div class="field{{i}} text"></div>
           <div id="end{{i}}"></div>
         </div>
