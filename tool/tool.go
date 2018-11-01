@@ -374,11 +374,13 @@ func createTopList() error {
 					continue
 				}
 
-				endofdate := len("[2017-08-27 01:57:59 UTC] ")
+				endofdate := bytes.Index(line, []byte("UTC] ")) + 5
+				if len(line) <= endofdate {
+					continue
+				}
 				endofnick := bytes.Index(line[endofdate:], []byte(":"))
 
 				nick := line[endofdate : endofnick+endofdate]
-				date, err := time.Parse("[2006-01-02 15:04:05 MST] ", string(line[:endofdate]))
 				if err != nil {
 					fmt.Println(err)
 				}
@@ -388,16 +390,12 @@ func createTopList() error {
 						Lines:    1,
 						Bytes:    len(line[endofnick+endofdate:]),
 						Username: string(nick),
-						Seen:     date.Unix(),
 					}
 					continue
 				}
 
 				toplist[string(nick)].Lines++
 				toplist[string(nick)].Bytes += len(line[endofnick+endofdate:])
-				if toplist[string(nick)].Seen < date.Unix() {
-					toplist[string(nick)].Seen = date.Unix()
-				}
 			}
 
 			if err := scanner.Err(); err != nil {
@@ -431,7 +429,6 @@ type user struct {
 	Username string
 	Lines    int
 	Bytes    int
-	Seen     int64
 }
 
 // ByLines sort impelmentation for user line count aggregates
