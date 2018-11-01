@@ -374,16 +374,18 @@ func createTopList() error {
 					continue
 				}
 
-				endofdate := bytes.Index(line, []byte("UTC] ")) + 5
-				if len(line) <= endofdate {
+				endofdate := bytes.Index(line, []byte("UTC] "))
+				if len(line) <= endofdate || endofdate < 6 {
 					continue
 				}
+				endofdate += 5
 				endofnick := bytes.Index(line[endofdate:], []byte(":"))
+				if endofnick == -1 {
+					continue
+				}
 
 				nick := line[endofdate : endofnick+endofdate]
-				if err != nil {
-					fmt.Println(err)
-				}
+
 
 				if _, ok := toplist[string(nick)]; !ok {
 					toplist[string(nick)] = &user{
