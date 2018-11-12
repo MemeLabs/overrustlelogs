@@ -112,8 +112,8 @@ func main() {
 	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", MentionsAPIHandle).Queries("limit", "{limit:[0-9]+}").Methods("GET")
 	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", MentionsAPIHandle).Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}").Methods("GET")
 	api.HandleFunc("/mentions/{channel:[a-zA-Z0-9_-]+}/{nick:[a-zA-Z0-9_-]+}.json", MentionsAPIHandle).Methods("GET")
-	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/top{limit:[0-9]{1,9}}.json", TopListApiHandle).Methods("GET").Queries("sort", "{sort:[a-z]+}")
-	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/top{limit:[0-9]{1,9}}.json", TopListApiHandle).Methods("GET")
+	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/top{limit:[0-9]{1,9}}.json", TopListAPIHandle).Methods("GET").Queries("sort", "{sort:[a-z]+}")
+	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/top{limit:[0-9]{1,9}}.json", TopListAPIHandle).Methods("GET")
 
 	srv := &http.Server{
 		Addr:         common.GetConfig().Server.Address,
@@ -161,7 +161,7 @@ func BaseHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 // WrapperHandle static html log wrapper
-func WrapperHandle(w http.ResponseWriter, r *http.Request) {	
+func WrapperHandle(w http.ResponseWriter, r *http.Request) {
 	tpl, err := view.GetTemplate("wrapper")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -173,7 +173,7 @@ func WrapperHandle(w http.ResponseWriter, r *http.Request) {
 	basePath := ""
 	for _, b := range crumbs {
 		if b == ""{
-			continue 
+			continue
 		}
 		basePath += "/" + b
 		bc = append(bc, breadcrumb{Path: basePath, Name: b})
@@ -184,7 +184,7 @@ func WrapperHandle(w http.ResponseWriter, r *http.Request) {
 	if r.URL.RawQuery != "" {
 		path += "?" + r.URL.RawQuery
 	}
-	if err := tpl.Execute(w, nil, struct{ 
+	if err := tpl.Execute(w, nil, struct{
 		Path string
 		Breadcrumbs []breadcrumb
 	}{Path: path, Breadcrumbs: bc}); err != nil {
@@ -738,6 +738,7 @@ func LinesAPIHandle(w http.ResponseWriter, r *http.Request) {
 	w.Write(d)
 }
 
+// ByDate ...
 type ByDate linesData
 
 type linesData struct {
@@ -1117,10 +1118,9 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 	}
 }
 
-// Todo
+// TopListHandle channel index
 // - sort by bytes, seen, lines(default), username
 // - pages????????
-// TopListHandle channel index
 func TopListHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	var tpl topListPayload
@@ -1143,7 +1143,8 @@ func TopListHandle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func TopListApiHandle(w http.ResponseWriter, r *http.Request) {
+// TopListAPIHandle ...
+func TopListAPIHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	var tpl topListPayload
 
@@ -1210,11 +1211,11 @@ func getToplistPayload(channel, month, limitquery, sortquery string) (topListPay
 	if sortquery != "" {
 		switch sortquery {
 		case "bytes":
-			sort.Sort(ByBytes(toplist))
+			sort.Sort(byBytes(toplist))
 		case "seen":
-			sort.Sort(BySeen(toplist))
+			sort.Sort(bySeen(toplist))
 		case "username":
-			sort.Sort(ByUsername(toplist))
+			sort.Sort(byUsername(toplist))
 		}
 		tpl.Sort = sortquery
 	}
@@ -1255,26 +1256,24 @@ type (
 		Name string
 	}
 
-	ByBytes    []*user
-	BySeen     []*user
-	ByUsername []*user
+	byBytes    []*user
+	bySeen     []*user
+	byUsername []*user
 )
 
-func (a ByBytes) Len() int           { return len(a) }
-func (a ByBytes) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByBytes) Less(i, j int) bool { return a[i].Bytes > a[j].Bytes }
+func (a byBytes) Len() int           { return len(a) }
+func (a byBytes) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byBytes) Less(i, j int) bool { return a[i].Bytes > a[j].Bytes }
 
-func (a BySeen) Len() int           { return len(a) }
-func (a BySeen) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a BySeen) Less(i, j int) bool { return a[i].Seen < a[j].Seen }
+func (a bySeen) Len() int           { return len(a) }
+func (a bySeen) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a bySeen) Less(i, j int) bool { return a[i].Seen < a[j].Seen }
 
-func (a ByUsername) Len() int           { return len(a) }
-func (a ByUsername) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByUsername) Less(i, j int) bool { return a[i].Username < a[j].Username }
+func (a byUsername) Len() int           { return len(a) }
+func (a byUsername) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byUsername) Less(i, j int) bool { return a[i].Username < a[j].Username }
 
-// wip
-// /stalk
-// /stalk?channel=xxx&nick=xxx
+// StalkerHandle ...
 func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	channel := vars["channel"]
