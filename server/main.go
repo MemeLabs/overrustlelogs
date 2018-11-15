@@ -50,6 +50,11 @@ var (
 	NicksExtension = regexp.MustCompile(`\.nicks\.gz$`)
 )
 
+// APIError ...
+type APIError struct {
+	Message string `json:"message"`
+}
+
 var dev = false
 
 var view *jet.Set
@@ -513,23 +518,22 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		vars["channel"] = "Destinygg chatlog"
 	}
 
-	w.Header().Set("Content-type", "text/plain")
 	if _, ok := vars["date"]; !ok {
 		vars["date"] = time.Now().UTC().Format("2006-01-02")
 	}
 	t, err := time.Parse("2006-01-02", vars["date"])
 	if err != nil {
-		http.Error(w, "invalid date format", http.StatusBadRequest)
+		serveAPIError(w, "invalid date format", http.StatusBadRequest)
 		return
 	}
 	if t.After(time.Now().UTC()) {
-		http.Error(w, "can't look into the future", http.StatusBadRequest)
+		serveAPIError(w, "can't look into the future", http.StatusBadRequest)
 		return
 	}
 
 	data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), t.Format("January 2006"), t.Format("2006-01-02")))
 	if err != nil {
-		http.Error(w, ErrDayNotFound.Error(), http.StatusNotFound)
+		serveAPIError(w, ErrDayNotFound.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -549,7 +553,7 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(lines) == 0 {
-		http.Error(w, ErrNoMentions.Error(), http.StatusNotFound)
+		serveAPIError(w, ErrNoMentions.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -561,7 +565,7 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		l, err := strconv.Atoi(vars["limit"])
 		if err != nil {
 			log.Println(err)
-			http.Error(w, "limit query is not a integer", http.StatusBadRequest)
+			serveAPIError(w, "limit query is not a integer", http.StatusBadRequest)
 			return
 		}
 		limit = l
@@ -595,27 +599,15 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-type", "application/json")
-	d, _ := json.Marshal(mentions)
-	w.Write(d)
+	json.NewEncoder(w).Encode(mentions)
 }
 
 // ChannelsAPIHandle lists the channels
 func ChannelsAPIHandle(w http.ResponseWriter, r *http.Request) {
-	type Error struct {
-		Error string `json:"error"`
-	}
 
-	w.Header().Set("Content-type", "application/json")
-	f, err := os.Open(common.GetConfig().LogPath)
+	files, err := readDirIndex(common.GetConfig().LogPath)
 	if err != nil {
-		d, _ := json.Marshal(Error{err.Error()})
-		http.Error(w, string(d), http.StatusInternalServerError)
-		return
-	}
-	files, err := f.Readdirnames(0)
-	if err != nil {
-		d, _ := json.Marshal(Error{err.Error()})
-		http.Error(w, string(d), http.StatusInternalServerError)
+		serveAPIError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -623,54 +615,33 @@ func ChannelsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		files[i] = v[:len(v)-8]
 	}
 	sort.Strings(files)
-	d, _ := json.Marshal(files)
-	w.Write(d)
+	w.Header().Set("Content-type", "application/json")
+	json.NewEncoder(w).Encode(files)
 }
 
 // MonthsAPIHandle lists the channels
 func MonthsAPIHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	type Error struct {
-		Error string `json:"error"`
-	}
-
-	w.Header().Set("Content-type", "application/json")
-	f, err := os.Open(filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog"))
+	monthsPath := filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog")
+	files, err := readDirIndex(monthsPath)
 	if err != nil {
-		d, _ := json.Marshal(Error{err.Error()})
-		http.Error(w, string(d), http.StatusInternalServerError)
-		return
-	}
-	files, err := f.Readdirnames(0)
-	if err != nil {
-		d, _ := json.Marshal(Error{err.Error()})
-		http.Error(w, string(d), http.StatusInternalServerError)
+		serveAPIError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
 	sort.Sort(byMonth(files))
-	d, _ := json.Marshal(files)
-	w.Write(d)
+	w.Header().Set("Content-type", "application/json")
+	json.NewEncoder(w).Encode(files)
 }
 
 // DaysAPIHandle lists the channels
 func DaysAPIHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	type Error struct {
-		Error string `json:"error"`
-	}
 
-	w.Header().Set("Content-type", "application/json")
-	f, err := os.Open(filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"]))
+	daysPath := filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"])
+	files, err := readDirIndex(daysPath)
 	if err != nil {
-		d, _ := json.Marshal(Error{err.Error()})
-		http.Error(w, string(d), http.StatusInternalServerError)
-		return
-	}
-	files, err := f.Readdirnames(0)
-	if err != nil {
-		d, _ := json.Marshal(Error{err.Error()})
-		http.Error(w, string(d), http.StatusInternalServerError)
+		serveAPIError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -694,29 +665,17 @@ func DaysAPIHandle(w http.ResponseWriter, r *http.Request) {
 	sort.Sort(byDay(temp))
 	filteredDirs = append(filteredDirs, temp...)
 
-	d, _ := json.Marshal(filteredDirs)
-	w.Write(d)
+	w.Header().Set("Content-type", "application/json")
+	json.NewEncoder(w).Encode(filteredDirs)
 }
 
 // LinesAPIHandle lists the channels
 func LinesAPIHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	type Error struct {
-		Error string `json:"error"`
-	}
-
-	w.Header().Set("Content-type", "application/json")
 	monthPath := filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"])
-	f, err := os.Open(monthPath)
+	files, err := readDirIndex(monthPath)
 	if err != nil {
-		d, _ := json.Marshal(Error{err.Error()})
-		http.Error(w, string(d), http.StatusInternalServerError)
-		return
-	}
-	files, err := f.Readdirnames(0)
-	if err != nil {
-		d, _ := json.Marshal(Error{err.Error()})
-		http.Error(w, string(d), http.StatusInternalServerError)
+		serveAPIError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	var temp linesData
@@ -725,7 +684,7 @@ func LinesAPIHandle(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if strings.Contains(v, ".txt.gz") {
-			b, err := common.ReadCompressedFile(filepath.Join(monthPath, v))
+			b, err := readLogFile(filepath.Join(monthPath, v))
 			if err != nil {
 				continue
 			}
@@ -744,8 +703,8 @@ func LinesAPIHandle(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Sort(ByDate(temp))
 
-	d, _ := json.Marshal(temp)
-	w.Write(d)
+	w.Header().Set("Content-type", "application/json")
+	json.NewEncoder(w).Encode(temp)
 }
 
 // ByDate ...
@@ -769,14 +728,10 @@ func (a ByDate) Less(i, j int) bool {
 // UsersAPIHandle returns the */userlogs directory in json format
 func UsersAPIHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	f, err := os.Open(filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"]))
+	usersPath := filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"])
+	files, err := readDirIndex(usersPath)
 	if err != nil {
-		serveError(w, r, ErrNotFound)
-		return
-	}
-	files, err := f.Readdirnames(0)
-	if err != nil {
-		serveError(w, r, err)
+		serveAPIError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	nicks := common.NickList{}
@@ -790,17 +745,13 @@ func UsersAPIHandle(w http.ResponseWriter, r *http.Request) {
 		names = append(names, nick+".txt")
 	}
 	sort.Strings(names)
-	d, _ := json.Marshal(names)
-	w.Write(d)
+
+	w.Header().Set("Content-type", "application/json")
+	json.NewEncoder(w).Encode(names)
 }
 
 // StalkHandle return n most recent lines of chat for user
 func StalkHandle(w http.ResponseWriter, r *http.Request) {
-	type Error struct {
-		Error string `json:"error"`
-	}
-
-	w.Header().Set("Content-type", "application/json")
 	vars := mux.Vars(r)
 	if _, ok := vars["limit"]; !ok {
 		vars["limit"] = "3"
@@ -808,8 +759,7 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 	vars["channel"] = strings.Title(strings.ToLower(vars["channel"])) + " chatlog"
 	limit, err := strconv.ParseUint(vars["limit"], 10, 32)
 	if err != nil {
-		d, _ := json.Marshal(Error{err.Error()})
-		http.Error(w, string(d), http.StatusBadRequest)
+		serveAPIError(w, "failed parsing limit", http.StatusBadRequest)
 		return
 	}
 	if limit > uint64(common.GetConfig().Server.MaxStalkLines) {
@@ -821,8 +771,7 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 	index := limit
 	search, err := common.NewNickSearch(filepath.Join(common.GetConfig().LogPath, vars["channel"]), vars["nick"])
 	if err != nil {
-		d, _ := json.Marshal(Error{err.Error()})
-		http.Error(w, string(d), http.StatusNotFound)
+		serveAPIError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -832,14 +781,12 @@ ScanLogs:
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			d, _ := json.Marshal(Error{err.Error()})
-			http.Error(w, string(d), http.StatusInternalServerError)
+			serveAPIError(w, err.Error(), http.StatusNotFound)
 			return
 		}
 		data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), rs.Month(), rs.Day()))
 		if err != nil {
-			d, _ := json.Marshal(Error{err.Error()})
-			http.Error(w, string(d), http.StatusInternalServerError)
+			serveAPIError(w, err.Error(), http.StatusNotFound)
 			return
 		}
 		lines := [][]byte{}
@@ -867,8 +814,7 @@ ScanLogs:
 	}
 
 	if index == limit {
-		d, _ := json.Marshal(Error{"User not found"})
-		http.Error(w, string(d), http.StatusInternalServerError)
+		serveAPIError(w, ErrUserNotFound.Error(), http.StatusNotFound)
 		return
 	}
 	type Line struct {
@@ -881,20 +827,20 @@ ScanLogs:
 	}{
 		Lines: []Line{},
 	}
+	data.Nick = strings.ToLower((vars["nick"]))
 	for i := int(index); i < len(buf); i++ {
 		t, err := time.Parse("2006-01-02 15:04:05 MST", buf[i][1:24])
 		if err != nil {
 			continue
 		}
 		ci := strings.Index(buf[i][LogLinePrefixLength:], ":")
-		data.Nick = buf[i][LogLinePrefixLength : LogLinePrefixLength+ci]
 		data.Lines = append(data.Lines, Line{
 			Timestamp: t.Unix(),
 			Text:      buf[i][ci+LogLinePrefixLength+2:],
 		})
 	}
-	d, _ := json.Marshal(data)
-	w.Write(d)
+	w.Header().Set("Content-type", "application/json")
+	json.NewEncoder(w).Encode(data)
 }
 
 type byMonth []string
@@ -1129,6 +1075,14 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 	}
 }
 
+// serveAPIError servers a error with given message and status code
+func serveAPIError(w http.ResponseWriter, error string, code int) {
+	apiError := APIError{Message: error}
+	w.WriteHeader(code)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(apiError)
+}
+
 // TopListHandle channel index
 // - sort by bytes, seen, lines(default), username
 // - pages????????
@@ -1161,18 +1115,12 @@ func TopListAPIHandle(w http.ResponseWriter, r *http.Request) {
 
 	tpl, err := getToplistPayload(vars["channel"], vars["month"], vars["limit"], vars["sort"])
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	data, err := json.MarshalIndent(tpl, "", "\t")
-	if err != nil {
-		http.Error(w, "failed marshaling toplist data", http.StatusInternalServerError)
+		serveAPIError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
 	w.Header().Set("Content-type", "application/json")
-	w.Write(data)
+	json.NewEncoder(w).Encode(tpl)
 }
 
 func getToplistPayload(channel, month, limitquery, sortquery string) (topListPayload, error) {
