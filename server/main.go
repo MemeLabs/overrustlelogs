@@ -1,8 +1,6 @@
 package main
 
 import (
-	"runtime"
-	"sync"
 	"bufio"
 	"bytes"
 	"encoding/gob"
@@ -18,9 +16,11 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -37,8 +37,11 @@ const (
 // errors
 var (
 	ErrUserNotFound      = errors.New("didn't find any logs for this user")
+	ErrDayNotFound       = errors.New("cou find logs for this day")
 	ErrNotFound          = errors.New("file not found")
-	ErrSearchKeyNotFound = errors.New("didn't find what you were looking for :(")
+	ErrSearchKeyNotFound = errors.New("didn't find what you were looking for")
+	ErrNoSubscribers     = errors.New("no subscribers for this month")
+	ErrNoMentions        = errors.New("couldn't find any mentions")
 )
 
 // log file extension pattern
@@ -53,7 +56,7 @@ var view *jet.Set
 
 func init() {
 	configPath := flag.String("config", "", "config path")
-	flag.BoolVar(&dev, "dev", false, "for jet and local asset loading")
+	flag.BoolVar(&dev, "dev", false, "for jet template hot reloading and local asset loading")
 	flag.Parse()
 	common.SetupConfig(*configPath)
 }
@@ -175,11 +178,11 @@ func WrapperHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	crumbs:= strings.Split(r.URL.Path, "/")
+	crumbs := strings.Split(r.URL.Path, "/")
 	bc := []breadcrumb{}
 	basePath := ""
 	for _, b := range crumbs {
-		if b == ""{
+		if b == "" {
 			continue
 		}
 		basePath += "/" + b
@@ -191,8 +194,8 @@ func WrapperHandle(w http.ResponseWriter, r *http.Request) {
 	if r.URL.RawQuery != "" {
 		path += "?" + r.URL.RawQuery
 	}
-	if err := tpl.Execute(w, nil, struct{
-		Path string
+	if err := tpl.Execute(w, nil, struct {
+		Path        string
 		Breadcrumbs []breadcrumb
 	}{Path: path, Breadcrumbs: bc}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -371,7 +374,7 @@ func SubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	vars["channel"] = convertChannelCase(vars["channel"])
 	nick, ok := userInMonth(vars["channel"], "twitchnotify", vars["month"])
 	if !ok {
-		http.Error(w, errors.New("no subscribers this month :(").Error(), http.StatusInternalServerError)
+		http.Error(w, ErrNoSubscribers.Error(), http.StatusInternalServerError)
 		return
 	}
 	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
@@ -395,7 +398,7 @@ func DestinySubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	vars["channel"] = "Destinygg chatlog"
 	nick, ok := userInMonth(vars["channel"], "Subscriber", vars["month"])
 	if !ok {
-		http.Error(w, errors.New("no subscribers this month").Error(), http.StatusInternalServerError)
+		http.Error(w, ErrNoSubscribers.Error(), http.StatusInternalServerError)
 		return
 	}
 	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
@@ -466,12 +469,12 @@ func MentionsHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if t.After(time.Now().UTC()) {
-		http.Error(w, "can't look into the future D:", http.StatusNotFound)
+		http.Error(w, "can't look into the future", http.StatusNotFound)
 		return
 	}
 	data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), t.Format("January 2006"), t.Format("2006-01-02")))
 	if err != nil {
-		http.Error(w, "no logs found :(", http.StatusNotFound)
+		http.Error(w, ErrDayNotFound.Error(), http.StatusNotFound)
 		return
 	}
 	w.Header().Set("Content-type", "text/plain; charset=UTF-8")
@@ -492,7 +495,7 @@ func MentionsHandle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if lineCount == 0 {
-		http.Error(w, "no mentions :(", http.StatusNotFound)
+		http.Error(w, ErrNoMentions.Error(), http.StatusNotFound)
 	}
 }
 
@@ -520,13 +523,13 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if t.After(time.Now().UTC()) {
-		http.Error(w, "can't look into the future D:", http.StatusBadRequest)
+		http.Error(w, "can't look into the future", http.StatusBadRequest)
 		return
 	}
 
 	data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), t.Format("January 2006"), t.Format("2006-01-02")))
 	if err != nil {
-		http.Error(w, "no logs found :( ", http.StatusNotFound)
+		http.Error(w, ErrDayNotFound.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -546,7 +549,7 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(lines) == 0 {
-		http.Error(w, "no mentions :(", http.StatusNotFound)
+		http.Error(w, ErrNoMentions.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -1083,6 +1086,7 @@ func serveDirIndex(w http.ResponseWriter, base []string, paths []string) {
 			Icon: icon,
 		})
 	}
+
 	if len(dpl.Breadcrumbs) >= 2 && dpl.Breadcrumbs[1].Name != time.Now().UTC().Format("January 2006") {
 		dpl.Top100 = true
 	}
@@ -1139,13 +1143,13 @@ func TopListHandle(w http.ResponseWriter, r *http.Request) {
 
 	t, err := view.GetTemplate("toplist")
 	if err != nil {
-		serveError(w, r, errors.New("somthing went wrong getting the template :("))
+		serveError(w, r, errors.New("failed loading toplist template"))
 		return
 	}
 
 	w.Header().Set("Content-type", "text/html")
 	if err := t.Execute(w, nil, tpl); err != nil {
-		serveError(w, r, errors.New("somthing went wrong :("))
+		serveError(w, r, errors.New("failed executing toplist template"))
 		return
 	}
 }
@@ -1163,7 +1167,7 @@ func TopListAPIHandle(w http.ResponseWriter, r *http.Request) {
 
 	data, err := json.MarshalIndent(tpl, "", "\t")
 	if err != nil {
-		http.Error(w, "something went wrong", http.StatusInternalServerError)
+		http.Error(w, "failed marshaling toplist data", http.StatusInternalServerError)
 		return
 	}
 
@@ -1181,20 +1185,20 @@ func getToplistPayload(channel, month, limitquery, sortquery string) (topListPay
 
 	fi, err := os.Stat(path)
 	if err != nil {
-		return tpl, errors.New("check back at the end of the month :(")
+		return tpl, errors.New("check back at the end of the month")
 	}
 	tpl.Generated = fi.ModTime().UTC().Format("2006-01-02 15:04:05 MST")
 
 	data, err := common.ReadCompressedFile(path)
 	if err != nil {
-		return tpl, errors.New("something went bad reading the file :(")
+		return tpl, errors.New("failed reading toplist file")
 	}
 
 	toplist := []*user{}
 
 	err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(&toplist)
 	if err != nil {
-		return tpl, errors.New("somthing went wrong :(")
+		return tpl, errors.New("failed decoding toplist file")
 	}
 	tpl.MaxLimit = len(toplist) - 1
 
@@ -1288,7 +1292,7 @@ func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 
 	t, err := view.GetTemplate("stalk")
 	if err != nil {
-		serveError(w, r, errors.New("somthing went wrong getting the template :("))
+		serveError(w, r, errors.New("failed loading stalk template"))
 		return
 	}
 
@@ -1298,7 +1302,7 @@ func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 
 	if nick == "" || channel == "" {
 		if err := t.Execute(w, nil, spl); err != nil {
-			serveError(w, r, errors.New("somthing went wrong 0 :("))
+			serveError(w, r, errors.New("failed executing stalk template"))
 		}
 		return
 	}
@@ -1317,7 +1321,7 @@ func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 	wg.Add(workers)
 	var monthMutex sync.Mutex
 	for i := 0; i < workers; i++ {
-		go func(){
+		go func() {
 			for m := range monthChan {
 				if _, ok := userInMonth(convertChannelCase(channel), nick, m); ok {
 					monthMutex.Lock()
@@ -1337,12 +1341,12 @@ func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 	if len(spl.Months) > 0 {
 		sort.Sort(byMonth(spl.Months))
 	} else {
-		spl.Error = fmt.Sprintf("Couldn't find Nick: %s in Channel: %s :(", nick, channel)
+		spl.Error = fmt.Sprintf("Couldn't find Nick: %s in Channel: %s", nick, channel)
 	}
 
 	w.Header().Set("Content-type", "text/html")
 	if err := t.Execute(w, nil, spl); err != nil {
-		serveError(w, r, errors.New("somthing went wrong 1 :("))
+		serveError(w, r, errors.New("failed executing stalk template"))
 	}
 }
 
