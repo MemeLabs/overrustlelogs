@@ -14,17 +14,27 @@ import (
 
 // Destiny destiny.gg chat client
 type Destiny struct {
-	connLock sync.Mutex
-	conn     *websocket.Conn
-	messages chan *Message
-	quit     chan struct{}
+	connLock  sync.Mutex
+	conn      *websocket.Conn
+	messages  chan *Message
+	quit      chan struct{}
+	Channel   string
+	Anonymous bool
+	Origin    string
+	AuthKey   string
+	SocketURL string
 }
 
 // NewDestiny new destiny.gg chat client
-func NewDestiny() *Destiny {
+func NewDestiny(channel, origin, authkey, socketurl string, anon bool) *Destiny {
 	return &Destiny{
-		messages: make(chan *Message, MessageBufferSize),
-		quit:     make(chan struct{}, 2),
+		messages:  make(chan *Message, MessageBufferSize),
+		quit:      make(chan struct{}, 2),
+		Channel:   channel,
+		Anonymous: anon,
+		Origin:    origin,
+		AuthKey:   authkey,
+		SocketURL: socketurl,
 	}
 }
 
@@ -32,19 +42,21 @@ func NewDestiny() *Destiny {
 func (c *Destiny) connect() {
 	dialer := websocket.Dialer{HandshakeTimeout: HandshakeTimeout}
 	header := http.Header{
-		"Origin": []string{GetConfig().DestinyGG.OriginURL},
-		"Cookie": []string{GetConfig().DestinyGG.Cookie},
+		"Origin": []string{c.Origin},
+	}
+	if !c.Anonymous {
+		header.Add("Cookie", c.AuthKey)
 	}
 	var err error
 	c.connLock.Lock()
-	c.conn, _, err = dialer.Dial(GetConfig().DestinyGG.SocketURL, header)
+	c.conn, _, err = dialer.Dial(c.SocketURL, header)
 	c.connLock.Unlock()
 	if err != nil {
-		log.Printf("error connecting to destiny ws %s", err)
+		log.Printf("error connecting to %s ws %s", c.Channel, err)
 		c.reconnect()
 		return
 	}
-	log.Printf("connected to destiny ws")
+	log.Printf("connected to %s ws", c.Channel)
 }
 
 func (c *Destiny) reconnect() {
@@ -112,7 +124,7 @@ func (c *Destiny) Run() {
 		select {
 		case c.messages <- &Message{
 			Type:    string(msg[:index]),
-			Channel: "Destinygg",
+			Channel: c.Channel,
 			Nick:    data.Nick,
 			Data:    strings.Replace(data.Data, "\n", " ", -1),
 			Time:    time.Unix(data.Timestamp/1000, 0).UTC(),
