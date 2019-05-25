@@ -1,0 +1,13 @@
+{{extends "layout.jet"}}
+{{import "breadcrumbs.jet"}}
+{{block body()}}
+{{yield breadcrumbs()}}
+    {{ range i, day := .Days }}
+        <div class="card text-white bg-dark mb-3" style="width: 100%;">
+          <div class="card-header">Day {{ day.Name }}</div>
+          <div class="card-body">
+            <p class="card-text text">{{ day.Log }}</p>
+          </div>
+        </div>
+    {{ end }}
+{{end}}

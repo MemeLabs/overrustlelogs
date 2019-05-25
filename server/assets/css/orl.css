@@ -4,7 +4,7 @@
 
 body {
   background-color: #212121 !important;
-  color: white !important;
+  color: rgba(255, 255, 255, 0.8) !important;
 }
 
 .bg-dark {
@@ -13,7 +13,7 @@ body {
 
 .patreon {
   background-color: #f96854 !important;
-  color: #fff;
+  color: #fff !important;
 }
 
 .btn-dark {
@@ -25,11 +25,11 @@ body {
 }
 
 .btn {
-  text-decoration-style: none;
+  text-decoration-style: unset;
 }
 
 .table-dark {
-  color: #fff !important;
+  color: rgba(255, 255, 255, 0.8) !important;
   background-color: #2b2a2a !important;
 }
 
@@ -74,14 +74,14 @@ body {
   background-color: #2b2a2a;
   border: 0;
   border-bottom: 1px solid #ff5722 !important;
-  color: white;
+  color: rgba(255, 255, 255, 0.8) !important;
 }
 
 .list-group-item:hover,
 .list-group-item:focus {
   z-index: 1;
   text-decoration: none;
-  color: white;
+  color: rgba(255, 255, 255, 0.9);
   background-color: #535353;
 }
 
@@ -92,6 +92,7 @@ body {
 .text {
   word-break: break-word;
   white-space: pre-line;
+  color: rgba(255, 255, 255, 0.8) !important;
 }
 
 .full-width {
@@ -99,7 +100,7 @@ body {
 }
 
 text {
-  fill: white !important;
+  fill: white;
 }
 
 .domain {

@@ -82,10 +82,12 @@ func main() {
 	r.HandleFunc("/stalk", StalkerHandle).Methods("GET")
 	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", MentionsHandle).Methods("GET").Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
 	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", MentionsHandle).Methods("GET")
-	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}", WrapperHandle).Methods("GET")
+	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}", MentionsWrapperHandle).Methods("GET").Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
+	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}", MentionsWrapperHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", MentionsHandle).Methods("GET").Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", MentionsHandle).Methods("GET")
-	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/mentions/{nick:[a-zA-Z0-9_-]{1,25}}", WrapperHandle).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/mentions/{nick:[a-zA-Z0-9_-]{1,25}}", MentionsWrapperHandle).Methods("GET").Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+}/mentions/{nick:[a-zA-Z0-9_-]{1,25}}", MentionsWrapperHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}", ChannelHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}", MonthHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}.txt", DayHandle).Queries("filter", "{filter:.+}").Methods("GET")
@@ -455,6 +457,87 @@ func NickHandle(w http.ResponseWriter, r *http.Request) {
 	}
 	vars["month"] = rs.Month()
 	UserHandle(w, r)
+}
+
+type MentionsWrapperPayload struct {
+	Days []*MentionsDay
+}
+
+type MentionsDay struct {
+	Name string
+	Log  string
+}
+
+// MentionsWrapperHandle ...
+func MentionsWrapperHandle(w http.ResponseWriter, r *http.Request) {
+	tpl, err := view.GetTemplate("mentions")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	vars := mux.Vars(r)
+	if _, ok := vars["channel"]; ok {
+		vars["channel"] = strings.Title(strings.ToLower(vars["channel"])) + " chatlog"
+	} else {
+		vars["channel"] = "Destinygg chatlog"
+	}
+
+	if _, ok := vars["date"]; !ok {
+		vars["date"] = time.Now().UTC().Format("2006-01-02")
+	}
+	date, err := time.Parse("2006-01-02", vars["date"])
+	if err != nil {
+		serveError(w, r, errors.New("invalid date format"))
+		return
+	}
+	days := []time.Time{
+		date,
+		date.AddDate(0, 0, -1),
+		date.AddDate(0, 0, -2),
+		date.AddDate(0, 0, -3),
+	}
+
+	var payload MentionsWrapperPayload
+
+	for _, day := range days {
+		if day.After(time.Now().UTC()) {
+			continue
+		}
+		d := MentionsDay{
+			Name: day.Format("2006-01-02"),
+		}
+		payload.Days = append(payload.Days, &d)
+		data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), day.Format("January 2006"), day.Format("2006-01-02")))
+		if err != nil {
+			d.Log = err.Error()
+			continue
+		}
+		var lineCount int
+		reader := bufio.NewReaderSize(bytes.NewReader(data), len(data))
+		for {
+			line, err := reader.ReadSlice('\n')
+			if err != nil {
+				if err != io.EOF {
+					log.Printf("error reading bytes %s", err)
+				}
+				break
+			}
+			lowerLine := bytes.ToLower(line)
+			if isMentioned([]byte(" "+vars["nick"]), lowerLine) {
+				d.Log += string(line)
+				lineCount++
+			}
+		}
+		if lineCount == 0 {
+			d.Log = ErrNoMentions.Error()
+		}
+	}
+
+	w.Header().Set("Content-type", "text/html")
+	if err := tpl.Execute(w, nil, payload); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 // MentionsHandle shows each line where a specific nick gets mentioned
