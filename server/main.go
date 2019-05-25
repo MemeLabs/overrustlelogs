@@ -459,10 +459,12 @@ func NickHandle(w http.ResponseWriter, r *http.Request) {
 	UserHandle(w, r)
 }
 
+// MentionsWrapperPayload payload for mentions.jet
 type MentionsWrapperPayload struct {
 	Days []*MentionsDay
 }
 
+// MentionsDay part of the payload for mentions.jet
 type MentionsDay struct {
 	Name string
 	Log  string
