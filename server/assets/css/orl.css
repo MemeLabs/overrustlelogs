@@ -106,3 +106,7 @@ text {
 .domain {
   stroke: white;
 }
+
+.footer {
+  background-color: #2b2a2a;
+}

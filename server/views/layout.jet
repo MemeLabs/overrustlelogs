@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-100">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -46,67 +46,81 @@
       });
     </script>
   </head>
-  <body>
+  <body class="d-flex flex-column h-100">
     <div id="top" class="scrollspy"></div>
-    <nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark">
-      <div class="container">
-        <a class="navbar-brand" href="/">
-          <img src="/assets/rustle.png" width="30" height="30" class="d-inline-block align-top" alt="">
-          {{ title }}
-        </a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
+    <main role="main" class="flex-shrink-0">
+      <nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+          <a class="navbar-brand" href="/">
+            <img src="/assets/rustle.png" width="30" height="30" class="d-inline-block align-top" alt="">
+            {{ title }}
+          </a>
+          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
 
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
-          <ul class="navbar-nav mr-auto">
-            <li class="nav-item">
-              <a class="nav-link" href="/stalk">Stalk</a>
-            </li>
-          </ul>
-          <ul class="navbar-nav">
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mr-auto">
+              <li class="nav-item">
+                <a class="nav-link" href="/stalk">Stalk</a>
+              </li>
+            </ul>
+            <ul class="navbar-nav">
+              {{if donate != ""}}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ donate }}" target="_blank">Donate</a>
+              </li>
+              {{end}}
+              {{if patreon != ""}}
+              <a class="btn btn-dark btn-secondary patreon" href="{{ patreon }}" target="_blank">Patreon</a>
+              {{end}}
+            </ul>
+          </div>
+        </div>
+      </nav>
+      <div class="container py-2">
+        {{yield body()}}
+        {{if isset(.Month) && .Month != ""}}
+          {{yield diagram()}}
+        {{end}}
+        {{if googleadclient != "" && googleadslot != ""}}
+        <div class="ad">
+          <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+          <!-- orl -->
+          <ins class="adsbygoogle" style="display:block" data-ad-client="{{googleadclient}}" data-ad-slot="{{googleadslot}}" data-ad-format="auto" data-full-width-responsive="true"></ins>
+          <script>
+            (adsbygoogle = window.adsbygoogle || []).push({});
+          </script>
+        </div>
+        {{end}}
+      </div>
+      <div id="bottom" class="scrollspy"></div>
+      <div class="btn-group-vertical position-fixed jump-buttons" style="bottom: 45px; right: 24px; display: none;">
+        <a href="#top" class="btn btn-dark patreon"><i class="fas fa-arrow-up"></i></a>
+        <a href="#bottom" class="btn btn-dark patreon"><i class="fas fa-arrow-down"></i></a>
+      </div>
+    </main>
+    <footer class="footer mt-auto py-3">
+      <div class="container">
+        <div class="row">
+          <div class="col col-lg-1">
             {{if github != "" }}
-            <li class="nav-item">
-              <a class="nav-link" href="/changelog">Changelog</a>
-            </li>
+              <a class="link-white text-muted" href="/changelog">Changelog</a>
             {{end}}
+          </div>
+          <div class="col col-lg-1">
             {{if email != "" || twitter != "" }}
-            <li class="nav-item">
-              <a class="nav-link" href="/contact">Contact</a>
-            </li>
+              <a class="link-white text-muted" href="/contact">Contact</a>
             {{end}}
-            {{if donate != ""}}
-            <li class="nav-item">
-              <a class="nav-link" href="{{ donate }}" target="_blank">Donate</a>
-            </li>
-            {{end}}
-            {{if patreon != ""}}
-            <a class="btn btn-dark btn-secondary patreon" href="{{ patreon }}" target="_blank">Patreon</a>
-            {{end}}
-          </ul>
+          </div>
+          <div class="col">
+
+          </div>
+          <div class="col col-lg-2">
+            <span class="text-muted float-right">{{ title }}©</span>
+          </div>
         </div>
       </div>
-    </nav>
-    <div class="container py-2">
-      {{yield body()}}
-      {{if isset(.Month) && .Month != ""}}
-        {{yield diagram()}}
-      {{end}}
-      {{if googleadclient != "" && googleadslot != ""}}
-      <div class="ad">
-        <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-        <!-- orl -->
-        <ins class="adsbygoogle" style="display:block" data-ad-client="{{googleadclient}}" data-ad-slot="{{googleadslot}}" data-ad-format="auto" data-full-width-responsive="true"></ins>
-        <script>
-          (adsbygoogle = window.adsbygoogle || []).push({});
-        </script>
-      </div>
-      {{end}}
-    </div>
-    <div id="bottom" class="scrollspy"></div>
-    <div class="btn-group-vertical position-fixed jump-buttons" style="bottom: 45px; right: 24px; display: none;">
-      <a href="#top" class="btn btn-dark patreon"><i class="fas fa-arrow-up"></i></a>
-      <a href="#bottom" class="btn btn-dark patreon"><i class="fas fa-arrow-down"></i></a>
-    </div>
+    </footer>
   </body>
 </html>
