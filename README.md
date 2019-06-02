@@ -16,14 +16,6 @@ sudo apt-get install git --assume-yes
 
 ### Step 2
 
-Install docker. https://docs.docker.com/install/
-
-### Step 3
-
-Install docker-compose. https://docs.docker.com/compose/install/
-
-### Step 4
-
 Clone the overrustlelogs repo.
 
 ```bash
@@ -34,7 +26,7 @@ cd overrustlelogs
 git checkout docker
 ```
 
-### Step 5
+### Step 3
 
 Copy and edit the .env file. Edit the overrustlelogs.toml file.
 
@@ -48,9 +40,12 @@ vim .env
 
 # few things you need to edit here too
 vim ./package/var/overrustlelogs/overrustlelogs.toml
+
+# change server_name's in the nginx config if you need
+vim ./package/etc/nginx/sites-enabled/overrustlelogs.net.conf
 ```
 
-### Step 6
+### Step 4
 
 Run the install script from the repo root directory.
 
@@ -58,7 +53,7 @@ Run the install script from the repo root directory.
 # cd into overrustlelogs if not already in there
 cd overrustlelogs
 # use sudo if you're not root
-./scripts/install.sh
+./scripts/all.sh
 ```
 
 ## Updating
