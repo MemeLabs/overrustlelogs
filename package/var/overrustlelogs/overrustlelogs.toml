@@ -1,0 +1,25 @@
+logHost = "http://overrustlelogs.net"
+maxOpenLogs = 1000
+
+[destinygg]
+logHost = "https://dgg.overrustlelogs.net"
+socketURL = "wss://destiny.gg:9998/ws"
+originURL = "http://destiny.gg"
+cookie = ""
+
+[twitch]
+logHost = "https://ttv.overrustlelogs.net"
+socketURL = "wss://irc-ws.chat.twitch.tv:443"
+originURL = "http://irc-ws.twitch.tv"
+clientID = ""
+nick = ""
+oauth = ""
+admins = ["dbc__", "tensei_c"]
+commandChannel = "overrustlelogs"
+
+[bot]
+admins = [
+  "Destiny",
+  "RightToBearArmsLOL",
+  "dbc"
+]

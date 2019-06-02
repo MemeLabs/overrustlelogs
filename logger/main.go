@@ -7,11 +7,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	//"overrustlelogs/common"
 	"github.com/MemeLabs/overrustlelogs/common"
 )
 
 func init() {
-	configPath := flag.String("config", "", "config path")
+	configPath := flag.String("config", "/logger/overrustlelogs.toml", "config path")
 	flag.Parse()
 	common.SetupConfig(*configPath)
 }

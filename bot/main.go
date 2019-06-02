@@ -25,13 +25,16 @@ import (
 const (
 	destinyPath = "Destinygg chatlog"
 	twitchPath  = "Destiny chatlog"
+	LogsPath = "/logs"
+	IgnoreListPath = "/bot/ignore.json"
+	IgnoreLogListPath = "/bot/ignorelog.json"
 )
 
 var validNick = regexp.MustCompile("^[a-zA-Z0-9_]+$")
 var configPath string
 
 func init() {
-	flag.StringVar(&configPath, "config", "", "config path")
+	flag.StringVar(&configPath, "config", "/bot/overrustlelogs.toml", "config path")
 	flag.Parse()
 	common.SetupConfig(configPath)
 }
@@ -108,7 +111,7 @@ func NewBot(c *common.Destiny) *Bot {
 	}
 
 	b.ignore = make(map[string]struct{})
-	if d, err := ioutil.ReadFile(common.GetConfig().Bot.IgnoreListPath); err == nil {
+	if d, err := ioutil.ReadFile(IgnoreListPath); err == nil {
 		ignore := []string{}
 		if err := json.Unmarshal(d, &ignore); err == nil {
 			for _, nick := range ignore {
@@ -116,7 +119,7 @@ func NewBot(c *common.Destiny) *Bot {
 			}
 		}
 	}
-	if d, err := ioutil.ReadFile(common.GetConfig().Bot.IgnoreLogListPath); err == nil {
+	if d, err := ioutil.ReadFile(IgnoreLogListPath); err == nil {
 		ignoreLog := []string{}
 		if err := json.Unmarshal(d, &ignoreLog); err == nil {
 			for _, nick := range ignoreLog {
@@ -201,7 +204,7 @@ func (b *Bot) Stop() {
 		ignore = append(ignore, nick)
 	}
 	data, _ := json.Marshal(ignore)
-	if err := ioutil.WriteFile(common.GetConfig().Bot.IgnoreListPath, data, 0644); err != nil {
+	if err := ioutil.WriteFile(IgnoreListPath, data, 0644); err != nil {
 		log.Printf("unable to write ignore list %s", err)
 		return
 	}
@@ -210,7 +213,7 @@ func (b *Bot) Stop() {
 		ignoreLog = append(ignoreLog, nick)
 	}
 	data, _ = json.Marshal(ignoreLog)
-	if err := ioutil.WriteFile(common.GetConfig().Bot.IgnoreLogListPath, data, 0644); err != nil {
+	if err := ioutil.WriteFile(IgnoreLogListPath, data, 0644); err != nil {
 		log.Printf("unable to write ignorelog list %s", err)
 	}
 }
@@ -369,7 +372,7 @@ func (b *Bot) searchNickFromLine(path string, r *bufio.Reader) (*common.NickSear
 	if !validNick.Match([]byte(nick)) {
 		return nil, "", errors.New("invalid nick")
 	}
-	s, err := common.NewNickSearch(common.GetConfig().LogPath+"/"+path, nick)
+	s, err := common.NewNickSearch(LogsPath+"/"+path, nick)
 	if err != nil {
 		return nil, "", err
 	}

@@ -16,6 +16,11 @@ import (
 	"github.com/MemeLabs/overrustlelogs/common"
 )
 
+// Paths
+const (
+	ChannelListPath = "/logger/channels.json"
+)
+
 // TwitchHub ...
 type TwitchHub struct {
 	chatLock       sync.RWMutex
@@ -42,7 +47,7 @@ func NewTwitchLogger(f func(m <-chan *common.Message)) *TwitchHub {
 		t.admins[a] = struct{}{}
 	}
 
-	d, err := ioutil.ReadFile(common.GetConfig().Twitch.ChannelListPath)
+	d, err := ioutil.ReadFile("/logger/channels.json")
 	if err != nil {
 		log.Fatalf("unable to read channels %s", err)
 	}
@@ -204,7 +209,7 @@ func (t *TwitchHub) removeChannel(ch string) error {
 }
 
 func (t *TwitchHub) saveChannels() error {
-	f, err := os.Create(common.GetConfig().Twitch.ChannelListPath)
+	f, err := os.Create("/logger/channels.json")
 	if err != nil {
 		log.Printf("error saving channel list %s", err)
 		return err
