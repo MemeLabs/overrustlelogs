@@ -36,6 +36,7 @@ updateServerPack(){
 	cp -r $HOME/overrustlelogs/server/assets /var/overrustlelogs/public/
 	chown -R overrustlelogs:overrustlelogs /var/overrustlelogs/public/assets
 
+	service varnish restart
 	echo "updated the server assets"
 }
 
@@ -51,9 +52,6 @@ elif [[ $TODO == "serverpack" ]]; then
 elif [[ $TODO == "logger" ]]; then
 	echo "updating the orl-logger"
 	updateLogger
-elif [[ $TODO == "pack" ]]; then
-	echo "updating package etc & var"
-	updatePack
 else
 	echo "updating everything..."
 	updateBot

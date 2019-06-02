@@ -117,7 +117,9 @@
 
           </div>
           <div class="col col-lg-2">
-            <span class="text-muted float-right">{{ title }}©</span>
+            {{if title != "" }}
+              <span class="text-muted float-right">{{ title }}©</span>
+            {{end}}
           </div>
         </div>
       </div>
