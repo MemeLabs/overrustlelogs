@@ -2,7 +2,7 @@
 {{block body()}}
 <div class="card text-white bg-dark">
   <div class="card-body text-center">
-    <a class="link-white" href="{{ .Github }}/commits/master" target="_blank"><h1><i class="fab fa-github mr-2"></i>GitHub</h1></a>
+    <a class="link-white" href="{{ github }}/commits/master" target="_blank"><h1><i class="fab fa-github mr-2"></i>GitHub</h1></a>
   </div>
 </div>
 {{end}}

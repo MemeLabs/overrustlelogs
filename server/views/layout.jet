@@ -5,10 +5,10 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
     <meta name="description" content="Twitch.tv chat logs.">
-    <meta property="og:title" content="OverRustleLogs.net" />
-    <meta property="og:site_name" content="OverRustleLogs" />
+    <meta property="og:title" content="{{ title }}" />
+    <meta property="og:site_name" content="{{ title }}" />
     <meta property="og:description" content="Twitch.tv chat logs." />
-    <meta property="og:image" content="https://overrustlelogs.net/assets/rustle.png" />
+    <meta property="og:image" content="/assets/rustle.png" />
     <title>{{ title }}</title>
     <link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico" />
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
@@ -19,9 +19,10 @@
     <script src="/assets/js/jquery-3.3.1.slim.min.js"></script>
     <script src="/assets/js/bootstrap.min.js" ></script>
     <script src="/assets/js/orl.js"></script>
+    {{if googleanalytics != "" }}
     <script type="text/javascript">
       var _gaq = _gaq || [];
-      _gaq.push(['_setAccount', 'UA-46946005-1']);
+      _gaq.push(['_setAccount', '{{ googleanalytics }}']);
       _gaq.push(['_trackPageview']);
 
       (function () {
@@ -32,6 +33,7 @@
 
       (function (b) { (function (a) { "__CF" in b && "DJS" in b.__CF ? b.__CF.DJS.push(a) : "addEventListener" in b ? b.addEventListener("load", a, !1) : b.attachEvent("onload", a) })(function () { "FB" in b && "Event" in FB && "subscribe" in FB.Event && (FB.Event.subscribe("edge.create", function (a) { _gaq.push(["_trackSocial", "facebook", "like", a]) }), FB.Event.subscribe("edge.remove", function (a) { _gaq.push(["_trackSocial", "facebook", "unlike", a]) }), FB.Event.subscribe("message.send", function (a) { _gaq.push(["_trackSocial", "facebook", "send", a]) })); "twttr" in b && "events" in twttr && "bind" in twttr.events && twttr.events.bind("tweet", function (a) { if (a) { var b; if (a.target && a.target.nodeName == "IFRAME") a: { if (a = a.target.src) { a = a.split("#")[0].match(/[^?=&]+=([^&]*)?/g); b = 0; for (var c; c = a[b]; ++b)if (c.indexOf("url") === 0) { b = unescape(c.split("=")[1]); break a } } b = void 0 } _gaq.push(["_trackSocial", "twitter", "tweet", b]) } }) }) })(window);
     </script>
+    {{end}}
     <script type="text/javascript">
       (function (path) {
         var selection = location.hash.match(/\#([0-9]+)-([0-9]+)/);
@@ -85,6 +87,16 @@
       {{yield body()}}
       {{if isset(.Month) && .Month != ""}}
         {{yield diagram()}}
+      {{end}}
+      {{if googleadclient != "" && googleadslot != ""}}
+      <div class="ad">
+        <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+        <!-- orl -->
+        <ins class="adsbygoogle" style="display:block" data-ad-client="{{googleadclient}}" data-ad-slot="{{googleadslot}}" data-ad-format="auto" data-full-width-responsive="true"></ins>
+        <script>
+          (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+      </div>
       {{end}}
     </div>
     <div id="bottom" class="scrollspy"></div>

@@ -62,18 +62,6 @@ var dev = false
 
 var view *jet.Set
 
-// BrandPayload contains all the custom brand stuff
-type BrandPayload struct {
-	Title   string
-	Twitter string
-	Email   string
-	Github  string
-	Patreon string
-	Donate 	string
-}
-
-var brandPayload *BrandPayload
-
 func init() {
 	flag.BoolVar(&dev, "dev", false, "for jet template hot reloading and local asset loading")
 	flag.Parse()
@@ -84,15 +72,6 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	view = jet.NewHTMLSet(ViewsPath)
 	view.SetDevelopmentMode(dev)
-
-	brandPayload = &BrandPayload{
-		Title:   os.Getenv("TITLE"),
-		Twitter: os.Getenv("TWITTER"),
-		Email:   os.Getenv("SUPPORT_EMAIL"),
-		Github:  os.Getenv("GITHUB"),
-		Patreon: os.Getenv("PATREON"),
-		Donate:  os.Getenv("DONATE"),
-	}
 	setupViewGlobals()
 
 	r := mux.NewRouter()
@@ -175,11 +154,15 @@ func main() {
 }
 
 func setupViewGlobals() {
-	// Workaround
-	// i can't currently pass the brandPayload in tmpl.execute in every path
-	view.AddGlobal("title", brandPayload.Title)
-	view.AddGlobal("donate", brandPayload.Donate)
-	view.AddGlobal("patreon", brandPayload.Patreon)
+	view.AddGlobal("title", os.Getenv("TITLE"))
+	view.AddGlobal("twitter", os.Getenv("TWITTER"))
+	view.AddGlobal("email", os.Getenv("SUPPORT_EMAIL"))
+	view.AddGlobal("github", os.Getenv("GITHUB"))
+	view.AddGlobal("donate", os.Getenv("DONATE"))
+	view.AddGlobal("patreon", os.Getenv("PATREON"))
+	view.AddGlobal("googleanalytics", os.Getenv("GOOGLE_ANALYTICS"))
+	view.AddGlobal("googleadslot", os.Getenv("GOOGLE_AD_SLOT"))
+	view.AddGlobal("googleadclient", os.Getenv("GOOGLE_AD_CLIENT"))
 }
 
 func logger(h http.Handler) http.Handler {
@@ -252,7 +235,7 @@ func ContactHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-type", "text/html")
-	if err := tpl.Execute(w, nil, brandPayload); err != nil {
+	if err := tpl.Execute(w, nil, nil); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -266,7 +249,7 @@ func ChangelogHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-type", "text/html")
-	if err := tpl.Execute(w, nil, brandPayload); err != nil {
+	if err := tpl.Execute(w, nil, nil); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
