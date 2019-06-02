@@ -9,7 +9,7 @@
     <meta property="og:site_name" content="OverRustleLogs" />
     <meta property="og:description" content="Twitch.tv chat logs." />
     <meta property="og:image" content="https://overrustlelogs.net/assets/rustle.png" />
-    <title>OverRustleLogs</title>
+    <title>{{ title }}</title>
     <link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico" />
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/orl.css">
@@ -50,7 +50,7 @@
       <div class="container">
         <a class="navbar-brand" href="/">
           <img src="/assets/rustle.png" width="30" height="30" class="d-inline-block align-top" alt="">
-          OverRustleLogs
+          {{ title }}
         </a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
@@ -69,10 +69,14 @@
             <li class="nav-item">
               <a class="nav-link" href="/contact">Contact</a>
             </li>
+            {{if donate != ""}}
             <li class="nav-item">
-              <a class="nav-link" href="https://streamlabs.com/overrustlelogs" target="_blank">Donate</a>
+              <a class="nav-link" href="{{ donate }}" target="_blank">Donate</a>
             </li>
-            <a class="btn btn-dark btn-secondary patreon" href="https://www.patreon.com/overrustlelogs" target="_blank">Patreon</a>
+            {{end}}
+            {{if patreon != ""}}
+            <a class="btn btn-dark btn-secondary patreon" href="{{ patreon }}" target="_blank">Patreon</a>
+            {{end}}
           </ul>
         </div>
       </div>

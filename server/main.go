@@ -62,6 +62,18 @@ var dev = false
 
 var view *jet.Set
 
+// BrandPayload contains all the custom brand stuff
+type BrandPayload struct {
+	Title   string
+	Twitter string
+	Email   string
+	Github  string
+	Patreon string
+	Donate 	string
+}
+
+var brandPayload *BrandPayload
+
 func init() {
 	flag.BoolVar(&dev, "dev", false, "for jet template hot reloading and local asset loading")
 	flag.Parse()
@@ -72,6 +84,16 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	view = jet.NewHTMLSet(ViewsPath)
 	view.SetDevelopmentMode(dev)
+
+	brandPayload = &BrandPayload{
+		Title:   os.Getenv("TITLE"),
+		Twitter: os.Getenv("TWITTER"),
+		Email:   os.Getenv("SUPPORT_EMAIL"),
+		Github:  os.Getenv("GITHUB"),
+		Patreon: os.Getenv("PATREON"),
+		Donate:  os.Getenv("DONATE"),
+	}
+	setupViewGlobals()
 
 	r := mux.NewRouter()
 	r.Use(logger)
@@ -114,7 +136,7 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", SubscriberHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", WrapperHandle).Methods("GET")
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
-	if dev {
+	if dev || os.Getenv("DEV") == "true" {
 		r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
 	}
 
@@ -150,6 +172,14 @@ func main() {
 	<-sigint
 	log.Println("i love you guys, be careful")
 	os.Exit(0)
+}
+
+func setupViewGlobals() {
+	// Workaround
+	// i can't currently pass the brandPayload in tmpl.execute in every path
+	view.AddGlobal("title", brandPayload.Title)
+	view.AddGlobal("donate", brandPayload.Donate)
+	view.AddGlobal("patreon", brandPayload.Patreon)
 }
 
 func logger(h http.Handler) http.Handler {
@@ -222,7 +252,7 @@ func ContactHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-type", "text/html")
-	if err := tpl.Execute(w, nil, nil); err != nil {
+	if err := tpl.Execute(w, nil, brandPayload); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -236,7 +266,7 @@ func ChangelogHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-type", "text/html")
-	if err := tpl.Execute(w, nil, nil); err != nil {
+	if err := tpl.Execute(w, nil, brandPayload); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
