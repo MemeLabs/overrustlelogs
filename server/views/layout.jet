@@ -65,12 +65,16 @@
             </li>
           </ul>
           <ul class="navbar-nav">
+            {{if github != "" }}
             <li class="nav-item">
               <a class="nav-link" href="/changelog">Changelog</a>
             </li>
+            {{end}}
+            {{if email != "" || twitter != "" }}
             <li class="nav-item">
               <a class="nav-link" href="/contact">Contact</a>
             </li>
+            {{end}}
             {{if donate != ""}}
             <li class="nav-item">
               <a class="nav-link" href="{{ donate }}" target="_blank">Donate</a>
