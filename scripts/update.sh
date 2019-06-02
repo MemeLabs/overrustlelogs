@@ -21,6 +21,7 @@ updateBot(){
 
 updateServer(){
 	docker-compose up -d --build server
+	service varnish restart
 	echo "updated the orl-server"
 }
 
