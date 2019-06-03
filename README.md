@@ -53,6 +53,8 @@ Run the install script from the repo root directory.
 # cd into overrustlelogs if not already in there
 cd overrustlelogs
 # use sudo if you're not root
+# only use all.sh if you're on ubuntu and don't have nginx, varnish, docker and
+# docker-compose installed, otherwise install everything manually and run install.sh afterwards
 ./scripts/all.sh
 ```
 
