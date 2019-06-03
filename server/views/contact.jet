@@ -2,12 +2,14 @@
 {{block body()}}
 <div class="card text-white bg-dark">
   <div class="card-body">
-    {{if email != ""}}
     <h4>Support E-mail</h4>
     <p>
-      <a class="link-blue" href="mailto:{{ email }}">{{ email }}</a>
+      {{if email != ""}}
+        <a class="link-blue" href="mailto:{{ email }}">{{ email }}</a>
+      {{else}}
+        no E-mail provided by administrator
+      {{end}}
     </p>
-    {{end}}
     {{if twitter != ""}}
     <h4>Twitter</h4>
     <p>

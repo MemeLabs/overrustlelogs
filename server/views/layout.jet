@@ -109,14 +109,11 @@
             {{end}}
           </div>
           <div class="col col-lg-1">
-            {{if email != "" || twitter != "" }}
-              <a class="link-white text-muted" href="/contact">Contact</a>
-            {{end}}
+            <a class="link-white text-muted" href="/contact">Contact</a>
           </div>
           <div class="col">
-
           </div>
-          <div class="col col-lg-2">
+          <div class="col col-lg-3">
             {{if title != "" }}
               <span class="text-muted float-right">© 2019 {{ title }}</span>
             {{end}}
