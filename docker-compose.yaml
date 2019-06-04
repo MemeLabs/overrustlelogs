@@ -10,7 +10,7 @@ services:
     volumes:
       - ${LOGS_PATH}:/logs:ro
     ports:
-      - "${PORT}:80"
+      - "${PORT}:8080"
   logger:
     build: ./logger
     container_name: orl-logger

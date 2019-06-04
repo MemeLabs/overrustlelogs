@@ -135,7 +135,7 @@ func main() {
 	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/top{limit:[0-9]{1,9}}.json", TopListAPIHandle).Methods("GET")
 
 	srv := &http.Server{
-		Addr:         ":80",
+		Addr:         ":8080",
 		Handler:      r,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
