@@ -3,6 +3,7 @@ services:
   server:
     build: ./server
     container_name: orl-server
+    user: overrustlelogs
     restart: unless-stopped
     env_file:
       - .env
@@ -13,6 +14,7 @@ services:
   logger:
     build: ./logger
     container_name: orl-logger
+    user: overrustlelogs
     restart: unless-stopped
     env_file:
       - .env
@@ -22,6 +24,7 @@ services:
   bot:
     build: ./bot
     container_name: orl-bot
+    user: overrustlelogs
     restart: unless-stopped
     env_file:
       - .env
