@@ -142,7 +142,7 @@ func main() {
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
-			log.Println("%v", err)
+			log.Printf("%v", err)
 		}
 	}()
 
