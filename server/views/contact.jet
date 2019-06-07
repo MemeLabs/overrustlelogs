@@ -4,34 +4,28 @@
   <div class="card-body">
     <h4>Support E-mail</h4>
     <p>
-      <a class="link-blue" href="mailto:support@overrustlelogs.net">support@overrustlelogs.net</a>
+      {{if email != ""}}
+        <a class="link-blue" href="mailto:{{ email }}">{{ email }}</a>
+      {{else}}
+        no E-mail provided by administrator
+      {{end}}
     </p>
+    {{if twitter != ""}}
     <h4>Twitter</h4>
     <p>
-      <a class="link-blue" href="https://twitter.com/Overrustlelogs">@Overrustlelogs</a>
+      <a class="link-blue" href="https://twitter.com/{{ twitter }}" target="_blank">@{{ twitter }}</a>
     </p>
-    <h4>
-      <a class="link-white" href="https://www.destiny.gg/bigscreen" target="_blank">Destiny.gg Chat</a>
-    </h4>
-    <p class="link-blue">dbc, Tensei and Slugalisk</p>
-    <h4>
-      <i class="fab fa-twitch"></i>
-      <span>Twitch.tv</span>
-    </h4>
-    <p>
-      <a class="link-blue" href="https://www.twitch.tv/tensei_c" target="_blank">twitch.tv/tensei_c</a>
-    </p>
-    <p>
-      <a class="link-blue" href="https://www.twitch.tv/dbc__" target="_blank">twitch.tv/dbc__</a>
-    </p>
+    {{end}}
+    {{if github != ""}}
     <div class="card-action">
       <h6 class="center-align">
         <span>
           <i class="fab fa-github"></i>
         </span>
-        <a class="link-white" href="https://github.com/MemeLabs/overrustlelogs" target="_blank">Fork this project on GitHub</a>
+        <a class="link-white" href="{{ github }}" target="_blank">Fork this project on GitHub</a>
       </h6>
     </div>
+    {{end}}
   </div>
 </div>
 {{end}}

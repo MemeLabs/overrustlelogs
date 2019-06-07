@@ -29,9 +29,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// temp ish.. move to config
+// stuff
 const (
 	LogLinePrefixLength = len("[2017-01-10 08:57:47 UTC] ")
+	LogsPath            = "/logs"
+	ViewsPath           = "./views"
+	MaxStalkLines       = 200
 )
 
 // errors
@@ -60,17 +63,16 @@ var dev = false
 var view *jet.Set
 
 func init() {
-	configPath := flag.String("config", "", "config path")
 	flag.BoolVar(&dev, "dev", false, "for jet template hot reloading and local asset loading")
 	flag.Parse()
-	common.SetupConfig(*configPath)
 }
 
 // Start server
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	view = jet.NewHTMLSet(common.GetConfig().Server.ViewPath)
+	view = jet.NewHTMLSet(ViewsPath)
 	view.SetDevelopmentMode(dev)
+	setupViewGlobals()
 
 	r := mux.NewRouter()
 	r.Use(logger)
@@ -113,7 +115,7 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", SubscriberHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", WrapperHandle).Methods("GET")
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
-	if dev {
+	if dev || os.Getenv("DEV") == "true" {
 		r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
 	}
 
@@ -133,18 +135,34 @@ func main() {
 	api.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/top{limit:[0-9]{1,9}}.json", TopListAPIHandle).Methods("GET")
 
 	srv := &http.Server{
-		Addr:         common.GetConfig().Server.Address,
+		Addr:         ":8080",
 		Handler:      r,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
-	go srv.ListenAndServe()
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			log.Println("%v", err)
+		}
+	}()
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
 	<-sigint
 	log.Println("i love you guys, be careful")
 	os.Exit(0)
+}
+
+func setupViewGlobals() {
+	view.AddGlobal("title", os.Getenv("TITLE"))
+	view.AddGlobal("twitter", os.Getenv("TWITTER"))
+	view.AddGlobal("email", os.Getenv("SUPPORT_EMAIL"))
+	view.AddGlobal("github", os.Getenv("GITHUB"))
+	view.AddGlobal("donate", os.Getenv("DONATE"))
+	view.AddGlobal("patreon", os.Getenv("PATREON"))
+	view.AddGlobal("googleanalytics", os.Getenv("GOOGLE_ANALYTICS"))
+	view.AddGlobal("googleadslot", os.Getenv("GOOGLE_AD_SLOT"))
+	view.AddGlobal("googleadclient", os.Getenv("GOOGLE_AD_CLIENT"))
 }
 
 func logger(h http.Handler) http.Handler {
@@ -169,7 +187,7 @@ func NotFoundHandle(w http.ResponseWriter, r *http.Request) {
 
 // BaseHandle channel index
 func BaseHandle(w http.ResponseWriter, r *http.Request) {
-	paths, err := readDirIndex(common.GetConfig().LogPath)
+	paths, err := readDirIndex(LogsPath)
 	if err != nil {
 		serveError(w, r, err)
 		return
@@ -240,7 +258,7 @@ func ChangelogHandle(w http.ResponseWriter, r *http.Request) {
 // ChannelHandle channel index
 func ChannelHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	paths, err := readDirIndex(filepath.Join(common.GetConfig().LogPath, vars["channel"]))
+	paths, err := readDirIndex(filepath.Join(LogsPath, vars["channel"]))
 	if err != nil {
 		serveError(w, r, err)
 		return
@@ -252,7 +270,7 @@ func ChannelHandle(w http.ResponseWriter, r *http.Request) {
 // MonthHandle channel index
 func MonthHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	paths, err := readLogDir(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), vars["month"]))
+	paths, err := readLogDir(filepath.Join(LogsPath, convertChannelCase(vars["channel"]), vars["month"]))
 	if err != nil {
 		serveError(w, r, err)
 		return
@@ -274,7 +292,7 @@ func MonthHandle(w http.ResponseWriter, r *http.Request) {
 // DayHandle channel index
 func DayHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), vars["month"], vars["date"]))
+	data, err := readLogFile(filepath.Join(LogsPath, convertChannelCase(vars["channel"]), vars["month"], vars["date"]))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -310,7 +328,7 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 // UsersHandle channel index .
 func UsersHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	f, err := os.Open(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), vars["month"]))
+	f, err := os.Open(filepath.Join(LogsPath, convertChannelCase(vars["channel"]), vars["month"]))
 	if err != nil {
 		serveError(w, r, ErrNotFound)
 		return
@@ -323,7 +341,7 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 	nicks := common.NickList{}
 	for _, file := range files {
 		if NicksExtension.MatchString(file.Name()) {
-			common.ReadNickList(nicks, filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), vars["month"], file.Name()))
+			common.ReadNickList(nicks, filepath.Join(LogsPath, convertChannelCase(vars["channel"]), vars["month"], file.Name()))
 		}
 	}
 	names := make([]string, 0, len(nicks))
@@ -344,14 +362,14 @@ func UserHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, ok := vars["filter"]; ok {
-		serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), searchKey(nick, vars["filter"]))
+		serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), searchKey(nick, vars["filter"]))
 		return
 	}
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
+	serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
 func userInMonth(channel, nick, month string) (string, bool) {
-	search, err := common.NewNickSearch(filepath.Join(common.GetConfig().LogPath, channel), nick)
+	search, err := common.NewNickSearch(filepath.Join(LogsPath, channel), nick)
 	if err != nil {
 		return "", false
 	}
@@ -372,7 +390,7 @@ func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ErrUserNotFound.Error(), http.StatusInternalServerError)
 		return
 	}
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
+	serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
 // SubscriberHandle channel index
@@ -384,7 +402,7 @@ func SubscriberHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ErrNoSubscribers.Error(), http.StatusInternalServerError)
 		return
 	}
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
+	serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
 // DestinyBroadcasterHandle destiny logs
@@ -396,7 +414,7 @@ func DestinyBroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ErrUserNotFound.Error(), http.StatusInternalServerError)
 		return
 	}
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
+	serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
 // DestinySubscriberHandle destiny subscriber logs
@@ -408,7 +426,7 @@ func DestinySubscriberHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ErrNoSubscribers.Error(), http.StatusInternalServerError)
 		return
 	}
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
+	serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
 // DestinyBanHandle channel ban list
@@ -420,7 +438,7 @@ func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ErrUserNotFound.Error(), http.StatusInternalServerError)
 		return
 	}
-	serveFilteredLogs(w, filepath.Join(common.GetConfig().LogPath, vars["channel"], vars["month"]), nickFilter(nick))
+	serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
 // CurrentBaseHandle shows the most recent months logs directly on the subdomain
@@ -441,7 +459,7 @@ func convertChannelCase(ch string) string {
 func NickHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	vars["channel"] = convertChannelCase(vars["channel"])
-	search, err := common.NewNickSearch(filepath.Join(common.GetConfig().LogPath, vars["channel"]), vars["nick"])
+	search, err := common.NewNickSearch(filepath.Join(LogsPath, vars["channel"]), vars["nick"])
 	if err != nil {
 		http.Error(w, ErrUserNotFound.Error(), http.StatusNotFound)
 		return
@@ -509,7 +527,7 @@ func MentionsWrapperHandle(w http.ResponseWriter, r *http.Request) {
 			Name: day.Format("2006-01-02"),
 		}
 		payload.Days = append(payload.Days, &d)
-		data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), day.Format("January 2006"), day.Format("2006-01-02")))
+		data, err := readLogFile(filepath.Join(LogsPath, convertChannelCase(vars["channel"]), day.Format("January 2006"), day.Format("2006-01-02")))
 		if err != nil {
 			d.Log = err.Error()
 			continue
@@ -562,7 +580,7 @@ func MentionsHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "can't look into the future", http.StatusNotFound)
 		return
 	}
-	data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), t.Format("January 2006"), t.Format("2006-01-02")))
+	data, err := readLogFile(filepath.Join(LogsPath, convertChannelCase(vars["channel"]), t.Format("January 2006"), t.Format("2006-01-02")))
 	if err != nil {
 		http.Error(w, ErrDayNotFound.Error(), http.StatusNotFound)
 		return
@@ -616,7 +634,7 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), t.Format("January 2006"), t.Format("2006-01-02")))
+	data, err := readLogFile(filepath.Join(LogsPath, convertChannelCase(vars["channel"]), t.Format("January 2006"), t.Format("2006-01-02")))
 	if err != nil {
 		serveAPIError(w, ErrDayNotFound.Error(), http.StatusNotFound)
 		return
@@ -690,7 +708,7 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 // ChannelsAPIHandle lists the channels
 func ChannelsAPIHandle(w http.ResponseWriter, r *http.Request) {
 
-	files, err := readDirIndex(common.GetConfig().LogPath)
+	files, err := readDirIndex(LogsPath)
 	if err != nil {
 		serveAPIError(w, err.Error(), http.StatusNotFound)
 		return
@@ -707,7 +725,7 @@ func ChannelsAPIHandle(w http.ResponseWriter, r *http.Request) {
 // MonthsAPIHandle lists the channels
 func MonthsAPIHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	monthsPath := filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog")
+	monthsPath := filepath.Join(LogsPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog")
 	files, err := readDirIndex(monthsPath)
 	if err != nil {
 		serveAPIError(w, err.Error(), http.StatusNotFound)
@@ -723,7 +741,7 @@ func MonthsAPIHandle(w http.ResponseWriter, r *http.Request) {
 func DaysAPIHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	daysPath := filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"])
+	daysPath := filepath.Join(LogsPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"])
 	files, err := readDirIndex(daysPath)
 	if err != nil {
 		serveAPIError(w, err.Error(), http.StatusNotFound)
@@ -757,7 +775,7 @@ func DaysAPIHandle(w http.ResponseWriter, r *http.Request) {
 // LinesAPIHandle lists the channels
 func LinesAPIHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	monthPath := filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"])
+	monthPath := filepath.Join(LogsPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"])
 	files, err := readDirIndex(monthPath)
 	if err != nil {
 		serveAPIError(w, err.Error(), http.StatusNotFound)
@@ -813,7 +831,7 @@ func (a ByDate) Less(i, j int) bool {
 // UsersAPIHandle returns the */userlogs directory in json format
 func UsersAPIHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	usersPath := filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"])
+	usersPath := filepath.Join(LogsPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"])
 	files, err := readDirIndex(usersPath)
 	if err != nil {
 		serveAPIError(w, err.Error(), http.StatusNotFound)
@@ -822,7 +840,7 @@ func UsersAPIHandle(w http.ResponseWriter, r *http.Request) {
 	nicks := common.NickList{}
 	for _, file := range files {
 		if NicksExtension.MatchString(file) {
-			common.ReadNickList(nicks, filepath.Join(common.GetConfig().LogPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"], file))
+			common.ReadNickList(nicks, filepath.Join(LogsPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"], file))
 		}
 	}
 	names := make([]string, 0, len(nicks))
@@ -847,14 +865,14 @@ func StalkHandle(w http.ResponseWriter, r *http.Request) {
 		serveAPIError(w, "failed parsing limit", http.StatusBadRequest)
 		return
 	}
-	if limit > uint64(common.GetConfig().Server.MaxStalkLines) {
-		limit = uint64(common.GetConfig().Server.MaxStalkLines)
+	if limit > uint64(MaxStalkLines) {
+		limit = uint64(MaxStalkLines)
 	} else if limit < 1 {
 		limit = 3
 	}
 	buf := make([]string, limit)
 	index := limit
-	search, err := common.NewNickSearch(filepath.Join(common.GetConfig().LogPath, vars["channel"]), vars["nick"])
+	search, err := common.NewNickSearch(filepath.Join(LogsPath, vars["channel"]), vars["nick"])
 	if err != nil {
 		serveAPIError(w, err.Error(), http.StatusNotFound)
 		return
@@ -869,7 +887,7 @@ ScanLogs:
 			serveAPIError(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		data, err := readLogFile(filepath.Join(common.GetConfig().LogPath, convertChannelCase(vars["channel"]), rs.Month(), rs.Day()))
+		data, err := readLogFile(filepath.Join(LogsPath, convertChannelCase(vars["channel"]), rs.Month(), rs.Day()))
 		if err != nil {
 			serveAPIError(w, err.Error(), http.StatusNotFound)
 			return
@@ -1210,7 +1228,7 @@ func TopListAPIHandle(w http.ResponseWriter, r *http.Request) {
 
 func getToplistPayload(channel, month, limitquery, sortquery string) (topListPayload, error) {
 	var tpl topListPayload
-	path := filepath.Join(common.GetConfig().LogPath, convertChannelCase(channel), month, "toplist.json.gz")
+	path := filepath.Join(LogsPath, convertChannelCase(channel), month, "toplist.json.gz")
 
 	tpl.Breadcrumbs = append(tpl.Breadcrumbs, breadcrumb{"/" + channel, channel})
 	tpl.Breadcrumbs = append(tpl.Breadcrumbs, breadcrumb{"/" + channel + "/" + month, month})
@@ -1340,7 +1358,7 @@ func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := filepath.Join(common.GetConfig().LogPath, convertChannelCase(channel))
+	path := filepath.Join(LogsPath, convertChannelCase(channel))
 
 	months, err := readDirIndex(path)
 	if err != nil {

@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-100">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
     <meta name="description" content="Twitch.tv chat logs.">
-    <meta property="og:title" content="OverRustleLogs.net" />
-    <meta property="og:site_name" content="OverRustleLogs" />
+    <meta property="og:title" content="{{ title }}" />
+    <meta property="og:site_name" content="{{ title }}" />
     <meta property="og:description" content="Twitch.tv chat logs." />
-    <meta property="og:image" content="https://overrustlelogs.net/assets/rustle.png" />
-    <title>OverRustleLogs</title>
+    <meta property="og:image" content="/assets/rustle.png" />
+    <title>{{ title }}</title>
     <link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico" />
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/orl.css">
@@ -19,9 +19,10 @@
     <script src="/assets/js/jquery-3.3.1.slim.min.js"></script>
     <script src="/assets/js/bootstrap.min.js" ></script>
     <script src="/assets/js/orl.js"></script>
+    {{if googleanalytics != "" }}
     <script type="text/javascript">
       var _gaq = _gaq || [];
-      _gaq.push(['_setAccount', 'UA-46946005-1']);
+      _gaq.push(['_setAccount', '{{ googleanalytics }}']);
       _gaq.push(['_trackPageview']);
 
       (function () {
@@ -32,6 +33,7 @@
 
       (function (b) { (function (a) { "__CF" in b && "DJS" in b.__CF ? b.__CF.DJS.push(a) : "addEventListener" in b ? b.addEventListener("load", a, !1) : b.attachEvent("onload", a) })(function () { "FB" in b && "Event" in FB && "subscribe" in FB.Event && (FB.Event.subscribe("edge.create", function (a) { _gaq.push(["_trackSocial", "facebook", "like", a]) }), FB.Event.subscribe("edge.remove", function (a) { _gaq.push(["_trackSocial", "facebook", "unlike", a]) }), FB.Event.subscribe("message.send", function (a) { _gaq.push(["_trackSocial", "facebook", "send", a]) })); "twttr" in b && "events" in twttr && "bind" in twttr.events && twttr.events.bind("tweet", function (a) { if (a) { var b; if (a.target && a.target.nodeName == "IFRAME") a: { if (a = a.target.src) { a = a.split("#")[0].match(/[^?=&]+=([^&]*)?/g); b = 0; for (var c; c = a[b]; ++b)if (c.indexOf("url") === 0) { b = unescape(c.split("=")[1]); break a } } b = void 0 } _gaq.push(["_trackSocial", "twitter", "tweet", b]) } }) }) })(window);
     </script>
+    {{end}}
     <script type="text/javascript">
       (function (path) {
         var selection = location.hash.match(/\#([0-9]+)-([0-9]+)/);
@@ -44,49 +46,80 @@
       });
     </script>
   </head>
-  <body>
+  <body class="d-flex flex-column h-100">
     <div id="top" class="scrollspy"></div>
-    <nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark">
-      <div class="container">
-        <a class="navbar-brand" href="/">
-          <img src="/assets/rustle.png" width="30" height="30" class="d-inline-block align-top" alt="">
-          OverRustleLogs
-        </a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
+    <main role="main" class="flex-shrink-0">
+      <nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+          <a class="navbar-brand" href="/">
+            <img src="/assets/rustle.png" width="30" height="30" class="d-inline-block align-top" alt="">
+            {{ title }}
+          </a>
+          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
 
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
-          <ul class="navbar-nav mr-auto">
-            <li class="nav-item">
-              <a class="nav-link" href="/stalk">Stalk</a>
-            </li>
-          </ul>
-          <ul class="navbar-nav">
-            <li class="nav-item">
-              <a class="nav-link" href="/changelog">Changelog</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/contact">Contact</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="https://streamlabs.com/overrustlelogs" target="_blank">Donate</a>
-            </li>
-            <a class="btn btn-dark btn-secondary patreon" href="https://www.patreon.com/overrustlelogs" target="_blank">Patreon</a>
-          </ul>
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mr-auto">
+              <li class="nav-item">
+                <a class="nav-link" href="/stalk">Stalk</a>
+              </li>
+            </ul>
+            <ul class="navbar-nav">
+              {{if donate != ""}}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ donate }}" target="_blank">Donate</a>
+              </li>
+              {{end}}
+              {{if patreon != ""}}
+              <a class="btn btn-dark btn-secondary patreon" href="{{ patreon }}" target="_blank">Patreon</a>
+              {{end}}
+            </ul>
+          </div>
+        </div>
+      </nav>
+      <div class="container py-2">
+        {{yield body()}}
+        {{if isset(.Month) && .Month != ""}}
+          {{yield diagram()}}
+        {{end}}
+        {{if googleadclient != "" && googleadslot != ""}}
+        <div class="ad">
+          <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+          <!-- orl -->
+          <ins class="adsbygoogle" style="display:block" data-ad-client="{{googleadclient}}" data-ad-slot="{{googleadslot}}" data-ad-format="auto" data-full-width-responsive="true"></ins>
+          <script>
+            (adsbygoogle = window.adsbygoogle || []).push({});
+          </script>
+        </div>
+        {{end}}
+      </div>
+      <div id="bottom" class="scrollspy"></div>
+      <div class="btn-group-vertical position-fixed jump-buttons" style="bottom: 45px; right: 24px; display: none;">
+        <a href="#top" class="btn btn-dark patreon"><i class="fas fa-arrow-up"></i></a>
+        <a href="#bottom" class="btn btn-dark patreon"><i class="fas fa-arrow-down"></i></a>
+      </div>
+    </main>
+    <footer class="footer mt-auto py-3">
+      <div class="container">
+        <div class="row">
+          <div class="col col-lg-1">
+            {{if github != "" }}
+              <a class="link-white text-muted" href="/changelog">Changelog</a>
+            {{end}}
+          </div>
+          <div class="col col-lg-1">
+            <a class="link-white text-muted" href="/contact">Contact</a>
+          </div>
+          <div class="col">
+          </div>
+          <div class="col col-lg-3">
+            {{if title != "" }}
+              <span class="text-muted float-right">© 2019 {{ title }}</span>
+            {{end}}
+          </div>
         </div>
       </div>
-    </nav>
-    <div class="container py-2">
-      {{yield body()}}
-      {{if isset(.Month) && .Month != ""}}
-        {{yield diagram()}}
-      {{end}}
-    </div>
-    <div id="bottom" class="scrollspy"></div>
-    <div class="btn-group-vertical position-fixed jump-buttons" style="bottom: 45px; right: 24px; display: none;">
-      <a href="#top" class="btn btn-dark patreon"><i class="fas fa-arrow-up"></i></a>
-      <a href="#bottom" class="btn btn-dark patreon"><i class="fas fa-arrow-down"></i></a>
-    </div>
+    </footer>
   </body>
 </html>

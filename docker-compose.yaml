@@ -1,0 +1,33 @@
+version: "3"
+services:
+  server:
+    build: ./server
+    container_name: orl-server
+    user: "${USER_UID}"
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ${LOGS_PATH}:/logs:ro
+    ports:
+      - "${PORT}:8080"
+  logger:
+    build: ./logger
+    container_name: orl-logger
+    user: "${USER_UID}"
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ${VAR_ORL}:/logger
+      - ${LOGS_PATH}:/logs
+  bot:
+    build: ./bot
+    container_name: orl-bot
+    user: "${USER_UID}"
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ${VAR_ORL}:/bot
+      - ${LOGS_PATH}:/logs:ro

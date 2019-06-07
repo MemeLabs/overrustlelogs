@@ -11,6 +11,11 @@ import (
 	"github.com/MemeLabs/overrustlelogs/common"
 )
 
+// Paths
+const (
+	LogsPath = "/logs"
+)
+
 // Logger logger
 type Logger struct {
 	logs *ChatLogs
@@ -78,7 +83,7 @@ func (l *Logger) TwitchLog(mc <-chan *common.Message) {
 }
 
 func (l *Logger) writeLine(timestamp time.Time, channel, nick, message string) {
-	logs, err := l.logs.Get(filepath.Join(common.GetConfig().LogPath, strings.Title(channel)+" chatlog", timestamp.Format("January 2006"), timestamp.Format("2006-01-02")+".txt"))
+	logs, err := l.logs.Get(filepath.Join(LogsPath, strings.Title(channel)+" chatlog", timestamp.Format("January 2006"), timestamp.Format("2006-01-02")+".txt"))
 	if err != nil {
 		log.Printf("error opening log %s", err)
 		return
