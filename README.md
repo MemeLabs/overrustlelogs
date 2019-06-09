@@ -4,7 +4,7 @@ A chat log suite for [Destiny.gg](https://www.destiny.gg/bigscreen) and [Twitch.
 
 ## Setting Up OverRustle Logs
 
-These instructions assume you are installing on Ubuntu 14.04.
+These instructions assume you are installing on Ubuntu 14.04 or higher.
 
 ### Step 1
 
@@ -22,8 +22,6 @@ Clone the overrustlelogs repo.
 git clone https://github.com/MemeLabs/overrustlelogs.git
 
 cd overrustlelogs
-# change to docker branch
-git checkout docker
 ```
 
 ### Step 3
