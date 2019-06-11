@@ -32,7 +32,6 @@ import (
 // stuff
 const (
 	LogLinePrefixLength = len("[2017-01-10 08:57:47 UTC] ")
-	LogsPath            = "/logs"
 	ViewsPath           = "./views"
 	MaxStalkLines       = 200
 )
@@ -51,6 +50,7 @@ var (
 var (
 	LogExtension   = regexp.MustCompile(`\.txt(\.gz)?$`)
 	NicksExtension = regexp.MustCompile(`\.nicks\.gz$`)
+	LogsPath       = "/logs"
 )
 
 // APIError ...
@@ -64,6 +64,7 @@ var view *jet.Set
 
 func init() {
 	flag.BoolVar(&dev, "dev", false, "for jet template hot reloading and local asset loading")
+	flag.StringVar(&LogsPath, "logs", "/logs", "logs path for easier development")
 	flag.Parse()
 }
 
