@@ -182,14 +182,14 @@ func logger(h http.Handler) http.Handler {
 
 // NotFoundHandle channel index
 func NotFoundHandle(w http.ResponseWriter, r *http.Request) {
-	serveError(w, r, ErrNotFound)
+	serveError(w, ErrNotFound)
 }
 
 // BaseHandle channel index
 func BaseHandle(w http.ResponseWriter, r *http.Request) {
 	paths, err := readDirIndex(LogsPath)
 	if err != nil {
-		serveError(w, r, err)
+		serveError(w, err)
 		return
 	}
 	serveDirIndex(w, []string{}, paths)
@@ -204,7 +204,7 @@ func WrapperHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	crumbs := strings.Split(r.URL.Path, "/")
-	bc := []breadcrumb{}
+	var bc []breadcrumb
 	basePath := ""
 	for _, b := range crumbs {
 		if b == "" {
@@ -260,7 +260,7 @@ func ChannelHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	paths, err := readDirIndex(filepath.Join(LogsPath, vars["channel"]))
 	if err != nil {
-		serveError(w, r, err)
+		serveError(w, err)
 		return
 	}
 	sort.Sort(byMonth(paths))
@@ -272,7 +272,7 @@ func MonthHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	paths, err := readLogDir(filepath.Join(LogsPath, convertChannelCase(vars["channel"]), vars["month"]))
 	if err != nil {
-		serveError(w, r, err)
+		serveError(w, err)
 		return
 	}
 	metaPaths := []string{"userlogs", "broadcaster.txt", "subscribers.txt"}
@@ -316,7 +316,7 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		if filter(line, vars["filter"]) {
-			w.Write(line)
+			_, _ = w.Write(line)
 			lineCount++
 		}
 	}
@@ -330,18 +330,18 @@ func UsersHandle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	f, err := os.Open(filepath.Join(LogsPath, convertChannelCase(vars["channel"]), vars["month"]))
 	if err != nil {
-		serveError(w, r, ErrNotFound)
+		serveError(w, ErrNotFound)
 		return
 	}
 	files, err := f.Readdir(0)
 	if err != nil {
-		serveError(w, r, err)
+		serveError(w, err)
 		return
 	}
 	nicks := common.NickList{}
 	for _, file := range files {
 		if NicksExtension.MatchString(file.Name()) {
-			common.ReadNickList(nicks, filepath.Join(LogsPath, convertChannelCase(vars["channel"]), vars["month"], file.Name()))
+			_ = common.ReadNickList(nicks, filepath.Join(LogsPath, convertChannelCase(vars["channel"]), vars["month"], file.Name()))
 		}
 	}
 	names := make([]string, 0, len(nicks))
@@ -507,7 +507,7 @@ func MentionsWrapperHandle(w http.ResponseWriter, r *http.Request) {
 	}
 	date, err := time.Parse("2006-01-02", vars["date"])
 	if err != nil {
-		serveError(w, r, errors.New("invalid date format"))
+		serveError(w, errors.New("invalid date format"))
 		return
 	}
 	days := []time.Time{
@@ -598,7 +598,7 @@ func MentionsHandle(w http.ResponseWriter, r *http.Request) {
 		}
 		lowerLine := bytes.ToLower(line)
 		if isMentioned([]byte(" "+vars["nick"]), lowerLine) {
-			w.Write(line)
+			_, _ = w.Write(line)
 			lineCount++
 		}
 	}
@@ -702,7 +702,7 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(mentions)
+	_ = json.NewEncoder(w).Encode(mentions)
 }
 
 // ChannelsAPIHandle lists the channels
@@ -719,7 +719,7 @@ func ChannelsAPIHandle(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Strings(files)
 	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(files)
+	_ = json.NewEncoder(w).Encode(files)
 }
 
 // MonthsAPIHandle lists the channels
@@ -734,7 +734,7 @@ func MonthsAPIHandle(w http.ResponseWriter, r *http.Request) {
 
 	sort.Sort(byMonth(files))
 	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(files)
+	_ = json.NewEncoder(w).Encode(files)
 }
 
 // DaysAPIHandle lists the channels
@@ -769,7 +769,7 @@ func DaysAPIHandle(w http.ResponseWriter, r *http.Request) {
 	filteredDirs = append(filteredDirs, temp...)
 
 	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(filteredDirs)
+	_ = json.NewEncoder(w).Encode(filteredDirs)
 }
 
 // LinesAPIHandle lists the channels
@@ -807,7 +807,7 @@ func LinesAPIHandle(w http.ResponseWriter, r *http.Request) {
 	sort.Sort(ByDate(temp))
 
 	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(temp)
+	_ = json.NewEncoder(w).Encode(temp)
 }
 
 // ByDate ...
@@ -840,7 +840,7 @@ func UsersAPIHandle(w http.ResponseWriter, r *http.Request) {
 	nicks := common.NickList{}
 	for _, file := range files {
 		if NicksExtension.MatchString(file) {
-			common.ReadNickList(nicks, filepath.Join(LogsPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"], file))
+			_ = common.ReadNickList(nicks, filepath.Join(LogsPath, strings.Title(strings.ToLower(vars["channel"]))+" chatlog", vars["month"], file))
 		}
 	}
 	names := make([]string, 0, len(nicks))
@@ -850,7 +850,7 @@ func UsersAPIHandle(w http.ResponseWriter, r *http.Request) {
 	sort.Strings(names)
 
 	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(names)
+	_ = json.NewEncoder(w).Encode(names)
 }
 
 // StalkHandle return n most recent lines of chat for user
@@ -892,7 +892,7 @@ ScanLogs:
 			serveAPIError(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		lines := [][]byte{}
+		var lines [][]byte
 		r := bufio.NewReaderSize(bytes.NewReader(data), len(data))
 		filter := nickFilter(rs.Nick())
 		for {
@@ -930,7 +930,7 @@ ScanLogs:
 	}{
 		Lines: []Line{},
 	}
-	data.Nick = strings.ToLower((vars["nick"]))
+	data.Nick = strings.ToLower(vars["nick"])
 	for i := int(index); i < len(buf); i++ {
 		t, err := time.Parse("2006-01-02 15:04:05 MST", buf[i][1:24])
 		if err != nil {
@@ -943,7 +943,7 @@ ScanLogs:
 		})
 	}
 	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(data)
+	_ = json.NewEncoder(w).Encode(data)
 }
 
 type byMonth []string
@@ -1073,7 +1073,7 @@ func filterKey(line []byte, f string) bool {
 }
 
 // serveError ...
-func serveError(w http.ResponseWriter, r *http.Request, e error) {
+func serveError(w http.ResponseWriter, e error) {
 	tpl, err := view.GetTemplate("error")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1086,7 +1086,7 @@ func serveError(w http.ResponseWriter, r *http.Request, e error) {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
-		e = errors.New("Unknown Error")
+		e = errors.New("unknown Error")
 	}
 	if err := tpl.Execute(w, nil, e.Error()); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1172,7 +1172,7 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 				break
 			}
 			if filter(line) {
-				w.Write(line)
+				_, _ = w.Write(line)
 			}
 		}
 	}
@@ -1183,7 +1183,7 @@ func serveAPIError(w http.ResponseWriter, error string, code int) {
 	apiError := APIError{Message: error}
 	w.WriteHeader(code)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(apiError)
+	_ = json.NewEncoder(w).Encode(apiError)
 }
 
 // TopListHandle channel index
@@ -1194,19 +1194,19 @@ func TopListHandle(w http.ResponseWriter, r *http.Request) {
 	var tpl topListPayload
 	tpl, err := getToplistPayload(vars["channel"], vars["month"], vars["limit"], vars["sort"])
 	if err != nil {
-		serveError(w, r, err)
+		serveError(w, err)
 		return
 	}
 
 	t, err := view.GetTemplate("toplist")
 	if err != nil {
-		serveError(w, r, errors.New("failed loading toplist template"))
+		serveError(w, errors.New("failed loading toplist template"))
 		return
 	}
 
 	w.Header().Set("Content-type", "text/html")
 	if err := t.Execute(w, nil, tpl); err != nil {
-		serveError(w, r, errors.New("failed executing toplist template"))
+		serveError(w, errors.New("failed executing toplist template"))
 		return
 	}
 }
@@ -1223,7 +1223,7 @@ func TopListAPIHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(tpl)
+	_ = json.NewEncoder(w).Encode(tpl)
 }
 
 func getToplistPayload(channel, month, limitquery, sortquery string) (topListPayload, error) {
@@ -1245,8 +1245,7 @@ func getToplistPayload(channel, month, limitquery, sortquery string) (topListPay
 		return tpl, errors.New("failed reading toplist file")
 	}
 
-	toplist := []*user{}
-
+	var toplist []*user
 	err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(&toplist)
 	if err != nil {
 		return tpl, errors.New("failed decoding toplist file")
@@ -1343,7 +1342,7 @@ func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 
 	t, err := view.GetTemplate("stalk")
 	if err != nil {
-		serveError(w, r, errors.New("failed loading stalk template"))
+		serveError(w, errors.New("failed loading stalk template"))
 		return
 	}
 
@@ -1353,7 +1352,7 @@ func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 
 	if nick == "" || channel == "" {
 		if err := t.Execute(w, nil, spl); err != nil {
-			serveError(w, r, errors.New("failed executing stalk template"))
+			serveError(w, errors.New("failed executing stalk template"))
 		}
 		return
 	}
@@ -1362,7 +1361,7 @@ func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 
 	months, err := readDirIndex(path)
 	if err != nil {
-		serveError(w, r, fmt.Errorf("couldn't find channel: %s ", channel))
+		serveError(w, fmt.Errorf("couldn't find channel: %s ", channel))
 		return
 	}
 
@@ -1397,7 +1396,7 @@ func StalkerHandle(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-type", "text/html")
 	if err := t.Execute(w, nil, spl); err != nil {
-		serveError(w, r, errors.New("failed executing stalk template"))
+		serveError(w, errors.New("failed executing stalk template"))
 	}
 }
 
