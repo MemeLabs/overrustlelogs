@@ -81,7 +81,7 @@ func main() {
 	r.HandleFunc("/", BaseHandle).Methods("GET")
 	r.HandleFunc("/contact", ContactHandle).Methods("GET")
 	r.HandleFunc("/changelog", ChangelogHandle).Methods("GET")
-	r.HandleFunc("/stalk", StalkerHandle).Methods("GET").Queries("channel", "{channel:[a-zA-Z0-9_-]+}", "nick", "{nick:@?[a-zA-Z0-9_-]+}")
+	r.HandleFunc("/stalk", StalkerHandle).Methods("GET").Queries("channel", "{channel:[a-zA-Z0-9_-]{1,25}}", "nick", "{nick:[a-zA-Z0-9_-]{1,25}}")
 	r.HandleFunc("/stalk", StalkerHandle).Methods("GET")
 	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", MentionsHandle).Methods("GET").Queries("date", "{date:[0-9]{4}-[0-9]{2}-[0-9]{2}}")
 	r.HandleFunc("/mentions/{nick:[a-zA-Z0-9_-]{1,25}}.txt", MentionsHandle).Methods("GET")
