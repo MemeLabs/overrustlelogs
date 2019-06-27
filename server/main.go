@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -27,6 +26,7 @@ import (
 	"github.com/CloudyKit/jet"
 	"github.com/MemeLabs/overrustlelogs/common"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 )
 
 // stuff
@@ -70,7 +70,10 @@ func init() {
 
 // Start server
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.SetFormatter(&log.TextFormatter{
+		ForceColors:   true,
+		FullTimestamp: true,
+	})
 	view = jet.NewHTMLSet(ViewsPath)
 	view.SetDevelopmentMode(dev)
 	setupViewGlobals()
@@ -143,14 +146,14 @@ func main() {
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
-			log.Printf("%v", err)
+			log.Errorf("%v", err)
 		}
 	}()
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
 	<-sigint
-	log.Println("i love you guys, be careful")
+	log.Info("i love you guys, be careful")
 	os.Exit(0)
 }
 
@@ -178,7 +181,7 @@ func logger(h http.Handler) http.Handler {
 		if r.URL.RawQuery != "" {
 			path += "?" + r.URL.RawQuery
 		}
-		fmt.Printf("served \"%s\" to \"%s\" in %s\n", path, r.Header.Get("Cf-Connecting-Ip"), time.Since(start))
+		log.Infof("served \"%s\" to \"%s\" in %s\n", path, r.Header.Get("Cf-Connecting-Ip"), time.Since(start))
 	})
 }
 
@@ -313,7 +316,7 @@ func DayHandle(w http.ResponseWriter, r *http.Request) {
 		line, err := reader.ReadSlice('\n')
 		if err != nil {
 			if err != io.EOF {
-				log.Printf("error reading bytes %s", err)
+				log.Errorf("error reading bytes %s", err)
 			}
 			break
 		}
@@ -540,7 +543,7 @@ func MentionsWrapperHandle(w http.ResponseWriter, r *http.Request) {
 			line, err := reader.ReadSlice('\n')
 			if err != nil {
 				if err != io.EOF {
-					log.Printf("error reading bytes %s", err)
+					log.Errorf("error reading bytes %s", err)
 				}
 				break
 			}
@@ -594,7 +597,7 @@ func MentionsHandle(w http.ResponseWriter, r *http.Request) {
 		line, err := reader.ReadSlice('\n')
 		if err != nil {
 			if err != io.EOF {
-				log.Printf("error reading bytes %s", err)
+				log.Errorf("error reading bytes %s", err)
 			}
 			break
 		}
@@ -648,7 +651,7 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 		line, err := reader.ReadSlice('\n')
 		if err != nil {
 			if err != io.EOF {
-				log.Printf("error reading bytes %s", err)
+				log.Errorf("error reading bytes %s", err)
 			}
 			break
 		}
@@ -669,7 +672,7 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 	} else {
 		l, err := strconv.Atoi(vars["limit"])
 		if err != nil {
-			log.Println(err)
+			log.Error(err)
 			serveAPIError(w, "limit query is not a integer", http.StatusBadRequest)
 			return
 		}
@@ -901,7 +904,7 @@ ScanLogs:
 			line, err := r.ReadSlice('\n')
 			if err != nil {
 				if err != io.EOF {
-					log.Printf("error reading bytes %s", err)
+					log.Errorf("error reading bytes %s", err)
 				}
 				break
 			}
@@ -1169,7 +1172,7 @@ func serveFilteredLogs(w http.ResponseWriter, path string, filter func([]byte) b
 			line, err := r.ReadSlice('\n')
 			if err != nil {
 				if err != io.EOF {
-					log.Printf("error reading bytes %s", err)
+					log.Errorf("error reading bytes %s", err)
 				}
 				break
 			}

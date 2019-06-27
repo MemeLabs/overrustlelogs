@@ -18,6 +18,7 @@ require (
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/pkg/profile v1.3.0
+	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.3.0 // indirect
 	google.golang.org/api v0.6.0
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
