@@ -1,3 +1,5 @@
+
+{{import "footer.jet"}}
 <!DOCTYPE html>
 <html lang="en" class="h-100">
   <head>
@@ -100,26 +102,6 @@
         <a href="#bottom" class="btn btn-dark patreon"><i class="fas fa-arrow-down"></i></a>
       </div>
     </main>
-    <footer class="footer mt-auto py-3">
-      <div class="container">
-        <div class="row">
-          <div class="col col-lg-1">
-            {{if github != "" }}
-              <a class="link-white text-muted" href="/changelog">Changelog</a>
-            {{end}}
-          </div>
-          <div class="col col-lg-1">
-            <a class="link-white text-muted" href="/contact">Contact</a>
-          </div>
-          <div class="col">
-          </div>
-          <div class="col col-lg-3">
-            {{if title != "" }}
-              <span class="text-muted float-right">© 2019 {{ title }}</span>
-            {{end}}
-          </div>
-        </div>
-      </div>
-    </footer>
+    {{yield footer() .}}
   </body>
 </html>

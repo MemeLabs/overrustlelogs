@@ -159,6 +159,7 @@ func setupViewGlobals() {
 	view.AddGlobal("twitter", os.Getenv("TWITTER"))
 	view.AddGlobal("email", os.Getenv("SUPPORT_EMAIL"))
 	view.AddGlobal("github", os.Getenv("GITHUB"))
+	view.AddGlobal("digitalocean", os.Getenv("DIGITALOCEAN"))
 	view.AddGlobal("donate", os.Getenv("DONATE"))
 	view.AddGlobal("patreon", os.Getenv("PATREON"))
 	view.AddGlobal("googleanalytics", os.Getenv("GOOGLE_ANALYTICS"))

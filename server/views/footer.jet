@@ -1,0 +1,28 @@
+{{block footer()}}
+<footer class="footer mt-auto py-3">
+    <div class="container">
+        <div class="row">
+            <div class="col">
+            {{if github != "" }}
+                <div class="d-inline mr-1">
+                    <a class="link-white text-muted" href="/changelog">Changelog</a>
+                </div>
+            {{end}}
+                <div class="d-inline mr-1">
+                    <a class="link-white text-muted" href="/contact">Contact</a>
+                </div>
+            {{if digitalocean != "" }}
+                <div class="d-inline mr-1">
+                    <a class="link-white text-muted" href="{{digitalocean}}">Digitalocean</a>
+                </div>
+            {{end}}
+            </div>
+            <div class="col col-lg-3">
+            {{if title != "" }}
+                <span class="text-muted float-right">© 2019 {{ title }}</span>
+            {{end}}
+            </div>
+        </div>
+    </div>
+</footer>
+{{end}}
