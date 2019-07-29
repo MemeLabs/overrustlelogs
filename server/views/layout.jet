@@ -102,6 +102,6 @@
         <a href="#bottom" class="btn btn-dark patreon"><i class="fas fa-arrow-down"></i></a>
       </div>
     </main>
-    {{yield footer() .}}
+    {{yield footer()}}
   </body>
 </html>
