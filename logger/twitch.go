@@ -120,17 +120,17 @@ func (t *TwitchHub) join(ch string, init bool) error {
 		return fmt.Errorf("already logging %s", ch)
 	}
 
-	exists, _ := channelExists(ch)
+	exists, id := channelExists(ch)
 	if !exists && init {
 		return fmt.Errorf("%s doesn't exist my dude", ch)
 	}
 
 	if init {
-		// if t.followChannel(id) {
-		// 	log.Printf("followed %s succesfully", ch)
-		// } else {
-		// 	log.Printf("following %s failed", ch)
-		// }
+		if t.followChannel(id) {
+			log.Printf("followed %s succesfully", ch)
+		} else {
+			log.Printf("following %s failed", ch)
+		}
 		t.addChannel(ch)
 		go t.saveChannels()
 	}
@@ -209,12 +209,12 @@ func (t *TwitchHub) leave(ch string) error {
 		return err
 	}
 
-	// _, id := channelExists(ch)
-	// if t.unfollowChannel(id) {
-	// 	log.Printf("unfollowed %s succesfully", ch)
-	// } else {
-	// 	log.Printf("unfollowing %s failed", ch)
-	// }
+	exists, id := channelExists(ch)
+	if t.unfollowChannel(id) && exists {
+		log.Printf("unfollowed %s succesfully", ch)
+	} else {
+		log.Printf("unfollowing %s failed", ch)
+	}
 
 	t.chatLock.Lock()
 	defer t.chatLock.Unlock()
