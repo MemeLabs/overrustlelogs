@@ -119,9 +119,17 @@ func (t *TwitchHub) join(ch string, init bool) error {
 	if inSlice(t.channels, ch) && init {
 		return fmt.Errorf("already logging %s", ch)
 	}
-	if !channelExists(ch) && init {
+
+	exists, id := channelExists(ch)
+	if !exists && init {
 		return fmt.Errorf("%s doesn't exist my dude", ch)
 	}
+	if t.followChannel(id) {
+		log.Printf("followed %s succesfully", ch)
+	} else {
+		log.Printf("following %s failed", ch)
+	}
+
 	if init {
 		t.addChannel(ch)
 		go t.saveChannels()
@@ -148,6 +156,34 @@ func (t *TwitchHub) join(ch string, init bool) error {
 	return nil
 }
 
+func (t *TwitchHub) followChannel(id string) bool {
+	req, _ := http.NewRequest("PUT", "https://api.twitch.tv/kraken/users/85210121/follows/channels/"+id, nil)
+	req.Header.Add("Accept", "application/vnd.twitchtv.v5+json")
+	req.Header.Add("Client-ID", common.GetConfig().Twitch.ClientID)
+	req.Header.Add("Authorization", "OAuth "+strings.Split(common.GetConfig().Twitch.OAuth, ":")[1])
+
+	res, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+
+	return res.StatusCode != http.StatusBadRequest
+}
+
+func (t *TwitchHub) unfollowChannel(id string) bool {
+	req, _ := http.NewRequest("DELETE", "https://api.twitch.tv/kraken/users/85210121/follows/channels/"+id, nil)
+	req.Header.Add("Accept", "application/vnd.twitchtv.v5+json")
+	req.Header.Add("Client-ID", common.GetConfig().Twitch.ClientID)
+	req.Header.Add("Authorization", "OAuth "+strings.Split(common.GetConfig().Twitch.OAuth, ":")[1])
+
+	res, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+
+	return res.StatusCode == http.StatusNoContent
+}
+
 func (t *TwitchHub) msgHandler(c *common.Twitch) {
 	messages := make(chan *common.Message, common.MessageBufferSize)
 	go t.logHandler(messages)
@@ -171,6 +207,13 @@ func (t *TwitchHub) leave(ch string) error {
 	}
 	if err := t.saveChannels(); err != nil {
 		return err
+	}
+
+	_, id := channelExists(ch)
+	if t.unfollowChannel(id) {
+		log.Printf("unfollowed %s succesfully", ch)
+	} else {
+		log.Printf("unfollowing %s failed", ch)
 	}
 
 	t.chatLock.Lock()
@@ -238,18 +281,39 @@ var client = http.Client{
 	Timeout: 5 * time.Second,
 }
 
+type usersResponse struct {
+	Total int `json:"_total"`
+	Users []struct {
+		ID          string    `json:"_id"`
+		Bio         string    `json:"bio"`
+		CreatedAt   time.Time `json:"created_at"`
+		DisplayName string    `json:"display_name"`
+		Logo        string    `json:"logo"`
+		Name        string    `json:"name"`
+		Type        string    `json:"type"`
+		UpdatedAt   time.Time `json:"updated_at"`
+	} `json:"users"`
+}
+
 // channelExists
-func channelExists(ch string) bool {
-	req, err := http.NewRequest("GET", "https://api.twitch.tv/kraken/users/"+strings.ToLower(ch), nil)
+func channelExists(ch string) (bool, string) {
+	req, err := http.NewRequest("GET", "https://api.twitch.tv/kraken/users?login="+strings.ToLower(ch), nil)
 	if err != nil {
-		return false
+		return false, ""
 	}
+	req.Header.Add("Accept", "application/vnd.twitchtv.v5+json")
 	req.Header.Add("Client-ID", common.GetConfig().Twitch.ClientID)
 	res, err := client.Do(req)
 	if err != nil {
-		return false
+		return false, ""
 	}
-	return res.StatusCode < http.StatusBadRequest
+	var us usersResponse
+	err = json.NewDecoder(res.Body).Decode(&us)
+	if us.Total == 0 {
+		return false, ""
+	}
+
+	return true, us.Users[0].ID
 }
 
 func inSlice(slice []string, s string) bool {
