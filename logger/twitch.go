@@ -124,13 +124,13 @@ func (t *TwitchHub) join(ch string, init bool) error {
 	if !exists && init {
 		return fmt.Errorf("%s doesn't exist my dude", ch)
 	}
-	if t.followChannel(id) {
-		log.Printf("followed %s succesfully", ch)
-	} else {
-		log.Printf("following %s failed", ch)
-	}
 
 	if init {
+		if t.followChannel(id) {
+			log.Printf("followed %s succesfully", ch)
+		} else {
+			log.Printf("following %s failed", ch)
+		}
 		t.addChannel(ch)
 		go t.saveChannels()
 	}
@@ -209,8 +209,8 @@ func (t *TwitchHub) leave(ch string) error {
 		return err
 	}
 
-	_, id := channelExists(ch)
-	if t.unfollowChannel(id) {
+	exists, id := channelExists(ch)
+	if t.unfollowChannel(id) && exists {
 		log.Printf("unfollowed %s succesfully", ch)
 	} else {
 		log.Printf("unfollowing %s failed", ch)
