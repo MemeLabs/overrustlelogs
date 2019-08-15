@@ -1,12 +1,6 @@
 {{extends "layout.jet"}}
 {{block body()}}
 <div id="top" class="scrollspy">
-    <div class="alert alert-success alert-primary fade show" role="alert">
-      disable the auto-scroll after you click the load button? <span><a href="https://www.strawpoll.me/18473242" target="_blank">vote here</a></span>
-      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-        <span aria-hidden="true">&times;</span>
-      </button>
-    </div>
   {{if .Error}}
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
       {{.Error}}
@@ -42,14 +36,13 @@
   <script >
     function appendChunk(month, id) {
       const link = `/{{.Channel}} chatlog/${month}/userlogs/{{.Nick}}.txt`;
-      var req = new XMLHttpRequest();
+      let req = new XMLHttpRequest();
       req.open("GET", link, true);
       req.setRequestHeader("Content-Type", "text/plain;charset=UTF-8");
       req.onload = () => {
           const text = req.responseText;
           $(`.field${id}`).empty();
           $("<span />").text(text).appendTo(`.field${id}`);
-          document.getElementById("end"+id).scrollIntoView(false);
       };
       $(".body"+id).show();
       req.send();
@@ -66,7 +59,6 @@
         </div>
         <div class="card-body body{{i}}" style="display: none;">
           <div class="field{{i}} text"></div>
-          <div id="end{{i}}"></div>
         </div>
       </div>
     {{end}}
