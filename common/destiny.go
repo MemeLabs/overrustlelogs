@@ -14,10 +14,11 @@ import (
 
 // Destiny destiny.gg chat client
 type Destiny struct {
-	connLock sync.Mutex
-	conn     *websocket.Conn
-	messages chan *Message
-	quit     chan struct{}
+	connLock    sync.Mutex
+	conn        *websocket.Conn
+	lastMessage time.Time
+	messages    chan *Message
+	quit        chan struct{}
 }
 
 // NewDestiny new destiny.gg chat client
@@ -45,6 +46,16 @@ func (c *Destiny) connect() {
 		return
 	}
 	log.Printf("connected to destiny ws")
+
+	go func() {
+		timeout := time.NewTimer(2 * time.Minute)
+		for range timeout.C {
+			if time.Now().Sub(c.lastMessage).Minutes() > 2 {
+				log.Println("destiny timeout triggered")
+				c.reconnect()
+			}
+		}
+	}()
 }
 
 func (c *Destiny) reconnect() {
@@ -119,6 +130,7 @@ func (c *Destiny) Run() {
 		}:
 		default:
 		}
+		c.lastMessage = time.Now()
 	}
 }
 
