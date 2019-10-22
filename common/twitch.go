@@ -24,6 +24,7 @@ type Twitch struct {
 	messages       chan *Message
 	MessagePattern *regexp.Regexp
 	SubPattern     *regexp.Regexp
+	lastMessageMu  sync.RWMutex
 	lastMessage    time.Time
 	quit           chan struct{}
 }
@@ -189,7 +190,9 @@ func (c *Twitch) Run() {
 					log.Println("error messages channel full :(")
 				}
 			}
+			c.lastMessageMu.Lock()
 			c.lastMessage = time.Now()
+			c.lastMessageMu.Unlock()
 		}
 	}()
 }
@@ -273,10 +276,14 @@ func (c *Twitch) rejoinHandler() {
 	for {
 		select {
 		case <-timeout.C:
+			c.lastMessageMu.RLock()
 			if time.Now().Sub(c.lastMessage).Minutes() > 2 {
+				c.lastMessageMu.RUnlock()
 				log.Println("twitch timeout triggered")
 				c.reconnect()
+				continue
 			}
+			c.lastMessageMu.RUnlock()
 		case <-c.quit:
 			ticker.Stop()
 			return
