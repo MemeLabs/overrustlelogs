@@ -547,8 +547,7 @@ func MentionsWrapperHandle(w http.ResponseWriter, r *http.Request) {
 				}
 				break
 			}
-			lowerLine := bytes.ToLower(line)
-			if isMentioned([]byte(" "+vars["nick"]), lowerLine) {
+			if isMentioned([]byte(vars["nick"]), line) {
 				d.Log += string(line)
 				lineCount++
 			}
@@ -601,8 +600,7 @@ func MentionsHandle(w http.ResponseWriter, r *http.Request) {
 			}
 			break
 		}
-		lowerLine := bytes.ToLower(line)
-		if isMentioned([]byte(" "+vars["nick"]), lowerLine) {
+		if isMentioned([]byte(vars["nick"]), line) {
 			_, _ = w.Write(line)
 			lineCount++
 		}
@@ -613,8 +611,19 @@ func MentionsHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func isMentioned(nick, line []byte) bool {
-	colonIndex := bytes.Index(line[LogLinePrefixLength:], []byte(":")) + LogLinePrefixLength
-	return bytes.Contains(line[colonIndex:], bytes.ToLower([]byte(string(nick)+" "))) || bytes.Contains(line[colonIndex:], bytes.ToLower([]byte(string(nick)+"\n")))
+	// colonIndex := bytes.Index(line[LogLinePrefixLength:], []byte(":")) + LogLinePrefixLength
+	msg, err := common.ParseMessageLine(string(line))
+	if err != nil {
+		return false
+}
+	parts := strings.Split(msg.Data, " ")
+	for _, part := range parts {
+		if strings.EqualFold(part, string(nick)) {
+			return true
+		}
+	}
+	return false
+	// return bytes.Contains(line[colonIndex:], bytes.ToLower([]byte(string(nick)+" "))) || bytes.Contains(line[colonIndex:], bytes.ToLower([]byte(string(nick)+"\n")))
 }
 
 // MentionsAPIHandle returns mentions from a nick in json format
@@ -655,8 +664,7 @@ func MentionsAPIHandle(w http.ResponseWriter, r *http.Request) {
 			}
 			break
 		}
-		lowerLine := bytes.ToLower(line)
-		if isMentioned([]byte(" "+vars["nick"]), lowerLine) {
+		if isMentioned([]byte(vars["nick"]), line) {
 			lines = append(lines, line)
 		}
 	}
@@ -1044,32 +1052,25 @@ func readLogFile(path string) ([]byte, error) {
 }
 
 func nickFilter(nick string) func([]byte) bool {
-	nick += ":"
-	nick = strings.ToLower(nick)
 	return func(line []byte) bool {
-		if LogLinePrefixLength+len(nick) > len(line) {
+		msg, err := common.ParseMessageLine(string(line))
+		if err != nil {
 			return false
 		}
-		if !bytes.EqualFold(line[LogLinePrefixLength:LogLinePrefixLength+len(nick)], []byte(nick)) {
-			return false
-		}
-		return true
+		return strings.EqualFold(msg.Nick, nick)
 	}
 }
 
 func searchKey(nick, filter string) func([]byte) bool {
-	nick += ":"
-	nick = strings.ToLower(nick)
-	filter = strings.ToLower(filter)
 	return func(line []byte) bool {
-		line = bytes.ToLower(line)
-		if len(line) < LogLinePrefixLength+len(nick) {
+		msg, err := common.ParseMessageLine(string(line))
+		if err != nil {
 			return false
 		}
-		if !bytes.HasPrefix(line[LogLinePrefixLength:], []byte(nick)) {
+		if !strings.EqualFold(nick, msg.Nick) {
 			return false
 		}
-		return bytes.Contains(line[LogLinePrefixLength+len(nick):], []byte(filter))
+		return strings.Contains(strings.ToLower(msg.Data), strings.ToLower(filter))
 	}
 }
 
