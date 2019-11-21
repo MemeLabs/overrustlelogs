@@ -108,14 +108,19 @@ func main() {
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current", CurrentBaseHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current/{nick:[a-zA-Z0-9_]+}.txt", NickHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/current/{nick:[a-zA-Z0-9_]+}", WrapperHandle).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", DestinyBroadcasterHandle).Methods("GET").Queries("filter", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", DestinyBroadcasterHandle).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", WrapperHandle).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", DestinySubscriberHandle).Methods("GET").Queries("filter", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", DestinySubscriberHandle).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", WrapperHandle).Methods("GET")
+	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans.txt", DestinyBanHandle).Methods("GET").Queries("filter", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans.txt", DestinyBanHandle).Methods("GET")
 	r.HandleFunc("/Destinygg chatlog/{month:[a-zA-Z]+ [0-9]{4}}/bans", WrapperHandle).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", BroadcasterHandle).Methods("GET").Queries("filter", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster.txt", BroadcasterHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/broadcaster", WrapperHandle).Methods("GET")
+	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", SubscriberHandle).Methods("GET").Queries("filter", "{filter:.+}").Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers.txt", SubscriberHandle).Methods("GET")
 	r.HandleFunc("/{channel:[a-zA-Z0-9_-]+ chatlog}/{month:[a-zA-Z]+ [0-9]{4}}/subscribers", WrapperHandle).Methods("GET")
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandle)
@@ -395,6 +400,10 @@ func BroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ErrUserNotFound.Error(), http.StatusInternalServerError)
 		return
 	}
+	if _, ok := vars["filter"]; ok {
+		serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), searchKey(nick, vars["filter"]))
+		return
+	}
 	serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
@@ -405,6 +414,10 @@ func SubscriberHandle(w http.ResponseWriter, r *http.Request) {
 	nick, ok := userInMonth(vars["channel"], "twitchnotify", vars["month"])
 	if !ok {
 		http.Error(w, ErrNoSubscribers.Error(), http.StatusInternalServerError)
+		return
+	}
+	if _, ok := vars["filter"]; ok {
+		serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), searchKey(nick, vars["filter"]))
 		return
 	}
 	serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), nickFilter(nick))
@@ -419,6 +432,10 @@ func DestinyBroadcasterHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ErrUserNotFound.Error(), http.StatusInternalServerError)
 		return
 	}
+	if _, ok := vars["filter"]; ok {
+		serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), searchKey(nick, vars["filter"]))
+		return
+	}
 	serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
@@ -431,6 +448,10 @@ func DestinySubscriberHandle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ErrNoSubscribers.Error(), http.StatusInternalServerError)
 		return
 	}
+	if _, ok := vars["filter"]; ok {
+		serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), searchKey(nick, vars["filter"]))
+		return
+	}
 	serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), nickFilter(nick))
 }
 
@@ -441,6 +462,10 @@ func DestinyBanHandle(w http.ResponseWriter, r *http.Request) {
 	nick, ok := userInMonth(vars["channel"], "Ban", vars["month"])
 	if !ok {
 		http.Error(w, ErrUserNotFound.Error(), http.StatusInternalServerError)
+		return
+	}
+	if _, ok := vars["filter"]; ok {
+		serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), searchKey(nick, vars["filter"]))
 		return
 	}
 	serveFilteredLogs(w, filepath.Join(LogsPath, vars["channel"], vars["month"]), nickFilter(nick))
