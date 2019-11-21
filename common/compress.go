@@ -15,7 +15,7 @@ func WriteCompressedFile(path string, data []byte) (*os.File, error) {
 		return nil, err
 	}
 
-	f, err := os.OpenFile(gzPath(path), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(zstPath(path), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +29,7 @@ func WriteCompressedFile(path string, data []byte) (*os.File, error) {
 
 // ReadCompressedFile read compressed file
 func ReadCompressedFile(path string) ([]byte, error) {
-	f, err := os.Open(gzPath(path))
+	f, err := os.Open(zstPath(path))
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func UncompressFile(path string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	f, err := os.OpenFile(strings.Replace(path, ".gz", "", -1), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(strings.Replace(path, ".zst", "", -1), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -82,15 +82,15 @@ func UncompressFile(path string) (*os.File, error) {
 	if _, err := f.Write(d); err != nil {
 		return nil, err
 	}
-	if err := os.Remove(gzPath(path)); err != nil {
+	if err := os.Remove(zstPath(path)); err != nil {
 		return nil, err
 	}
 	return f, nil
 }
 
-func gzPath(path string) string {
-	if path[len(path)-3:] != ".gz" {
-		path += ".gz"
+func zstPath(path string) string {
+	if path[len(path)-4:] != ".zst" {
+		path += ".zst"
 	}
 	return path
 }

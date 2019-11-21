@@ -48,8 +48,8 @@ var (
 
 // log file extension pattern
 var (
-	LogExtension   = regexp.MustCompile(`\.txt(\.gz)?$`)
-	NicksExtension = regexp.MustCompile(`\.nicks\.gz$`)
+	LogExtension   = regexp.MustCompile(`\.txt(\.zst)?$`)
+	NicksExtension = regexp.MustCompile(`\.nicks\.zst$`)
 	LogsPath       = "/logs"
 )
 
@@ -796,7 +796,7 @@ func DaysAPIHandle(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(v, ".nicks") {
 			continue
 		}
-		if strings.Contains(v, ".gz") {
+		if strings.Contains(v, ".zst") {
 			temp = append(temp, v[:len(v)-3])
 		}
 	}
@@ -824,7 +824,7 @@ func LinesAPIHandle(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(v, ".nicks") {
 			continue
 		}
-		if strings.Contains(v, ".txt.gz") {
+		if strings.Contains(v, ".txt.zst") {
 			b, err := readLogFile(filepath.Join(monthPath, v))
 			if err != nil {
 				continue
@@ -1006,21 +1006,22 @@ type byDay []string
 func (l byDay) Len() int      { return len(l) }
 func (l byDay) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
 func (l byDay) Less(i, j int) bool {
-	format := "2006-01-02.txt.gz"
-	a, err := time.Parse(format, gzPath(l[i]))
+	format := "2006-01-02.txt.zst"
+	a, err := time.Parse(format, zstPath(l[i]))
 	if err != nil {
 		return true
 	}
-	b, err := time.Parse(format, gzPath(l[j]))
+	b, err := time.Parse(format, zstPath(l[j]))
 	if err != nil {
 		return false
 	}
 	return !b.After(a)
 }
 
-func gzPath(path string) string {
-	if path[len(path)-3:] != ".gz" {
-		path += ".gz"
+func zstPath(path string) string {
+	if path[len(path)-4:] != ".zst" {
+		log.Println("+=.zst", path)
+		path += ".zst"
 	}
 	return path
 }
@@ -1259,7 +1260,7 @@ func TopListAPIHandle(w http.ResponseWriter, r *http.Request) {
 
 func getToplistPayload(channel, month, limitquery, sortquery string) (topListPayload, error) {
 	var tpl topListPayload
-	path := filepath.Join(LogsPath, convertChannelCase(channel), month, "toplist.json.gz")
+	path := filepath.Join(LogsPath, convertChannelCase(channel), month, "toplist.json.zst")
 
 	tpl.Breadcrumbs = append(tpl.Breadcrumbs, breadcrumb{"/" + channel, channel})
 	tpl.Breadcrumbs = append(tpl.Breadcrumbs, breadcrumb{"/" + channel + "/" + month, month})
