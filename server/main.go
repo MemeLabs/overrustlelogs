@@ -640,7 +640,7 @@ func isMentioned(nick, line []byte) bool {
 	msg, err := common.ParseMessageLine(string(line))
 	if err != nil {
 		return false
-}
+	}
 	parts := strings.Split(msg.Data, " ")
 	for _, part := range parts {
 		if strings.EqualFold(part, string(nick)) {

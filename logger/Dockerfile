@@ -1,10 +1,11 @@
-FROM golang:1.12.5
+# build stage
+FROM golang:alpine AS build-env
+RUN apk --no-cache add build-base git bzr mercurial gcc
+ADD . /src
+RUN cd /src && go mod init orl-logger && go build -o orl-logger
 
-WORKDIR /go/src/orl-logger
-
-COPY . .
-
-RUN go get -v ./...
-RUN go install -v ./...
-
-CMD ["orl-logger"]
+# final stage
+FROM alpine
+WORKDIR /app
+COPY --from=build-env /src/orl-logger /app/
+ENTRYPOINT ./orl-logger
