@@ -19,7 +19,7 @@
             </div>
             <div class="col col-lg-3">
                 {{if title != ""}}
-                    <span class="text-muted float-right">© 2019 {{title}}</span>
+                    <span class="text-muted float-right">© 2020 {{title}}</span>
                 {{end}}
             </div>
         </div>
