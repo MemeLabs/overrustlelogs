@@ -85,6 +85,9 @@
         {{if isset(.Month) && .Month != ""}}
           {{yield diagram()}}
         {{end}}
+        <div class="d-flex justify-content-center mt-1 mb-1">
+          <iframe src="//rcm-na.amazon-adsystem.com/e/cm?o=1&p=48&l=ez&f=ifr&linkID=5f078dd74457cb8ed3cf8a7ab24889a5&t=orl01-20&tracking_id=orl01-20" width="728" height="90" scrolling="no" border="0" marginwidth="0" style="border:none;" frameborder="0"></iframe>
+        </div>
         {{if googleadclient != "" && googleadslot != ""}}
         <div class="ad">
           <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
