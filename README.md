@@ -30,18 +30,25 @@ Copy and edit the .env file. Edit the overrustlelogs.toml file.
 
 ```bash
 # cd into overrustlelogs if not already in there
-cd overrustlelogs
+cd ./overrustlelogs
 cp ./.env.example ./.env
 
 # changing paths in this requires to change paths in install.sh
 vim .env
 
+# copy config files to working dir
+cp ./package/var/overrustlelogs/* 
+
 # few things you need to edit here too
-vim ./package/var/overrustlelogs/overrustlelogs.toml
+vim ./overrustlelogs.toml
 
 # change server_name's in the nginx config if you need
 vim ./package/etc/nginx/sites-enabled/overrustlelogs.net.conf
 ```
+
+### Step 4 (Docker)
+# start the stack
+docker-compose up -d
 
 ### Step 4
 
