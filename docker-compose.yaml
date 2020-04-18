@@ -9,8 +9,6 @@ services:
       - .env
     volumes:
       - ${LOGS_PATH}:/logs:ro
-    ports:
-      - "${PORT}:8080"
   logger:
     build: ./logger
     container_name: orl-logger
@@ -21,6 +19,21 @@ services:
     volumes:
       - ${VAR_ORL}:/logger
       - ${LOGS_PATH}:/logs
+  frontend:
+    image: nginx:latest
+    container_name: orl-web-static
+    restart: unless-stopped
+    volumes:
+      - ./package/etc/nginx/sites-enabled/overrustlelogs.net.conf:/etc/nginx/conf.d/nginx.conf:ro
+      - ./server/assets:/var/overrustlelogs/public/assets/:ro
+  cache:
+    image: varnish:latest
+    container_name: orl-web-cache
+    restart: unless-stopped
+    ports:
+      - "${PORT}:80"
+    volumes:
+      - ./package/etc/varnish/default.vcl:/etc/varnish/default.vcl:ro
   bot:
     build: ./bot
     container_name: orl-bot
