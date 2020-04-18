@@ -42,15 +42,21 @@ cp ./package/var/overrustlelogs/*
 # few things you need to edit here too
 vim ./overrustlelogs.toml
 
+# set the channels you want to log 
+vim ./channels.json
+
 # change server_name's in the nginx config if you need
 vim ./package/etc/nginx/sites-enabled/overrustlelogs.net.conf
 ```
 
 ### Step 4 (Docker)
-# start the stack
-docker-compose up -d
+start the stack
 
-### Step 4
+```bash
+docker-compose up -d
+```
+
+### Step 4 (Host)
 
 Run the install script from the repo root directory.
 
