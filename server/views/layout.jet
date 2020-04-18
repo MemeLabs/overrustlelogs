@@ -73,14 +73,24 @@
                 <a class="nav-link" href="{{ donate }}" target="_blank">Donate</a>
               </li>
               {{end}}
-              {{if patreon != ""}}
-              <a class="btn btn-dark btn-secondary patreon" href="{{ patreon }}" target="_blank">Patreon</a>
-              {{end}}
             </ul>
           </div>
         </div>
       </nav>
       <div class="container py-2">
+        <div class="alert alert-danger alert-dismissible fade show shutdown" role="alert">
+          OverRustleLogs will be shutting down <strong>(starting May 1st)</strong>, due to a request from Twitch Legal.
+          You can view this message <a href="/assets/twitch_email.png" target="_blank" class="alert-link">here</a>,
+          after <strong>April 30th</strong> the data and APIs will be disabled and the service will no longer be operating.
+          We understand that many broadcasters and moderators used our service to aid with moderation and dealing with problem users across Twitch,
+          but we can no longer aid you in that way. You will have to find alternative services or use Twitchs native chatlogs for this.
+          </br></br>
+          The code we made to operate this site will remain available on <a href="https://github.com/MemeLabs/overrustlelogs/commits/master" target="_blank" class="alert-link">Github</a>,
+          but the logs of chat history will not be made available at all after the above date. Thank you for visiting, using, and contributing to the sites operation via Patreon over the years.
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
         {{yield body()}}
         {{if isset(.Month) && .Month != ""}}
           {{yield diagram()}}

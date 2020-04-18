@@ -110,3 +110,8 @@ text {
 .footer {
   background-color: #2b2a2a;
 }
+
+.shutdown {
+  background-color: red !important;
+  color: white;
+}
