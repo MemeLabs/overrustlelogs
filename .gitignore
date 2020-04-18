@@ -17,3 +17,10 @@
 .idea
 .env
 /server/server
+
+channels.json
+ignore.json
+ignorelog.json
+logs/
+overrustlelogs.toml
+
