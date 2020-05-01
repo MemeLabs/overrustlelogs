@@ -1026,6 +1026,10 @@ func gzPath(path string) string {
 }
 
 func readDirIndex(path string) ([]string, error) {
+	path, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return nil, err
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, ErrNotFound
@@ -1039,6 +1043,10 @@ func readDirIndex(path string) ([]string, error) {
 }
 
 func readLogDir(path string) ([]string, error) {
+	path, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return nil, err
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, ErrNotFound
@@ -1058,9 +1066,13 @@ func readLogDir(path string) ([]string, error) {
 }
 
 func readLogFile(path string) ([]byte, error) {
+	path, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return nil, err
+	}
 	var buf []byte
 	path = LogExtension.ReplaceAllString(path, "")
-	buf, err := common.ReadCompressedFile(path + ".txt")
+	buf, err = common.ReadCompressedFile(path + ".txt")
 	if os.IsNotExist(err) {
 		f, err := os.Open(path + ".txt")
 		if os.IsNotExist(err) {
