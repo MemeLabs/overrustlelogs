@@ -78,15 +78,24 @@
         </div>
       </nav>
       <div class="container py-2">
-        <div class="alert alert-danger alert-dismissible fade show shutdown" role="alert">
-          OverRustleLogs will be shutting down <strong>(starting May 1st)</strong>, due to a request from Twitch Legal.
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+          <strong>RIP OverRustleLogs for Twitch chat logging purposes.
+          </br>
+          August 2014 - May 2020 </strong>
+          </br></br>
+          OverRustleLogs has now shut down its Twitch chat logging service, due to a request from Twitch Legal.
           You can view this message <a href="/assets/twitch_email.png" target="_blank" class="alert-link">here</a>,
-          after <strong>April 30th</strong> the data and APIs will be disabled and the service will no longer be operating.
+          the data and APIs for our Twitch Chatlogs have now been deleted.
           We understand that many broadcasters and moderators used our service to aid with moderation and dealing with problem users across Twitch,
-          but we can no longer aid you in that way. You will have to find alternative services or use Twitchs native chatlogs for this.
+          but we can no longer aid you in that way.
+          You will have to find alternative services or use Twitchs native chatlogs for this.
+          As costs have already been covered for the near future, we will continue to operate for some time,
+          logging chats that are not using any data from Twitch.
           </br></br>
           The code we made to operate this site will remain available on <a href="https://github.com/MemeLabs/overrustlelogs/commits/master" target="_blank" class="alert-link">Github</a>,
-          but the logs of chat history will not be made available at all after the above date. Thank you for visiting, using, and contributing to the sites operation via Patreon over the years.
+          but the logs of chat history for Twitch are no longer available in any form.
+          They have been deleted completely to comply with the request from Twitch.
+          Thank you for visiting, using, and contributing to the sites operation via Patreon over the years.
           <button type="button" class="close" data-dismiss="alert" aria-label="Close">
             <span aria-hidden="true">&times;</span>
           </button>
