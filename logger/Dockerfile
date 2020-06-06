@@ -8,4 +8,4 @@ RUN cd /src && go mod init orl-logger && go build -o orl-logger
 FROM alpine
 WORKDIR /app
 COPY --from=build-env /src/orl-logger /app/
-ENTRYPOINT ./orl-logger
+CMD [ "./orl-logger" ]

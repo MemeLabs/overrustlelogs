@@ -10,4 +10,4 @@ WORKDIR /app
 COPY --from=build-env /src/orl-server /app/
 COPY --from=build-env /src/views/ /app/views/
 COPY --from=build-env /src/assets/ /app/assets/
-ENTRYPOINT ./orl-server
+CMD ["./orl-server"]

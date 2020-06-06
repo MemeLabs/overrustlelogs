@@ -8,4 +8,4 @@ RUN cd /src && go mod init orl-bot && go build -o orl-bot
 FROM alpine
 WORKDIR /app
 COPY --from=build-env /src/orl-bot /app/
-ENTRYPOINT ./orl-bot
+CMD ["./orl-bot"]
