@@ -1,6 +1,6 @@
 vcl 4.0;
 backend default {
-        .host = "orl-frontend";
+        .host = "frontend";
         .port = "80";
         .probe = {
                 .url = "/";
