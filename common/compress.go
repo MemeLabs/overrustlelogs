@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/datadog/zstd"
+	"github.com/DataDog/zstd"
 )
 
 // WriteCompressedFile write compressed file
