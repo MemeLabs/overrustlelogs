@@ -1,8 +1,8 @@
 # build stage
-FROM golang:alpine AS build-env
-RUN apk --no-cache add build-base git bzr mercurial gcc
+FROM golang:1.16-alpine AS build-env
+RUN apk --no-cache add build-base git mercurial gcc
 ADD . /src
-RUN cd /src && go mod init orl-bot && go build -o orl-bot
+RUN cd /src && go get -v . && go build -o orl-bot
 
 # final stage
 FROM alpine
