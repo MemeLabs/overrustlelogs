@@ -11,6 +11,7 @@
     <meta property="og:site_name" content="{{ title }}" />
     <meta property="og:description" content="Twitch.tv chat logs." />
     <meta property="og:image" content="/assets/rustle.png" />
+    <meta name="robots" content="noarchive">
     <title>{{ title }}</title>
     <link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico" />
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
